@@ -2254,8 +2254,9 @@ function hasSiGuiYi(decomp, exposed) {
     return false;
 }
 
-// 分析这次胡牌的番型倍数：底分2分，以下每项都翻倍且可叠加：
-// 杠(每个×2，可多次) / 中发白刻子(不管暗刻明刻) / 东南西北亮牌明组 / 单吊 / 边张 / 夹张 / 自摸 / 海底捞
+// 分析这次胡牌的番型倍数（倍数部分）；底分在 settleScore：自摸1 / 点炮2，以下每项再翻倍可叠加：
+// 杠(每个×2，可多次) / 中发白刻子(三张相同中或发或白；亮中发白明组也算) / 单吊 / 边张 / 夹张 / 海底捞 等
+// 仅一对中/发/白做将不算「中发白×2」（只在 analyzeHu 补幺九+刻子）
 // 碰碰胡(全部刻子/杠，无顺子)例外：翻8倍代替翻2倍，但仍可与其他项叠加
 // concealedBeforeWin: 胡牌前的暗牌(不含winTile)；winTile: 刚好胡的这张
 // 在所有能胡的分解方式里取倍数最高的一种（对玩家最有利）
@@ -2325,7 +2326,7 @@ function scoreWinningHand(concealedBeforeWin, winTile, exposed, isSelfDraw, isLa
     return best;
 }
 
-// 结算一局的分数：底分2分 x 番型倍数(含自摸/点炮/庄家/庄点炮)，庄家赢/输都再翻倍
+// 结算一局的分数：底分(自摸1/点炮2) × 番型倍数 × 自摸或点炮×2 × 庄家相关，可叠加
 // 返回 { detail(文字摘要), payouts(每家+/-), total(赢家总所得), tags(完整标签列表), dealerWinBonus }
 function settleScore(winner, mode, payer, bonus) {
     const tags = [...bonus.tags];
@@ -2333,7 +2334,9 @@ function settleScore(winner, mode, payer, bonus) {
     if (mode === 'selfdraw') { mult *= 2; tags.push('自摸×2'); }
     else {
         mult *= 2; tags.push('点炮×2');
-        if (!isKaimen(exposedMelds[winner])) { mult *= 2; tags.push('没开门点炮×2'); }
+        // 「没开门点炮」：点炮者自己还没吃/碰/明杠，就放炮给别人胡 → 多付一倍
+        // 赢家必须已开门才能胡（checkHu 要求 kaimen），与此无关
+        if (payer && !isKaimen(exposedMelds[payer])) { mult *= 2; tags.push('没开门点炮×2'); }
     }
     const dealerWinBonus = winner === dealer;
     if (dealerWinBonus) { mult *= 2; tags.push('庄家×2'); }
@@ -2371,11 +2374,14 @@ function settleScore(winner, mode, payer, bonus) {
 }
 
 // 判断某玩家是否听牌：暗牌数刚好比“完整手牌”少一张，且存在某张牌补上就能胡
-// 所有可能的牌种：万条筒1-9 + 字牌1-7
+// 所有可能的牌种：万条筒1-9 + 字牌1-7（缓存，减轻听牌扫描分配）
+let _allTileTypesCache = null;
 function allTileTypes() {
+    if (_allTileTypesCache) return _allTileTypesCache;
     const types = [];
     for (const s of suits) for (let r = 1; r <= 9; r++) types.push(r + s);
     for (let r = 1; r <= honors.length; r++) types.push(r + '字');
+    _allTileTypesCache = types;
     return types;
 }
 
@@ -3199,13 +3205,22 @@ function isKaimen(exposed) {
 /**
  * 胡牌结构分析（穷胡）：
  * structuralOk 能拆成面子+将；kaimen 开过门；sanmenqi 三门齐；
- * yaojiu 有幺九/字；kezi 有刻子（中发白做将或亮牌可补）。
+ * yaojiu 有幺九/字；kezi 有刻子。
+ *
+ * 中/发/白：
+ * - 三张相同（暗刻/碰/杠）= 一套面子，同时满足幺九+刻子；计分另见 scoreWinningHand 的「中发白×2」
+ * - 一对做将 = 同时满足幺九+刻子，计分不 ×2
+ * - 亮出的中发白/东南西北明组：补幺九+刻子，不算开门
+ * 胡牌者必须开门（含点炮、自摸）；「没开门点炮×2」罚的是点炮者未开门。
  */
 function analyzeHu(concealed, exposed = [], player = null) {
     const neededSets = 4 - exposed.length;
     const requiredLen = neededSets * 3 + 2;
     let structuralOk = false;
-    let kezi = exposed.some(m => m.type === 'peng' || m.type === 'gang');
+    // 明刻/明杠/暗杠/亮风箭都算有刻子
+    let kezi = exposed.some(m =>
+        m.type === 'peng' || m.type === 'gang' || m.type === 'dragons' || m.type === 'winds'
+    );
     let dragonPairAsJiang = false;
     if (concealed.length === requiredLen) {
         const sorted = [...concealed].sort(tileCompare);
@@ -3224,11 +3239,13 @@ function analyzeHu(concealed, exposed = [], player = null) {
                 if (decomp.length !== neededSets) continue;
                 structuralOk = true;
                 if (decomp.some(m => m.type === 'triplet')) kezi = true;
+                // 一对中/发/白做将：补刻子条件（不计分 ×2）
                 if (dragonTilesArr.includes(pairTile)) dragonPairAsJiang = true;
             }
         }
     }
     const allTiles = [...concealed, ...exposed.flatMap(m => m.tiles)];
+    // 字牌（含中发白）或数牌 1/9 即满足幺九
     let yaojiu = allTiles.some(t => tileSuit(t) === '字' || tileRank(t) === 1 || tileRank(t) === 9);
     const numberSuitsUsed = new Set(allTiles.filter(t => tileSuit(t) !== '字').map(tileSuit));
     const sanmenqi = numberSuitsUsed.size === 3;
@@ -4467,6 +4484,66 @@ function aiDiscard(player) {
     if (gameOver) return;
     const hand = hands[player];
     if (hand.length === 0) { advanceTurn(); return; } // 防御性检查：正常情况下不会发生
+    // AI 加杠 / 暗杠：未听牌时执行（加杠需处理抢杠；暗杠不计抢杠）
+    if (!isTenpai(player)) {
+        for (const meld of exposedMelds[player]) {
+            if (meld.type === 'peng' && hand.includes(meld.tiles[0])) {
+                const gTile = meld.tiles[0];
+                const robber = findRonPriority(player, gTile);
+                if (robber) {
+                    const ix = hands[player].indexOf(gTile);
+                    if (ix > -1) hands[player].splice(ix, 1);
+                    if (robber === 'bottom') {
+                        offerHu({ mode: 'dianpao', tile: gTile, fromPlayer: player, concealed: [...hands.bottom, gTile] });
+                        return;
+                    }
+                    hands[robber].push(gTile);
+                    gameOver = true;
+                    winner = robber;
+                    const before = [...hands[robber]];
+                    before.splice(before.indexOf(gTile), 1);
+                    const bonus = scoreWinningHand(before, gTile, exposedMelds[robber], false, false);
+                    const result = settleScore(robber, 'dianpao', player, bonus);
+                    logFlow(nameOf(robber) + ' 抢杠胡了 ' + nameOf(player) + '！' + result.detail);
+                    speak('胡了，' + voiceName(player) + '点炮');
+                    learnFromWin(robber, player);
+                    render();
+                    showResultModal(robber, 'dianpao', player, bonus, result, gTile);
+                    return;
+                }
+                const ix = hands[player].indexOf(gTile);
+                if (ix > -1) hands[player].splice(ix, 1);
+                meld.type = 'gang';
+                meld.tiles.push(gTile);
+                meld.concealed = false;
+                logFlow(nameOf(player) + ' 加杠 ' + tileGlyph(gTile));
+                speak('杠' + tileName(gTile));
+                render();
+                aiDrawReplacement(player);
+                return;
+            }
+        }
+        if (exposedMelds[player].length < 3) {
+            const counts = {};
+            for (const t of hand) counts[t] = (counts[t] || 0) + 1;
+            let gangTile = null;
+            for (const t of Object.keys(counts)) {
+                if (counts[t] >= 4) { gangTile = t; break; }
+            }
+            if (gangTile) {
+                for (let i = 0; i < 4; i++) {
+                    const ix = hands[player].indexOf(gangTile);
+                    if (ix > -1) hands[player].splice(ix, 1);
+                }
+                exposedMelds[player].push({ type: 'gang', tiles: [gangTile, gangTile, gangTile, gangTile], concealed: true });
+                logFlow(nameOf(player) + ' 暗杠 ' + tileGlyph(gangTile));
+                speak('杠' + tileName(gangTile));
+                render();
+                aiDrawReplacement(player);
+                return;
+            }
+        }
+    }
     // 保牌策略：孤立字牌 > 孤立中张(非4/5/6优先) > ... > 对子最后才拆，同等级优先选不点炮的
     const tile = chooseAiDiscardTile(hand, player);
     hand.splice(hand.indexOf(tile), 1);
