@@ -1,0 +1,187 @@
+    #dice-stage {
+        position: absolute; left: 0; right: 0; top: 0; bottom: 22%;
+        z-index: 25;
+        display: none; align-items: center; justify-content: center;
+        pointer-events: none;
+        background: radial-gradient(ellipse at center, rgba(8,14,24,0.35) 0%, transparent 65%);
+        contain: layout style;
+        perspective: 320px;
+        perspective-origin: 50% 40%;
+    }
+    #dice-stage.show { display: flex; }
+    #dice-scene {
+        width: 21.6px; height: 21.6px;
+        position: relative;
+        transform-style: preserve-3d;
+        will-change: transform;
+        transition: none;
+    }
+    /* 旋转结束后：缩小并淡出 */
+    #dice-scene.vanish {
+        transition: transform 0.4s ease, opacity 0.4s ease;
+        transform: scale(0.15) !important;
+        opacity: 0;
+    }
+    #dice-cube {
+        width: 21.6px; height: 21.6px; position: relative;
+        transform-style: preserve-3d;
+        will-change: transform;
+    }
+    #dice-cube .face {
+        position: absolute; width: 22.2px; height: 22.2px;
+        /* 略大于理论尺寸并去掉边框，避免棱上亮线/细缝 */
+        left: -0.3px; top: -0.3px;
+        border-radius: 2.4px;
+        border: none;
+        outline: none;
+        box-shadow: none;
+        display: grid; place-items: center;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+    }
+    /* 六面略作明暗差，旋转时能看出体积 */
+    #dice-cube .f1 { background: linear-gradient(145deg, #fff8d0, #e8c44a 55%, #b8921e); }
+    #dice-cube .f2 { background: linear-gradient(145deg, #f5e08a, #d4a82a 55%, #9a7210); }
+    #dice-cube .f3 { background: linear-gradient(145deg, #e8d070, #c49a22 55%, #8a6410); }
+    #dice-cube .f4 { background: linear-gradient(145deg, #f0dc90, #d0a828 55%, #967014); }
+    #dice-cube .f5 { background: linear-gradient(160deg, #fff6c8, #f0d060 45%, #c9a227); }
+    #dice-cube .f6 { background: linear-gradient(160deg, #d8b840, #a87e18 55%, #6e5010); }
+    /* 光晕用 filter，不用 inset 描边（inset 容易在上沿画出一条线） */
+    #dice-cube.settled {
+        filter: drop-shadow(0 0 8px rgba(255, 215, 80, 0.45));
+    }
+    #dice-cube.settled .f1 {
+        background:
+            radial-gradient(circle at 30% 28%, rgba(255,255,255,0.4) 0%, transparent 24%),
+            linear-gradient(145deg, #fff8d0, #e8c44a 55%, #b8921e);
+    }
+    #dice-cube .face::after {
+        content: '✦';
+        position: absolute; font-size: 3.6px; color: rgba(255,255,255,0.9);
+        top: 2px; right: 3px;
+        text-shadow: none;
+    }
+    #dice-cube.settled .face::after {
+        text-shadow: 0 0 3px #fff, 0 0 5px #7dd3fc;
+    }
+    #dice-cube .face .pips {
+        display: grid; width: 70%; height: 70%;
+        grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr;
+        place-items: center;
+    }
+    #dice-cube .face .pip {
+        width: 3px; height: 3px; border-radius: 50%;
+        background: #2a1206;
+    }
+    #dice-cube.settled .face .pip {
+        background: radial-gradient(circle at 35% 35%, #5a2a0a, #1a0a02 70%);
+        box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), 0 1px 1px rgba(0,0,0,0.35);
+    }
+    /* 六面组成封闭立方体；Z 略大于半边长，减少棱上缝线 */
+    #dice-cube .f1 { transform: rotateY(0deg) translateZ(10.5px); }
+    #dice-cube .f2 { transform: rotateY(90deg) translateZ(10.5px); }
+    #dice-cube .f3 { transform: rotateY(180deg) translateZ(10.5px); }
+    #dice-cube .f4 { transform: rotateY(-90deg) translateZ(10.5px); }
+    #dice-cube .f5 { transform: rotateX(90deg) translateZ(10.5px); }
+    #dice-cube .f6 { transform: rotateX(-90deg) translateZ(10.5px); }
+    /* 落地阴影（挂在 scene 下，不跟着立方体翻面） */
+    #dice-shadow {
+        position: absolute; left: 50%; top: 50%;
+        width: 24px; height: 7.2px;
+        margin-left: -12px; margin-top: 13.2px;
+        border-radius: 50%;
+        background: radial-gradient(ellipse, rgba(0,0,0,0.45) 0%, transparent 70%);
+        transform: translateZ(-30px);
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    /* 清零菜单：金色长框 + 透明底 */
+    #claim-indicator .reset-menu {
+        display: flex; flex-direction: column; align-items: center; gap: 4.5px;
+    }
+    #claim-indicator .reset-btn {
+        position: relative;
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 82px; padding: 4px 13px;
+        border: 1px solid var(--gold);
+        border-radius: 5px;
+        background: transparent;
+        color: var(--text); font-size: 9.5px; font-weight: 600;
+        letter-spacing: 0.12em; font-family: inherit;
+        cursor: pointer; user-select: none;
+        box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
+        transition: background 0.15s, box-shadow 0.15s;
+    }
+    /* 热区略微扩大：上下方向留少许，避免与相邻按钮重叠 */
+    #claim-indicator .reset-btn::after {
+        content: '';
+        position: absolute;
+        inset: -2px -4px;
+    }
+    #claim-indicator .reset-btn:active {
+        background: rgba(212, 175, 55, 0.12);
+        box-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+    }
+    /* 弹窗盒：与结算页统一 */
+    .hu-box {
+        width: min(72vw, 360px);
+        max-height: min(72vh, 300px);
+        overflow-x: auto; overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-x pan-y;
+        margin: auto;
+        padding: 8px 12px 8px;
+        border-radius: 10px;
+        text-align: center;
+        color: var(--text);
+        background: var(--glass-strong);
+        border: 1px solid var(--gold);
+        box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.06);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    .hu-title {
+        font-size: 9.6px; font-weight: 700; letter-spacing: 0.08em;
+        color: var(--ice); margin: 0 0 5.8px;
+    }
+    .hu-options {
+        display: flex; flex-direction: column; gap: 4px;
+        margin-bottom: 8px;
+    }
+    .hu-opt {
+        display: flex; align-items: center; justify-content: center; gap: 3.2px;
+        padding: 4.5px 5.8px; border-radius: 5px;
+        border: 1px solid var(--gold-dim);
+        background: transparent;
+        color: var(--text-muted); font-size: 8.3px; cursor: not-allowed;
+        transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    }
+    .hu-opt.enabled {
+        color: var(--text); cursor: pointer;
+        border-color: var(--gold);
+        background: transparent;
+    }
+    .hu-opt.enabled:hover {
+        background: rgba(212, 175, 55, 0.1);
+        border-color: var(--gold);
+    }
+    .hu-opt.enabled:active { transform: scale(0.98); }
+    .hu-opt .tile {
+        width: 14.1px; height: 19.2px; font-size: 12.8px; border-radius: 2px;
+        cursor: inherit;
+    }
+    .hu-opt .tile-marker { height: 0; font-size: 0; }
+    .hu-actions { display: flex; gap: 6.4px; justify-content: center; flex-wrap: wrap; }
+    .hu-actions button {
+        margin: 0; padding: 3.2px 8.8px; border-radius: 4px; cursor: pointer;
+        border: 1px solid var(--gold);
+        background: transparent;
+        color: var(--text); font-size: 7.7px; font-family: inherit;
+        transition: background 0.15s, box-shadow 0.15s;
+    }
+    .hu-actions button:active {
+        background: rgba(212, 175, 55, 0.12);
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+    }
+    .hu-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
