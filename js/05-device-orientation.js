@@ -1,0 +1,455 @@
+function isIOSDevice() {
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function isAndroidDevice() {
+    const ua = navigator.userAgent || '';
+    return /Android/i.test(ua);
+}
+/** Pixel / 其它 Google 系机型（含 GSI 特征时的辅助识别） */
+function isGoogleAndroidDevice() {
+    if (!isAndroidDevice()) return false;
+    const ua = navigator.userAgent || '';
+    // Pixel 常见 UA 含 "Pixel"；部分 ChromeOS 平板不含 Android
+    return /Pixel/i.test(ua) || /Nexus/i.test(ua);
+}
+function applyDevicePlatformClass() {
+    const root = document.documentElement;
+    const body = document.body;
+    if (!root || !body) return;
+    const android = isAndroidDevice();
+    const ios = isIOSDevice();
+    root.classList.toggle('is-android', android);
+    root.classList.toggle('is-ios', ios);
+    root.classList.toggle('is-google-android', isGoogleAndroidDevice());
+    body.classList.toggle('is-android', android);
+    body.classList.toggle('is-ios', ios);
+    body.classList.toggle('is-google-android', isGoogleAndroidDevice());
+}
+
+/** 同步真实可视区域到 CSS 变量（iOS 地址栏 + Android Chrome 底栏/手势条） */
+function syncAppViewportVars() {
+    let w = window.innerWidth || document.documentElement.clientWidth || 0;
+    let h = window.innerHeight || document.documentElement.clientHeight || 0;
+    try {
+        if (window.visualViewport) {
+            w = Math.round(window.visualViewport.width) || w;
+            h = Math.round(window.visualViewport.height) || h;
+        }
+    } catch (e) { /* ignore */ }
+    // Android：全屏后优先用 layout 视口，避免 visualViewport 被工具栏短暂缩小
+    try {
+        if (isAndroidDevice() && (document.fullscreenElement || document.webkitFullscreenElement)) {
+            w = window.innerWidth || w;
+            h = window.innerHeight || h;
+        }
+    } catch (e) { /* ignore */ }
+    if (w > 0) document.documentElement.style.setProperty('--app-width', w + 'px');
+    if (h > 0) document.documentElement.style.setProperty('--app-height', h + 'px');
+    return { w, h };
+}
+
+/** 读取当前可视宽高（优先 visualViewport） */
+function getViewportSize() {
+    let w = window.innerWidth || document.documentElement.clientWidth || 0;
+    let h = window.innerHeight || document.documentElement.clientHeight || 0;
+    try {
+        if (window.visualViewport) {
+            w = Math.round(window.visualViewport.width) || w;
+            h = Math.round(window.visualViewport.height) || h;
+        }
+    } catch (e) { /* ignore */ }
+    // Android 旋转动画中 inner 可能短暂不准：若与 screen 方向明显相反，采信 screen
+    try {
+        if (isAndroidDevice() && screen && screen.width && screen.height) {
+            const sw = screen.width, sh = screen.height;
+            const innerLand = w >= h;
+            const screenLand = sw >= sh;
+            // 仅在差异很大时校正，避免误伤分屏
+            if (innerLand !== screenLand && Math.max(w, h) / Math.max(1, Math.min(w, h)) < 1.15) {
+                const a = Math.max(w, h), b = Math.min(w, h);
+                if (screenLand) { w = a; h = b; }
+                else { w = b; h = a; }
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return { w, h };
+}
+
+/**
+ * 综合判断是否竖屏
+ * iOS Safari 旋转瞬间 orientation / matchMedia / 宽高可能短暂不一致：
+ * 以「宽高比」为主信号，其它 API 作辅助；明显横宽时强制横屏。
+ */
+function isPortraitOrientation() {
+    const { w, h } = getViewportSize();
+    // 主信号：宽高（旋转完成后最可靠）
+    if (w > 0 && h > 0) {
+        // 明显横屏
+        if (w > h * 1.05) return false;
+        // 明显竖屏
+        if (h > w * 1.05) return true;
+    }
+    // 接近方形时再用系统 API
+    try {
+        if (typeof window.orientation === 'number') {
+            const o = window.orientation;
+            if (o === 90 || o === -90) return false;
+            if (o === 0 || o === 180) return true;
+        }
+    } catch (e) { /* ignore */ }
+    try {
+        if (screen.orientation && typeof screen.orientation.type === 'string') {
+            const t = screen.orientation.type;
+            if (t.indexOf('landscape') === 0) return false;
+            if (t.indexOf('portrait') === 0) return true;
+        }
+    } catch (e) { /* ignore */ }
+    try {
+        if (window.matchMedia('(orientation: landscape)').matches) return false;
+        if (window.matchMedia('(orientation: portrait)').matches) return true;
+    } catch (e) { /* ignore */ }
+    if (!w || !h) return false;
+    return h >= w;
+}
+
+function placeClaimIndicatorForOrientation(isPortrait) {
+    const el = $('claim-indicator');
+    if (!el) return;
+    if (isPortrait) {
+        const table = $('game-table');
+        if (table && el.parentElement !== table) table.appendChild(el);
+    } else {
+        const wall = $('wall-count');
+        if (wall && el.parentElement !== wall) wall.appendChild(el);
+    }
+}
+
+function checkPortraitGuard() {
+    syncAppViewportVars();
+    const isPortrait = isPortraitOrientation();
+    const body = document.body;
+    if (!body) return;
+    const wasPortrait = body.classList.contains('portrait-layout');
+    // 双布局：竖屏用 portrait-layout，横屏用默认横屏样式；不再强制拦截
+    body.classList.toggle('portrait-layout', !!isPortrait);
+    body.classList.remove('show-portrait-guard');
+    placeClaimIndicatorForOrientation(!!isPortrait);
+    // 方向切换时刷新牌墙下列表（竖屏五行 / 横屏侧栏）
+    if (wasPortrait !== !!isPortrait) {
+        try { hideExposedInfo(); } catch (e) {}
+        try { markDealer(); } catch (e) {}
+        try { render(); } catch (e) {}
+    }
+    setTimeout(fitBottomHand, 60);
+    if (isPortrait) setTimeout(fitBottomHand, 200);
+}
+
+/** 旋转/尺寸变化后多次复核（iOS 地址栏收起与旋转动画期间尺寸会变） */
+/** 旋转处理状态（Android Chrome 会连续触发 orientation + resize） */
+let _orientationHandling = false;
+let _lastOrientationKey = '';
+let _orientationTimers = [];
+
+function clearOrientationTimers() {
+    _orientationTimers.forEach(id => clearTimeout(id));
+    _orientationTimers = [];
+}
+
+function getOrientationKey() {
+    const { w, h } = getViewportSize();
+    let type = '';
+    try {
+        if (screen.orientation && screen.orientation.type) type = screen.orientation.type;
+    } catch (e) {}
+    try {
+        if (!type && typeof window.orientation === 'number') type = String(window.orientation);
+    } catch (e) {}
+    return type + '|' + (w > h ? 'L' : 'P') + '|' + w + 'x' + h;
+}
+
+/**
+ * 统一响应屏幕旋转 / 视口变化
+ * Android：orientationchange 时宽高常未更新，需等 resize / visualViewport；
+ * 并做防抖，避免一次旋转触发十几次重排。
+ */
+function handleOrientationEvent(source) {
+    const key = getOrientationKey();
+    // 同一稳定状态不重复打满定时器（resize 噪声多）
+    if (source === 'resize' && key === _lastOrientationKey && !_orientationHandling) {
+        syncAppViewportVars();
+        return;
+    }
+    _orientationHandling = true;
+    syncAppViewportVars();
+    checkPortraitGuard();
+    try { fitBottomHand(); } catch (e) {}
+
+    clearOrientationTimers();
+    const delays = isAndroidDevice()
+        ? [0, 50, 100, 150, 250, 400, 600, 900, 1200, 1600]
+        : [0, 50, 120, 250, 400, 700, 1100];
+    delays.forEach(ms => {
+        const id = setTimeout(() => {
+            syncAppViewportVars();
+            checkPortraitGuard();
+            try { fitBottomHand(); } catch (e) {}
+            const nowKey = getOrientationKey();
+            if (ms >= delays[delays.length - 1] - 50) {
+                _lastOrientationKey = nowKey;
+                _orientationHandling = false;
+            }
+        }, ms);
+        _orientationTimers.push(id);
+    });
+}
+
+function schedulePortraitGuardChecks() {
+    handleOrientationEvent('manual');
+}
+
+async function enterLandscapeFromGuard() {
+    // Android 可尝试 lock；iOS 通常失败，忽略即可
+    try {
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape').catch(() =>
+                screen.orientation.lock('landscape-primary').catch(() => {})
+            );
+        }
+    } catch (e) { /* ignore */ }
+    try {
+        window.scrollTo(0, 1);
+        setTimeout(() => { try { window.scrollTo(0, 0); } catch (e2) {} }, 50);
+    } catch (e) {}
+    await toggleLandscapeMaximize();
+    handleOrientationEvent('enter-landscape');
+    setTimeout(() => {
+        if (isPortraitOrientation()) {
+            logFlow(isAndroidDevice()
+                ? '请关闭竖屏锁定后横持手机（Android）'
+                : '请将手机横过来；iOS 需关闭竖屏锁定后旋转');
+        }
+    }, 400);
+}
+
+/** —— 屏幕旋转 / 视口事件绑定 —— */
+function bindOrientationListeners() {
+    // 1) 传统 orientationchange（部分 Android WebView 仍依赖）
+    window.addEventListener('orientationchange', () => {
+        handleOrientationEvent('orientationchange');
+    }, { passive: true });
+
+    // 2) Screen Orientation API（Chrome Android 推荐）
+    try {
+        if (screen.orientation && screen.orientation.addEventListener) {
+            screen.orientation.addEventListener('change', () => {
+                handleOrientationEvent('screen.orientation');
+            });
+        }
+    } catch (e) { /* ignore */ }
+
+    // 3) matchMedia 横竖屏切换（不依赖 orientation 事件，兼容性好）
+    try {
+        const mql = window.matchMedia('(orientation: landscape)');
+        const onMql = () => handleOrientationEvent('matchMedia');
+        if (mql.addEventListener) mql.addEventListener('change', onMql);
+        else if (mql.addListener) mql.addListener(onMql); // 旧 Android WebView
+    } catch (e) { /* ignore */ }
+
+    // 4) resize：旋转后尺寸落稳的主信号（防抖在 handle 内）
+    window.addEventListener('resize', () => {
+        handleOrientationEvent('resize');
+    }, { passive: true });
+
+    // 5) visualViewport：Chrome 工具栏伸缩 / 旋转后的真实可见区域
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            handleOrientationEvent('visualViewport');
+        }, { passive: true });
+        window.visualViewport.addEventListener('scroll', () => {
+            // 仅同步 CSS 变量，不做全量旋转流程，减少抖动
+            syncAppViewportVars();
+        }, { passive: true });
+    }
+
+    // 6) 回前台 / bfcache 恢复后再测一次（Android 多任务切换常见）
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            handleOrientationEvent('visibility');
+        }
+    });
+    window.addEventListener('pageshow', () => {
+        handleOrientationEvent('pageshow');
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyDevicePlatformClass();
+        handleOrientationEvent('DOMContentLoaded');
+    });
+}
+
+bindOrientationListeners();
+applyDevicePlatformClass();
+handleOrientationEvent('init');
+syncAppViewportVars();
+try { placeClaimIndicatorForOrientation(isPortraitOrientation()); } catch (e) {}
+
+
+
+function onTableTap(e) {
+    if (diceBusy) return;
+    if ($('result-modal').classList.contains('show')) return;
+    if ($('reveal-modal').classList.contains('show')) return;
+    if ($('chi-choice-modal').classList.contains('show')) return;
+    if (e.target.closest('.tile, .tileback, .discardTile, .pool-tile, .player-label, button, .meld-group, #claim-indicator, #wall-count, #landscape-ctrl, #discard-query-btn, #discardWall, #pool-modal, img, .claim-btn, .reset-btn')) return;
+
+    const now = Date.now();
+    tableTapTimes = tableTapTimes.filter(t => now - t < DICE.TAP_WINDOW);
+    tableTapTimes.push(now);
+    if (tableTapTimes.length >= 3) {
+        tableTapTimes = [];
+        startDiceRitual();
+    }
+}
+
+/** 重置骰子 DOM 状态（隐藏、清除动画类与内联 transform） */
+function resetDiceDom() {
+    const { stage, scene, cube, shadow } = diceEls();
+    if (diceRafId) { cancelAnimationFrame(diceRafId); diceRafId = 0; }
+    if (diceVanishTimer) { clearTimeout(diceVanishTimer); diceVanishTimer = 0; }
+    stage.classList.remove('show', 'fade-out');
+    scene.classList.remove('vanish');
+    scene.style.transform = '';
+    scene.style.opacity = '';
+    cube.classList.remove('settled');
+    cube.style.transform = '';
+    if (shadow) {
+        shadow.style.transform = 'translateZ(-30px) scale(1)';
+        shadow.style.opacity = '0.6';
+    }
+}
+
+function startDiceRitual() {
+    if (diceBusy) return;
+    diceBusy = true;
+    diceSavedClaim = pendingClaim;
+    pendingClaim = { mode: 'diceMenu' };
+    hideIndicator();
+    resetDiceDom();
+
+    const { stage, scene, cube, shadow } = diceEls();
+    stage.classList.add('show');
+    playDiceSound();
+
+    const face = 1 + Math.floor(Math.random() * 6);
+    const end = DICE.FACE_ROT[face];
+    const spinsX = (4 + Math.floor(Math.random() * 5)) * 360;
+    const spinsY = (6 + Math.floor(Math.random() * 7)) * 360;
+    const spinsZ = (2 + Math.floor(Math.random() * 3)) * 360;
+    const phase = Math.random() * Math.PI * 2;
+    const t0 = performance.now();
+
+    function tick(now) {
+        const t = Math.min(1, (now - t0) / DICE.ROLL_MS);
+        const ease = 1 - Math.pow(1 - t, 3); // ease-out
+        const inv = 1 - ease;
+        const lift = Math.sin(Math.PI * t);   // 0→1→0 抛起
+        const toss = lift * 54;
+        const scale = 1 + lift * 0.22;
+        const wobble = inv * 22 * Math.sin((now - t0) * 0.022 + phase);
+        const rx = spinsX * inv + end.x * ease + wobble;
+        const ry = spinsY * inv + end.y * ease + wobble * 0.65;
+        const rz = spinsZ * inv + wobble * 0.4;
+
+        scene.style.transform = `translateY(${-toss}px) scale(${scale})`;
+        cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
+        if (shadow) {
+            shadow.style.transform = `translateZ(-30px) scale(${1 - lift * 0.45})`;
+            shadow.style.opacity = String(0.25 + 0.4 * (1 - lift));
+        }
+
+        if (t < 1) {
+            diceRafId = requestAnimationFrame(tick);
+            return;
+        }
+        // 落地定格 → 缩小消失 → 菜单
+        diceRafId = 0;
+        scene.style.transform = 'translateY(0) scale(1)';
+        cube.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(0deg)`;
+        cube.classList.add('settled');
+        if (shadow) {
+            shadow.style.transform = 'translateZ(-30px) scale(1)';
+            shadow.style.opacity = '0.6';
+        }
+        // 强制重绘一帧再加 vanish，确保 transition 生效
+        void scene.offsetWidth;
+        scene.classList.add('vanish');
+        diceVanishTimer = setTimeout(() => {
+            diceVanishTimer = 0;
+            stage.classList.remove('show');
+            scene.classList.remove('vanish');
+            scene.style.transform = '';
+            scene.style.opacity = '';
+            showDiceResetMenu();
+        }, DICE.VANISH_MS);
+    }
+    diceRafId = requestAnimationFrame(tick);
+}
+
+function showDiceResetMenu() {
+    const el = $('claim-indicator');
+    el.innerHTML =
+        '<span class="claim-bell">🔔</span>'
+        + '<div class="reset-menu">'
+        + '<button type="button" class="reset-btn" onclick="event.stopPropagation();confirmFullReset()">清零重启</button>'
+        + '<button type="button" class="reset-btn" onclick="event.stopPropagation();cancelDiceRitual()">继续加油</button>'
+        + '</div>';
+    el.classList.add('show');
+}
+
+/** 继续加油：收起菜单，恢复仪式前的吃碰杠提示 */
+function cancelDiceRitual() {
+    resetDiceDom();
+    hideIndicator();
+    diceBusy = false;
+    pendingClaim = diceSavedClaim;
+    diceSavedClaim = null;
+    if (!pendingClaim) return;
+    if (pendingClaim.mode === 'nextGame') {
+        showIndicator('🔔 下一局', true);
+    } else if (pendingClaim.mode === 'selfGang') {
+        showIndicator('🔔 杠', true);
+    } else if (pendingClaim.mode === 'claim') {
+        const options = [
+            pendingClaim.canGang ? '杠' : null,
+            pendingClaim.canPeng ? '碰' : null,
+            (pendingClaim.chiCombos && pendingClaim.chiCombos.length) ? '吃' : null
+        ].filter(Boolean).join('/');
+        showIndicator('🔔 ' + options, true);
+    }
+}
+
+/** 清零重启：积分/庄家/存档全部归零并开新局 */
+function confirmFullReset() {
+    resetDiceDom();
+    hideIndicator();
+    $('result-modal').classList.remove('show');
+    $('reveal-modal').classList.remove('show');
+    $('chi-choice-modal').classList.remove('show');
+    diceBusy = false;
+    diceSavedClaim = null;
+    pendingClaim = null;
+    lastSettlement = null;
+    scores = { top: 0, left: 0, right: 0, bottom: 0 };
+    dealer = 'bottom';
+    try {
+        localStorage.removeItem(MAHJONG_STORAGE_KEY);
+        localStorage.removeItem('qionghu_mahjong_progress_v1');
+    } catch (e) { /* ignore */ }
+    winner = null;
+    gameOver = false;
+    initGame();
+    logFlow('已清零，新的一局开始');
+}
+
+// 检查某张牌打出去后，是否会点炮给某个AI（用于给你手里的危险牌标红框）
