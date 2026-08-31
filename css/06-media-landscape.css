@@ -100,14 +100,6 @@
         padding-left: max(10px, var(--sal));
         box-sizing: border-box;
     }
-    /* 竖屏引导层同样避开安全区 */
-    #portrait-guard {
-        padding-top: max(24px, var(--sat));
-        padding-right: max(24px, var(--sar));
-        padding-bottom: max(24px, var(--sab));
-        padding-left: max(24px, var(--sal));
-        box-sizing: border-box;
-    }
 
     /* 偏好减少动效 */
     @media (prefers-reduced-motion: reduce) {
@@ -121,79 +113,4 @@
             animation: none !important;
         }
     }
-
-    /* 竖屏引导层：仅竖屏时显示，提示用户进入横屏 */
-    #portrait-guard {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 22px;
-        /* padding 由安全区规则统一：max(24px, var(--sa*)) */
-        text-align: center;
-        background: radial-gradient(ellipse at 50% 40%, #241a12 0%, #05080e 72%);
-    }
-    body.show-portrait-guard #portrait-guard { display: flex; }
-    body.show-portrait-guard #table-wrap,
-    body.show-portrait-guard #top-bar,
-    body.show-portrait-guard #view-scale-btns { visibility: hidden; }
-    #portrait-guard-imgbox {
-        width: 284px;
-        height: 284px;
-        max-width: 78vw;
-        max-height: 78vw;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    #portrait-guard-imgbox img {
-        width: 92px;
-        height: 92px;
-        border-radius: 14px;
-        transform: scale(3.09);
-        box-shadow:
-            0 14px 36px rgba(0,0,0,0.55),
-            0 0 0 1px rgba(212,175,55,0.3);
-    }
-    #portrait-guard-text {
-        font-family: var(--font-ui);
-        color: var(--text);
-        font-size: 15px;
-        line-height: 1.7;
-        max-width: 320px;
-        opacity: 0.9;
-    }
-    #portrait-guard-text b { color: var(--gold); }
-    #portrait-guard-btn {
-        font-family: var(--font-ui);
-        font-size: 17px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        color: #1a1410;
-        background: linear-gradient(180deg, #f0d989 0%, var(--gold) 60%, #b9902a 100%);
-        border: 1px solid rgba(255,255,255,0.35);
-        border-radius: 999px;
-        padding: 14px 34px;
-        box-shadow:
-            0 8px 22px rgba(212,175,55,0.35),
-            inset 0 1px 0 rgba(255,255,255,0.5);
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-    }
-    #portrait-guard-btn:active {
-        transform: scale(0.96);
-        box-shadow:
-            0 4px 12px rgba(212,175,55,0.3),
-            inset 0 1px 0 rgba(255,255,255,0.4);
-    }
-    #portrait-guard-hint {
-        font-family: var(--font-ui);
-        color: var(--text-muted);
-        font-size: 12px;
-        opacity: 0.75;
-    }
-
 

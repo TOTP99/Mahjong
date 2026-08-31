@@ -267,10 +267,6 @@
         font-weight: 500;
         letter-spacing: 0.04em;
     }
-    /* 竖屏不显示强制横屏引导 */
-    body.portrait-layout #portrait-guard {
-        display: none !important;
-    }
 
 
     /* 竖屏：副露平时隐藏，点击头像在空地显示 */
@@ -394,5 +390,4 @@
     }
     /* 横屏不使用 tile-tooltip */
     body:not(.portrait-layout) #tile-tooltip { display: none !important; }
-
 
