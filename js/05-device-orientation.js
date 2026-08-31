@@ -133,7 +133,6 @@ function checkPortraitGuard() {
     const wasPortrait = body.classList.contains('portrait-layout');
     // 双布局：竖屏用 portrait-layout，横屏用默认横屏样式；不再强制拦截
     body.classList.toggle('portrait-layout', !!isPortrait);
-    body.classList.remove('show-portrait-guard');
     placeClaimIndicatorForOrientation(!!isPortrait);
     // 方向切换时刷新牌墙下列表（竖屏五行 / 横屏侧栏）
     if (wasPortrait !== !!isPortrait) {
@@ -206,30 +205,6 @@ function handleOrientationEvent(source) {
 
 function schedulePortraitGuardChecks() {
     handleOrientationEvent('manual');
-}
-
-async function enterLandscapeFromGuard() {
-    // Android 可尝试 lock；iOS 通常失败，忽略即可
-    try {
-        if (screen.orientation && screen.orientation.lock) {
-            await screen.orientation.lock('landscape').catch(() =>
-                screen.orientation.lock('landscape-primary').catch(() => {})
-            );
-        }
-    } catch (e) { /* ignore */ }
-    try {
-        window.scrollTo(0, 1);
-        setTimeout(() => { try { window.scrollTo(0, 0); } catch (e2) {} }, 50);
-    } catch (e) {}
-    await toggleLandscapeMaximize();
-    handleOrientationEvent('enter-landscape');
-    setTimeout(() => {
-        if (isPortraitOrientation()) {
-            logFlow(isAndroidDevice()
-                ? '请关闭竖屏锁定后横持手机（Android）'
-                : '请将手机横过来；iOS 需关闭竖屏锁定后旋转');
-        }
-    }, 400);
 }
 
 /** —— 屏幕旋转 / 视口事件绑定 —— */
