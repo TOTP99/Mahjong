@@ -36,6 +36,12 @@ function scoreChiCombo(hand, tile, combo, exposed, player) {
     const divAfter = suitDiversity(handAfter, expAfter);
     score += (divAfter - divBefore) * 3;
     if (divAfter >= 3) score += 2;
+    // 穷胡专属条件（三门齐/幺九/刻子）完整度：标准向听改善之外，额外奖励真正推进胡牌资格的吃法
+    const qhBefore = analyzeHu(hand, exposed, player);
+    const qhAfter = analyzeHu(handAfter, expAfter, player);
+    if (!qhBefore.sanmenqi && qhAfter.sanmenqi) score += 3;
+    if (!qhBefore.yaojiu && qhAfter.yaojiu) score += 3;
+    if (!qhBefore.kezi && qhAfter.kezi) score += 2;
     // 尽量不拆对子：combo 里若拆了对子则扣分
     for (const t of combo) {
         if (hand.filter(x => x === t).length >= 2) score -= 2;
@@ -79,7 +85,14 @@ function tileKeepTier(hand, tile) {
         if (!hasNear) {
             tier = (rank === 1 || rank === 9) ? 3 : ([4, 5, 6].includes(rank) ? 2 : 1);
         } else if (inRun) {
-            tier = 5; // 连张/搭子（如45、56、67）
+            // 连张/搭子（如45、56、67）：默认高优先级保留；但若是边张（12等3 / 89等7）
+            // 且那张已经死绝（记牌确认4张都看得见了），就不用死守这个没指望的等张
+            let edgeDeadWait = false;
+            if (rank === 1 && hand.includes(2 + suit) && isTileDead(3 + suit)) edgeDeadWait = true;
+            if (rank === 2 && hand.includes(1 + suit) && isTileDead(3 + suit)) edgeDeadWait = true;
+            if (rank === 8 && hand.includes(9 + suit) && isTileDead(7 + suit)) edgeDeadWait = true;
+            if (rank === 9 && hand.includes(8 + suit) && isTileDead(7 + suit)) edgeDeadWait = true;
+            tier = edgeDeadWait ? 1 : 5;
         } else {
             // 嵌张（如4_6空档等5）：记牌检查缺的那张是不是已经死了，死了就不用留着盼了
             let deadWait = false;
@@ -117,6 +130,18 @@ function getWinningTilesOf(concealed, exposed, player) {
     const neededLen = (4 - exposed.length) * 3 + 2;
     if (concealed.length !== neededLen - 1) return [];
     return allTileTypes().filter(t => checkHu([...concealed, t], exposed, player));
+}
+
+// 进张数：打出这张后，还有多少种（未死绝的）牌摸到能让向听数继续下降
+// 用于同保留档位打平时的 tie-break，取代纯随机，让AI优先留住选择面更宽的牌
+function ukeireCount(hand, exposed) {
+    const shan = estimateShanten(hand, exposed);
+    let count = 0;
+    for (const t of allTileTypes()) {
+        if (isTileDead(t)) continue; // 已经死绝的牌摸不到，没有实际意义
+        if (estimateShanten([...hand, t], exposed) < shan) count++;
+    }
+    return count;
 }
 
 function chooseAiDiscardTile(hand, player) {
@@ -166,11 +191,18 @@ function chooseAiDiscardTile(hand, player) {
         const shan = estimateShanten(remain, exposed);
         const tier = tileKeepTier(hand, t);
         const safe = !isTileDangerousFor(player, t);
-        candidates.push({ tile: t, shan, tier, safe });
+        // 穷胡专属条件：打出这张后，三门齐/幺九/刻子还保不保得住（标准向听算法看不到这三条，靠这里补）
+        const qh = analyzeHu(remain, exposed, player);
+        let qhPenalty = 0;
+        if (!qh.sanmenqi) qhPenalty += 2;
+        if (!qh.yaojiu) qhPenalty += 2;
+        if (!qh.kezi) qhPenalty += 1;
+        candidates.push({ tile: t, shan, tier, safe, qhPenalty });
     }
-    // 向听越小越好；同向听优先安全；再优先扔掉保留档低的牌
+    // 向听越小越好；同向听优先保住三门齐/幺九/刻子；再优先安全；再优先扔掉保留档低的牌
     candidates.sort((a, b) => {
         if (a.shan !== b.shan) return a.shan - b.shan;
+        if (a.qhPenalty !== b.qhPenalty) return a.qhPenalty - b.qhPenalty;
         if (a.safe !== b.safe) return a.safe ? -1 : 1;
         if (a.tier !== b.tier) return a.tier - b.tier;
         return 0;
@@ -194,7 +226,16 @@ function chooseAiDiscardTile(hand, player) {
     // 在池内按 tier 升序（先丢不保的）
     pool.sort((a, b) => a.tier - b.tier || (a.safe === b.safe ? 0 : (a.safe ? -1 : 1)));
     const topTier = pool[0].tier;
-    const finalPool = pool.filter(c => c.tier === topTier);
+    let finalPool = pool.filter(c => c.tier === topTier);
+    // 同档打平：改用进张数排序（谁打出去后选择面更宽就先打谁），而不是纯随机
+    if (finalPool.length > 1) {
+        finalPool = finalPool.map(c => ({
+            ...c,
+            ukeire: ukeireCount(removeTilesFromHand(hand, [c.tile]), exposed)
+        })).sort((a, b) => b.ukeire - a.ukeire);
+        const bestUkeire = finalPool[0].ukeire;
+        finalPool = finalPool.filter(c => c.ukeire === bestUkeire);
+    }
     return finalPool[Math.floor(Math.random() * finalPool.length)].tile;
 }
 
@@ -329,6 +370,10 @@ function shouldAiPeng(p, tile) {
     const keepsJiang = otherPairs.length > 0 || dragonTilesArr.includes(tile);
     const chasingPengPeng = isGoingForTriplets(hand);
     const isHonorValue = dragonTilesArr.includes(tile) || windTilesArr.includes(tile);
+    // 穷胡专属条件：碰完是否补上了原本缺的三门齐/幺九/刻子，缺的条件补上了就值得放宽一档向听要求
+    const qhBefore = analyzeHu(hand, exposed, p);
+    const qhAfter = analyzeHu(handAfter, expAfter, p);
+    const qhGain = (!qhBefore.sanmenqi && qhAfter.sanmenqi) || (!qhBefore.yaojiu && qhAfter.yaojiu) || (!qhBefore.kezi && qhAfter.kezi);
 
     // 副露数量上限（激进可略多，冲碰碰胡再+1；学习战绩很好再多给1个名额，很差则少给1个）
     const cap = (style === 'conservative' ? 2 : (style === 'aggressive' ? 3 : 2))
@@ -336,15 +381,16 @@ function shouldAiPeng(p, tile) {
         + (conf >= 1.5 ? 1 : 0) - (conf <= -1.5 ? 1 : 0);
     if (openCount >= cap && !isHonorValue) return false;
 
-    // 向听约束：默认不能明显变差；学习战绩好可以多容忍一档向听，战绩差则收紧
+    // 向听约束：默认不能明显变差；学习战绩好可以多容忍一档向听，战绩差则收紧；补上穷胡缺项(三门齐/幺九/刻子)同样值得多容忍一档
     const confSlack = conf >= 1.5 ? 1 : (conf <= -1.5 ? -1 : 0);
+    const qhSlack = qhGain ? 1 : 0;
     if (style === 'conservative') {
-        if (shanAfter > shanBefore + Math.max(0, confSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, confSlack + qhSlack)) return false;
     } else if (style === 'shrewd') {
-        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 ? 1 : 0) + confSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 ? 1 : 0) + confSlack + qhSlack)) return false;
     } else {
         // aggressive：允许为开门或有价值字牌略损向听
-        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 || isHonorValue ? 1 : 0) + confSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 || isHonorValue ? 1 : 0) + confSlack + qhSlack)) return false;
     }
 
     // 未开门：优先碰（在向听可接受的前提下）
