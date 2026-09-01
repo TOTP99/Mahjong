@@ -53,6 +53,16 @@ loadAiLearn();
 
 function clampConfidence(v) { return Math.max(-3, Math.min(3, v)); }
 
+// AI 学习防抖保存（减少频繁写盘）
+let aiLearnSaveTimer = 0;
+function scheduleSaveAiLearn() {
+    if (aiLearnSaveTimer) clearTimeout(aiLearnSaveTimer);
+    aiLearnSaveTimer = setTimeout(() => {
+        aiLearnSaveTimer = 0;
+        saveAiLearn();
+    }, 600);
+}
+
 // 一局定输赢后调用：赢家所属性格信心上升，点炮方所属性格信心下降（越玩战绩越好，AI下次就更敢按这个性格的路子来）
 function learnFromWin(winnerPlayer, payerPlayer) {
     for (const p of ['top', 'left', 'right']) {
@@ -62,7 +72,7 @@ function learnFromWin(winnerPlayer, payerPlayer) {
         else if (p === payerPlayer) aiLearn.confidence[style] = clampConfidence(aiLearn.confidence[style] - 0.5);
     }
     aiLearn.games += 1;
-    saveAiLearn();
+    scheduleSaveAiLearn();
 }
 // 流局时调用：听牌的性格小幅加分，没听牌的小幅减分
 function learnFromDraw(tenpaiPlayers) {
@@ -72,7 +82,7 @@ function learnFromDraw(tenpaiPlayers) {
         aiLearn.confidence[style] = clampConfidence(aiLearn.confidence[style] + (tenpaiPlayers.includes(p) ? 0.05 : -0.1));
     }
     aiLearn.games += 1;
-    saveAiLearn();
+    scheduleSaveAiLearn();
 }
 
 // DOM 查询简写：全文本用 $(id) 代替 document.getElementById(id)
@@ -155,6 +165,14 @@ let restoringGame = false;
 let saveProgressTimer = 0;
 
 function cloneState(obj) {
+    // 优先使用原生 structuredClone（更快），失败时回退到 JSON 方式
+    if (typeof structuredClone === 'function') {
+        try {
+            return structuredClone(obj);
+        } catch (e) {
+            // 极少数环境失败时回退
+        }
+    }
     return JSON.parse(JSON.stringify(obj));
 }
 
@@ -165,7 +183,7 @@ function scheduleSaveProgress() {
     saveProgressTimer = setTimeout(() => {
         saveProgressTimer = 0;
         saveGameProgress();
-    }, 280);
+    }, 400);
 }
 
 /** 立刻落盘（取消未执行的防抖），用于关键节点与页面关闭前 */
@@ -200,8 +218,15 @@ function saveGameProgress() {
     } catch (e) { /* 隐私模式等不可用时忽略 */ }
 }
 
-// 刷新/切后台前强制写入，避免 280ms 防抖窗口内丢进度
-window.addEventListener('pagehide', flushSaveProgress);
+// 刷新/切后台前强制写入，避免防抖窗口内丢进度；同时强制落盘 AI 学习数据
+window.addEventListener('pagehide', () => {
+    if (aiLearnSaveTimer) {
+        clearTimeout(aiLearnSaveTimer);
+        aiLearnSaveTimer = 0;
+        saveAiLearn();
+    }
+    flushSaveProgress();
+});
 /* resize / orientationchange → bindOrientationListeners → handleOrientationEvent（内含 fitBottomHand） */
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushSaveProgress();
