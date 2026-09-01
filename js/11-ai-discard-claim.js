@@ -341,7 +341,8 @@ function aiDiscard(player) {
 // 还没开门：都想尽快满足开门这个硬性条件，优先碰
 // 保守：最多碰2组就收手求稳，且必须碰完还留得住将
 // 激进：能碰就碰，追求快速开门或飘(碰碰胡)，上限放宽到快满4组前都碰
-// 精明：折中，3组以内且碰完留得住将才碰，中发白/风牌额外值得碰
+// 精明：折中，3组以内且碰完留得住将才碰；中发白/风牌额外值得碰
+// 中发白刻子本身带番(×2)，价值高于普通风牌，单独多给一档向听容忍与决策优先级
 // 手里还有没有连张(同花色相邻的牌)？没有的话说明这手牌天然在往碰碰胡(飘,8倍)方向走
 function isGoingForTriplets(hand) {
     for (const t of hand) {
@@ -367,36 +368,50 @@ function shouldAiPeng(p, tile) {
     const shanAfter = estimateShanten(handAfter, expAfter);
 
     const otherPairs = [...new Set(hand)].filter(t => t !== tile && hand.filter(x => x === t).length >= 2);
-    const keepsJiang = otherPairs.length > 0 || dragonTilesArr.includes(tile);
+    // 中发白可作将，也可直接算有价值字牌
+    const isDragon = dragonTilesArr.includes(tile);
+    const isWind = windTilesArr.includes(tile);
+    const isHonorValue = isDragon || isWind;
+    const keepsJiang = otherPairs.length > 0 || isDragon;
     const chasingPengPeng = isGoingForTriplets(hand);
-    const isHonorValue = dragonTilesArr.includes(tile) || windTilesArr.includes(tile);
-    // 穷胡专属条件：碰完是否补上了原本缺的三门齐/幺九/刻子，缺的条件补上了就值得放宽一档向听要求
+
+    // 穷胡专属条件：碰完是否补上了原本缺的三门齐/幺九/刻子
+    // 缺的条件补上了就值得放宽一档向听要求
     const qhBefore = analyzeHu(hand, exposed, p);
     const qhAfter = analyzeHu(handAfter, expAfter, p);
-    const qhGain = (!qhBefore.sanmenqi && qhAfter.sanmenqi) || (!qhBefore.yaojiu && qhAfter.yaojiu) || (!qhBefore.kezi && qhAfter.kezi);
+    const qhGain = (!qhBefore.sanmenqi && qhAfter.sanmenqi)
+        || (!qhBefore.yaojiu && qhAfter.yaojiu)
+        || (!qhBefore.kezi && qhAfter.kezi);
 
-    // 副露数量上限（激进可略多，冲碰碰胡再+1；学习战绩很好再多给1个名额，很差则少给1个）
+    // 副露数量上限
+    // 激进可略多；冲碰碰胡再+1；学习战绩很好再多给1个名额，很差则少给1个
+    // 中发白刻子本身带番，即使已接近上限也允许碰（下面用 isHonorValue 放行）
     const cap = (style === 'conservative' ? 2 : (style === 'aggressive' ? 3 : 2))
         + (chasingPengPeng ? 1 : 0)
         + (conf >= 1.5 ? 1 : 0) - (conf <= -1.5 ? 1 : 0);
     if (openCount >= cap && !isHonorValue) return false;
 
-    // 向听约束：默认不能明显变差；学习战绩好可以多容忍一档向听，战绩差则收紧；补上穷胡缺项(三门齐/幺九/刻子)同样值得多容忍一档
+    // 向听约束：默认不能明显变差
+    // 学习战绩好 / 补上穷胡缺项 / 中发白刻子 → 各可多容忍一档
     const confSlack = conf >= 1.5 ? 1 : (conf <= -1.5 ? -1 : 0);
     const qhSlack = qhGain ? 1 : 0;
+    const dragonSlack = isDragon ? 1 : 0; // 中发白刻子×2是稳赚的，比赌三门齐更确定
+    const baseSlack = confSlack + qhSlack + dragonSlack;
+
     if (style === 'conservative') {
-        if (shanAfter > shanBefore + Math.max(0, confSlack + qhSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, baseSlack)) return false;
     } else if (style === 'shrewd') {
-        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 ? 1 : 0) + confSlack + qhSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 ? 1 : 0) + baseSlack)) return false;
     } else {
         // aggressive：允许为开门或有价值字牌略损向听
-        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 || isHonorValue ? 1 : 0) + confSlack + qhSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 || isHonorValue ? 1 : 0) + baseSlack)) return false;
     }
 
     // 未开门：优先碰（在向听可接受的前提下）
     if (openCount === 0) return true;
 
-    // 已开门：要留得住将，或冲碰碰胡，或有价值字牌
+    // 已开门：优先级 中发白 > 冲碰碰胡 > 普通有价值字牌(风) > 保住将
+    if (isDragon && shanAfter <= shanBefore + 1) return true; // 中发白刻子带番，多容忍1档也碰
     if (chasingPengPeng && shanAfter <= shanBefore) return true;
     if (isHonorValue && shanAfter <= shanBefore + 1) return true;
     return keepsJiang && shanAfter <= shanBefore;
