@@ -637,3 +637,90 @@
         font-size: 13px;
     }
     /* 黄金镶钻 3D 立方体骰子 */
+
+
+/* ===== 结算弹窗：竖屏适配修复 ===== */
+@media (orientation: portrait) {
+    #result-modal {
+        align-items: flex-start;
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-right: 10px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        padding-left: 10px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
+
+    #result-modal .result-box {
+        width: min(94vw, 460px);
+        max-width: 460px;
+        max-height: none;
+        margin: 12px auto;
+        padding: 14px 12px 18px;
+        overflow-x: hidden;
+        overflow-y: visible;
+        box-sizing: border-box;
+    }
+
+    /* 竖屏下牌面略缩小，避免内容过宽 */
+    #result-modal .result-row .tile {
+        width: 25px;
+        height: 34px;
+        font-size: 21px;
+    }
+
+    /* 竖屏下点数区单列显示 */
+    #result-modal .result-payouts {
+        grid-template-columns: 1fr;
+        gap: 7px;
+    }
+
+    /* 底部按钮区保持完整可见，并预留安全距离 */
+    #result-modal .result-adjust-btns {
+        display: flex;
+        width: 100%;
+        gap: 10px;
+        margin-top: 16px;
+        padding-bottom: 4px;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    /* 增大实际触摸热区，避免竖屏手机点不到确认键 */
+    #result-modal .result-adjust-btns button,
+    #result-modal #btn-toggle-adjust {
+        min-width: 100px;
+        min-height: 44px;
+        padding: 9px 18px;
+        margin-top: 0;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* ===== 极窄竖屏手机 ===== */
+@media (orientation: portrait) and (max-width: 380px) {
+    #result-modal {
+        padding-right: 6px;
+        padding-left: 6px;
+    }
+
+    #result-modal .result-box {
+        width: 96vw;
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    #result-modal .result-row .tile {
+        width: 23px;
+        height: 32px;
+        font-size: 20px;
+    }
+
+    #result-modal .result-adjust-btns button,
+    #result-modal #btn-toggle-adjust {
+        min-width: 92px;
+        min-height: 46px;
+    }
+}
