@@ -131,6 +131,11 @@
     body.portrait-layout .bottom .player-score {
         font-size: 11px;
     }
+
+    /* 竖屏：AI 玩家头上的数字与底部手牌玩家数字保持相同字号 */
+    body.portrait-layout .player-score {
+        font-size: 11px;
+    }
     /* 牌墙统计：原版左上角 */
     body.portrait-layout #wall-count {
         position: absolute;
