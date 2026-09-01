@@ -216,3 +216,28 @@
         transform: none;
     }
     /* 弹层内容与桌面同一缩放比例（相对原始正常大小） */
+
+    /* ===== 竖屏专用：头像 / 分数 / 说明文字 放大 ===== */
+    body.portrait-layout .avatar img {
+        width: 52px;
+        height: 52px;
+    }
+    body.portrait-layout .player-score {
+        font-size: 14px;
+    }
+    body.portrait-layout #wall-count {
+        font-size: 13px;
+    }
+    body.portrait-layout .stat-line {
+        font-size: 14px;
+    }
+    body.portrait-layout .stat-cell {
+        width: 20px;
+        font-size: 13px;
+    }
+    body.portrait-layout .stat-row.avatar-row .stat-cell {
+        font-size: 15px;
+    }
+    body.portrait-layout .player {
+        font-size: 14px;
+    }
