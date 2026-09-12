@@ -88,6 +88,7 @@ function render() {
         try { showExposedInfo(exposedInfoShownFor); } catch (e) {}
     }
     fitBottomHand();
+    try { validateHandCounts('render'); } catch (e) {}
 }
 
 // ---------- 横屏底牌自适应：无论手牌+吃碰杠亮组有多少张（含最多三次杠），

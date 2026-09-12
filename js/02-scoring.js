@@ -93,6 +93,72 @@ function scoreWinningHand(concealedBeforeWin, winTile, exposed, isSelfDraw, isLa
     return best;
 }
 
+
+/** 杠上开花 / 杠后点炮：在 settleScore 前调用，就地改 bonus.mult/tags */
+function applyKongBonuses(bonus, winner, mode, payer) {
+    if (!bonus) return bonus;
+    if (mode === 'selfdraw' && afterKongDrawPlayer === winner) {
+        bonus.mult *= 2;
+        if (!bonus.tags.includes('杠上开花×2')) bonus.tags.push('杠上开花×2');
+    }
+    if (mode === 'dianpao' && payer && afterKongDiscardPlayer === payer) {
+        bonus.mult *= 2;
+        if (!bonus.tags.includes('杠后点炮×2')) bonus.tags.push('杠后点炮×2');
+    }
+    return bonus;
+}
+
+function clearKongFlags() {
+    afterKongDrawPlayer = null;
+    afterKongDiscardPlayer = null;
+}
+
+/** 杠后补牌完成 */
+function markKongDraw(player) {
+    afterKongDrawPlayer = player;
+    afterKongDiscardPlayer = null;
+}
+
+/** 该玩家若刚杠过补牌，出牌后改为「杠后点炮」待结算 */
+function markKongDiscardIfNeeded(player) {
+    if (afterKongDrawPlayer === player) {
+        afterKongDiscardPlayer = player;
+        afterKongDrawPlayer = null;
+    }
+}
+
+/**
+ * 期望暗牌张数：
+ * - 待出牌（摸后/吃碰杠后）: (4-副露数)*3+2
+ * - 已出牌等待: (4-副露数)*3+1
+ */
+function expectedConcealedLen(player, mustDiscard) {
+    const n = 4 - ((exposedMelds[player] && exposedMelds[player].length) || 0);
+    return mustDiscard ? n * 3 + 2 : n * 3 + 1;
+}
+
+/** 实时检查四家暗牌张数；异常时写流程提示 + console */
+function validateHandCounts(reason) {
+    if (gameOver) return true;
+    let ok = true;
+    for (const p of PLAYERS) {
+        const len = (hands[p] && hands[p].length) || 0;
+        const expN = (exposedMelds[p] && exposedMelds[p].length) || 0;
+        const needDiscard = (len % 3 === 2);
+        const expect = expectedConcealedLen(p, needDiscard);
+        // 允许「待出牌」或「已出牌」两种合法态；其它一律异常
+        const alt = expectedConcealedLen(p, !needDiscard);
+        if (len !== expect && len !== alt) {
+            ok = false;
+            const msg = '⚠️手牌张数异常 ' + nameOf(p) + ' 暗牌' + len + '张/副露' + expN
+                + '（期望' + expect + '或' + alt + '）' + (reason ? ' @' + reason : '');
+            try { logFlow(msg); } catch (e) {}
+            try { console.warn('[hand-check]', msg, hands[p], exposedMelds[p]); } catch (e2) {}
+        }
+    }
+    return ok;
+}
+
 // 结算一局的分数：底分(自摸1/点炮2) × 番型倍数 × 自摸或点炮×2 × 庄家相关，可叠加
 // 返回 { detail(文字摘要), payouts(每家+/-), total(赢家总所得), tags(完整标签列表), dealerWinBonus }
 function settleScore(winner, mode, payer, bonus) {

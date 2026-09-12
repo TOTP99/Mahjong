@@ -25,6 +25,10 @@ let lastDrawnTile = { top: null, left: null, right: null, bottom: null };
 let lastDrawWasFinal = { top: false, left: false, right: false, bottom: false };
 let aiWaitTiles = { top: [], left: [], right: [] };
 let lastSettlement = null;
+// 杠上开花 / 杠后点炮：杠后补牌标记；打出后转为点炮×2标记
+let afterKongDrawPlayer = null;   // 刚杠完并已补牌、尚未出牌的玩家
+let afterKongDiscardPlayer = null; // 刚杠后打出的那一张，点炮时×2
+
 
 // ---------- AI 学习：跨局记忆三种性格(保守/激进/精明)的历史战绩，微调决策倾向 ----------
 const AI_LEARN_KEY = 'qionghu_mahjong_ai_learn_v1';

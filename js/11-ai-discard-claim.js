@@ -263,6 +263,7 @@ function aiDiscard(player) {
                     before.splice(before.indexOf(gTile), 1);
                     const bonus = scoreWinningHand(before, gTile, exposedMelds[robber], false, false);
                     const result = settleScore(robber, 'dianpao', player, bonus);
+                    clearKongFlags();
                     logFlow(nameOf(robber) + ' 抢杠胡了 ' + nameOf(player) + '！' + result.detail);
                     speak('胡了，' + voiceName(player) + '点炮');
                     learnFromWin(robber, player);
@@ -306,7 +307,9 @@ function aiDiscard(player) {
     // 保牌策略：孤立字牌 > 孤立中张(非4/5/6优先) > ... > 对子最后才拆，同等级优先选不点炮的
     const tile = chooseAiDiscardTile(hand, player);
     hand.splice(hand.indexOf(tile), 1);
+    markKongDiscardIfNeeded(player);
     discardPile.push({ player, tile });
+    validateHandCounts('aiDiscard');
     render();
     speak(tileName(tile));
 
@@ -325,7 +328,9 @@ function aiDiscard(player) {
         const before = [...hands[ronPlayer]];
         before.splice(before.indexOf(tile), 1);
         const bonus = scoreWinningHand(before, tile, exposedMelds[ronPlayer], false, false);
+        applyKongBonuses(bonus, ronPlayer, 'dianpao', player);
         const result = settleScore(ronPlayer, 'dianpao', player, bonus);
+        clearKongFlags();
         logFlow(nameOf(player) + ' 点炮，' + nameOf(ronPlayer) + ' 胡了！' + result.detail);
         speak('胡了，' + voiceName(player) + '点炮');
         learnFromWin(ronPlayer, player);
@@ -334,6 +339,8 @@ function aiDiscard(player) {
         return;
     }
 
+    // 无人点炮：杠后点炮标记失效
+    if (afterKongDiscardPlayer === player) afterKongDiscardPlayer = null;
     checkClaimOrAdvance(player, tile);
 }
 
@@ -509,6 +516,10 @@ function aiDrawReplacement(p) {
     const isLastTile = deck.length === DEAD_WALL;
     hands[p].push(drawn);
     hands[p].sort(tileCompare);
+    lastDrawnTile[p] = drawn;
+    lastDrawWasFinal[p] = isLastTile;
+    markKongDraw(p);
+    validateHandCounts('aiDrawReplacement');
     render();
     if (checkHu(hands[p], exposedMelds[p], p)) {
         gameOver = true;
@@ -516,7 +527,9 @@ function aiDrawReplacement(p) {
         const before = [...hands[p]];
         before.splice(before.indexOf(drawn), 1);
         const bonus = scoreWinningHand(before, drawn, exposedMelds[p], true, isLastTile);
+        applyKongBonuses(bonus, p, 'selfdraw', null);
         const result = settleScore(p, 'selfdraw', null, bonus);
+        clearKongFlags();
         logFlow(nameOf(p) + ' 杠上开花！自摸胡牌！' + result.detail);
         speak('胡了，自摸');
         learnFromWin(p, null);
@@ -606,11 +619,15 @@ function drawReplacementAndContinue() {
     const drawn = deck.pop();
     hands.bottom.push(drawn);
     hands.bottom.sort(tileCompare);
+    lastDrawnTile.bottom = drawn;
+    lastDrawWasFinal.bottom = deck.length === DEAD_WALL;
     lastDrawnIndex = hands.bottom.lastIndexOf(drawn);
     selectedIndex = null;
+    markKongDraw('bottom');
+    validateHandCounts('drawReplacement');
     render();
     if (checkHu(hands.bottom, exposedMelds.bottom, 'bottom')) {
-        offerHu({ mode: 'selfdraw', concealed: hands.bottom }); // 杠上开花
+        offerHu({ mode: 'selfdraw', concealed: hands.bottom }); // 杠上开花×2 在 offerHu/applyKongBonuses
         return;
     }
     offerSelfGangIfAny();
@@ -641,11 +658,13 @@ function handleDiscard(event) {
     // 再次点同一张：真正打出
     const card = hands.bottom[idx];
     hands.bottom.splice(idx, 1);
+    markKongDiscardIfNeeded('bottom');
     discardPile.push({ player: 'bottom', tile: card });
     selectedIndex = null;
     lastDrawnIndex = null;
     speak(tileName(card));
     logFlow('你打出了 ' + tileGlyph(card));
+    validateHandCounts('handleDiscard');
     render();
 
     // 检查是否有AI能胡你打出的这张牌
@@ -658,7 +677,9 @@ function handleDiscard(event) {
         const before = [...hands[ronPlayer]];
         before.splice(before.indexOf(card), 1);
         const bonus = scoreWinningHand(before, card, exposedMelds[ronPlayer], false, false);
+        applyKongBonuses(bonus, ronPlayer, 'dianpao', 'bottom');
         const result = settleScore(ronPlayer, 'dianpao', 'bottom', bonus);
+        clearKongFlags();
         logFlow(nameOf(ronPlayer) + ' 点炮胡了你打出的牌！' + result.detail);
         speak('胡了，' + voiceName('bottom') + '点炮');
         learnFromWin(ronPlayer, 'bottom');
@@ -666,6 +687,7 @@ function handleDiscard(event) {
         showResultModal(ronPlayer, 'dianpao', 'bottom', bonus, result, card);
         return;
     }
+    if (afterKongDiscardPlayer === 'bottom') afterKongDiscardPlayer = null;
     resolveAiPengOrAdvance('bottom', card);
 }
 

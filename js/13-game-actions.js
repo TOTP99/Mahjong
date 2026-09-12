@@ -47,11 +47,14 @@ function offerHu(ctx) {
     }
 
     const bonus = scoreWinningHand(before, winTile, exposedMelds.bottom, isSelfDraw, isLastTile);
+    const mode = isSelfDraw ? 'selfdraw' : 'dianpao';
+    applyKongBonuses(bonus, 'bottom', mode, payer);
     gameOver = true;
     winner = 'bottom';
     const result = isSelfDraw
         ? settleScore('bottom', 'selfdraw', null, bonus)
         : settleScore('bottom', 'dianpao', payer, bonus);
+    clearKongFlags();
     logFlow('你胡牌了！' + result.detail);
     speak(isSelfDraw ? '胡了，自摸' : '胡了，' + voiceName(payer) + '点炮');
     learnFromWin('bottom', payer);

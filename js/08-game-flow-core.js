@@ -18,6 +18,7 @@ function initGame() {
     aiWaitTiles = { top: [], left: [], right: [] };
     pendingClaim = null;
     lastSettlement = null;
+    clearKongFlags();
     currentIndex = turnOrder.indexOf(dealer);
     for (const p of PLAYERS) hands[p] = deck.splice(0, 13).sort(tileCompare);
     markDealer();
@@ -181,7 +182,9 @@ function continueAfterFirstTurnCheck(player) {
             const before = [...hands[player]];
             before.splice(before.indexOf(winTile), 1);
             const bonus = scoreWinningHand(before, winTile, exposedMelds[player], true, lastDrawWasFinal[player]);
+            applyKongBonuses(bonus, player, 'selfdraw', null);
             const result = settleScore(player, 'selfdraw', null, bonus);
+            clearKongFlags();
             logFlow(nameOf(player) + ' 自摸胡牌！' + result.detail);
             speak('胡了，自摸');
             learnFromWin(player, null);
@@ -243,7 +246,9 @@ function executeSelfGang() {
             const before = [...hands[robber]];
             before.splice(before.indexOf(tile), 1);
             const bonus = scoreWinningHand(before, tile, exposedMelds[robber], false, false);
+            // 抢杠按点炮结算（不加杠后点炮；抢杠本身已是特殊）
             const result = settleScore(robber, 'dianpao', 'bottom', bonus);
+            clearKongFlags();
             logFlow(nameOf(robber) + ' 抢杠胡了你加杠的 ' + tileGlyph(tile) + '！' + result.detail);
             speak('胡了，' + voiceName('bottom') + '点炮');
             learnFromWin(robber, 'bottom');
@@ -289,6 +294,9 @@ function nextTurn() {
     lastDrawnTile[player] = drawn;
     lastDrawWasFinal[player] = deck.length === DEAD_WALL;
     if (player === 'bottom') { lastDrawnIndex = hands.bottom.lastIndexOf(drawn); selectedIndex = null; }
+    // 普通摸牌不是杠上开花
+    if (afterKongDrawPlayer === player) { /* 保留：仅杠补牌路径会 mark */ }
+    validateHandCounts('nextTurn');
     render();
     highlightActive(player);
 
