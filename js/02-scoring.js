@@ -160,16 +160,28 @@ function validateHandCounts(reason) {
 }
 
 // 结算一局的分数：底分(自摸1/点炮2) × 番型倍数 × 自摸或点炮×2 × 庄家相关，可叠加
-// 返回 { detail(文字摘要), payouts(每家+/-), total(赢家总所得), tags(完整标签列表), dealerWinBonus }
+// 返回 { detail(文字摘要), payouts(每家+/-), total(赢家总所得), tags(完整标签列表), dealerWinBonus, noKaimenPlayers(未开门被罚的玩家名单) }
 function settleScore(winner, mode, payer, bonus) {
     const tags = [...bonus.tags];
     let mult = bonus.mult;
-    if (mode === 'selfdraw') { mult *= 2; tags.push('自摸×2'); }
-    else {
+
+    // 未开门加罚：自摸时，输家里没开门的各自×2（互不影响、影响赢家总分）；
+    // 点炮时，只看点炮者一人是否没开门。
+    let noKaimenPlayers = [];
+    if (mode === 'selfdraw') {
+        noKaimenPlayers = turnOrder.filter(p => p !== winner && !isKaimen(exposedMelds[p]));
+    } else if (mode === 'dianpao' && payer && !isKaimen(exposedMelds[payer])) {
+        noKaimenPlayers = [payer];
+    }
+
+    if (mode === 'selfdraw') {
+        mult *= 2; tags.push('自摸×2');
+        if (noKaimenPlayers.length === 3) tags.push('闷三家');
+    } else {
         mult *= 2; tags.push('点炮×2');
         // 「没开门点炮」：点炮者自己还没吃/碰/明杠，就放炮给别人胡 → 多付一倍
         // 赢家必须已开门才能胡（checkHu 要求 kaimen），与此无关
-        if (payer && !isKaimen(exposedMelds[payer])) { mult *= 2; tags.push('没开门点炮×2'); }
+        if (noKaimenPlayers.length) { mult *= 2; tags.push('没开门点炮×2'); }
     }
     const dealerWinBonus = winner === dealer;
     if (dealerWinBonus) { mult *= 2; tags.push('庄家×2'); }
@@ -187,6 +199,7 @@ function settleScore(winner, mode, payer, bonus) {
             if (p === winner) continue;
             let pay = unit;
             if (p === dealer) pay *= 2; // 自摸时，庄家作为付款方单独再翻倍(只影响这一位的具体金额，不重复计入上面的倍数说明)
+            if (noKaimenPlayers.includes(p)) pay *= 2; // 没开门的输家单独再翻倍，只影响这一位
             scores[p] -= pay;
             payouts[p] = -pay;
             total += pay;
@@ -203,7 +216,7 @@ function settleScore(winner, mode, payer, bonus) {
         total = pay;
         detail = nameOf(payer) + ' 点炮' + tagText + '，付 ' + pay + ' 分';
     }
-    return { detail, payouts, total, tags, dealerWinBonus };
+    return { detail, payouts, total, tags, dealerWinBonus, noKaimenPlayers };
 }
 
 // 判断某玩家是否听牌：暗牌数刚好比“完整手牌”少一张，且存在某张牌补上就能胡
@@ -226,4 +239,3 @@ function isTenpai(player) {
 function getWinningTiles(player) {
     return getWinningTilesOf(hands[player], exposedMelds[player], player);
 }
-

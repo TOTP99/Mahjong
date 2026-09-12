@@ -56,6 +56,7 @@ function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
         systemPayouts: { top: result.payouts.top, left: result.payouts.left, right: result.payouts.right, bottom: result.payouts.bottom },
         payouts: { top: result.payouts.top, left: result.payouts.left, right: result.payouts.right, bottom: result.payouts.bottom },
         systemTotal: result.total,
+        noKaimenPlayers: result.noKaimenPlayers || [],
         adjusting: false
     };
     renderSettlementView();
@@ -69,6 +70,7 @@ function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
 function renderSettlementView() {
     if (!lastSettlement) return;
     const pay = lastSettlement.payouts;
+    const noKaimenPlayers = lastSettlement.noKaimenPlayers || [];
     const edited = turnOrder.some(p => pay[p] !== lastSettlement.systemPayouts[p]);
     const sumWin = turnOrder.reduce((s, p) => s + Math.max(0, pay[p]), 0);
     $('result-total').innerText =
@@ -79,15 +81,17 @@ function renderSettlementView() {
         const v = pay[p];
         const cls = v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
         const sign = v > 0 ? '+' : '';
-        return `<div class="${cls}">${stripEmoji(nameOf(p))} ${sign}${v}</div>`;
+        const tag = noKaimenPlayers.includes(p) ? ' <span class="no-kaimen-tag">没开门</span>' : '';
+        return `<div class="${cls}">${stripEmoji(nameOf(p))} ${sign}${v}${tag}</div>`;
     }).join('');
 
     // 调分面板（仅打开时可见）
     $('result-payouts-edit').innerHTML = turnOrder.map(p => {
         const v = pay[p];
         const cls = v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
+        const tag = noKaimenPlayers.includes(p) ? ' <span class="no-kaimen-tag">没开门</span>' : '';
         return `<div class="payout-row ${cls}">
-            <span class="pname">${stripEmoji(nameOf(p))}</span>
+            <span class="pname">${stripEmoji(nameOf(p))}${tag}</span>
             <button type="button" class="payout-btn" onclick="event.stopPropagation();adjustSettlementPayoutFactor('${p}', 0.5)">÷2</button>
             <input type="number" step="1" value="${v}" data-player="${p}"
                 onchange="onSettlementPayoutEdit(this)">
@@ -294,4 +298,3 @@ function highlightActive(player) {
     document.querySelectorAll('.player').forEach(el => el.classList.remove('active'));
     $('p-' + player).classList.add('active');
 }
-

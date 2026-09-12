@@ -29,8 +29,9 @@ function scoreChiCombo(hand, tile, combo, exposed, player) {
     const expAfter = exposed.concat([{ type: 'chi', tiles: [...combo, tile].sort(tileCompare) }]);
     const after = estimateShanten(handAfter, expAfter);
     let score = (before - after) * 10; // 向听改善越大越好
-    // 未开门时，吃能开门有额外价值
-    if (!isKaimen(exposed)) score += 4;
+    // 未开门时，吃能开门有额外价值：没开门自摸要被单独×2惩罚、没开门点炮也×2，
+    // 未开门代价比以前更高，这里把权重从 4 调到 6，让AI更愿意为了开门吃这口
+    if (!isKaimen(exposed)) score += 6;
     // 三门齐
     const divBefore = suitDiversity(hand, exposed);
     const divAfter = suitDiversity(handAfter, expAfter);
@@ -62,7 +63,8 @@ function shouldAiChi(player, tile, combo) {
     const style = aiPersonality[player] || 'shrewd';
     const conf = aiLearn.confidence[style] || 0;
     const open = isKaimen(exposed);
-    const baseThreshold = open ? 4 : 2; // 开门：要有明显收益；未开门：略宽松
+    // 开门：要有明显收益；未开门：新规则下没开门自摸/点炮都要多罚一倍，门槛降到 1，更愿意开门
+    const baseThreshold = open ? 4 : 1;
     return score >= baseThreshold - conf * 0.6;
 }
 
@@ -216,7 +218,10 @@ function chooseAiDiscardTile(hand, player) {
     const conf = aiLearn.confidence[style] || 0;
     const cautious = conf <= -1.5;
     const confident = conf >= 1.5;
-    if (urgency >= 1 || cautious) {
+    // 没开门点炮×2：自己还没开门时点炮要多付一倍，安全牌优先级必须更硬，
+    // 不受性格/战绩自信影响——哪怕是激进/战绩好的AI，没开门也不能对危险牌掉以轻心
+    const notOpen = !isKaimen(exposed);
+    if (urgency >= 1 || cautious || notOpen) {
         const safePool = pool.filter(c => c.safe);
         if (safePool.length) pool = safePool;
     } else if (style !== 'aggressive' && !confident) {
@@ -404,14 +409,17 @@ function shouldAiPeng(p, tile) {
     const qhSlack = qhGain ? 1 : 0;
     const dragonSlack = isDragon ? 1 : 0; // 中发白刻子×2是稳赚的，比赌三门齐更确定
     const baseSlack = confSlack + qhSlack + dragonSlack;
+    // 没开门自摸×2 / 没开门点炮×2：不开门的代价比以前更高，三种性格都该多容忍1档向听去换开门，
+    // 保守派也不例外（以前只有精明/激进有这个宽容）
+    const openSlack = openCount === 0 ? 1 : 0;
 
     if (style === 'conservative') {
-        if (shanAfter > shanBefore + Math.max(0, baseSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, openSlack + baseSlack)) return false;
     } else if (style === 'shrewd') {
-        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 ? 1 : 0) + baseSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, openSlack + baseSlack)) return false;
     } else {
         // aggressive：允许为开门或有价值字牌略损向听
-        if (shanAfter > shanBefore + Math.max(0, (openCount === 0 || isHonorValue ? 1 : 0) + baseSlack)) return false;
+        if (shanAfter > shanBefore + Math.max(0, (openSlack || isHonorValue ? 1 : 0) + baseSlack)) return false;
     }
 
     // 未开门：优先碰（在向听可接受的前提下）
