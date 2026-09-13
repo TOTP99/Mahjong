@@ -307,13 +307,22 @@ function resumeFromSave() {
         logFlow((winner ? (nameOf(winner) + ' 胡了。') : '流局。') + '点✅开下一局（积分与庄家已保留）');
         return;
     }
+    // 恢复时先判断“当前该轮到的这家”这一轮是否已经摸过牌：
+    // 手牌数 %3==2 说明已摸牌、正等着出牌；%3==1 说明这一轮还没摸牌，需要先补摸，
+    // 否则这一轮会被直接跳过出牌提示，导致这张牌永远留在牌堆里没人摸到（表现为手牌永久少一张）。
+    // 之前只有 AI 分支（else）做了这个判断，"你"（bottom）分支没做，是本 bug 的根因。
+    const needDiscard = hands[player].length % 3 === 2;
     if (player === 'bottom') {
-        logFlow('轮到你，请点击一张牌出牌');
-        offerSelfGangIfAny();
+        if (needDiscard) {
+            logFlow('轮到你，请点击一张牌出牌');
+            offerSelfGangIfAny();
+        } else {
+            logFlow('继续对局…');
+            setTimeout(() => nextTurn(), 600);
+        }
     } else {
         logFlow('继续对局…');
         setTimeout(() => {
-            const needDiscard = hands[player].length % 3 === 2;
             if (needDiscard) aiDiscard(player);
             else nextTurn();
         }, 600);
