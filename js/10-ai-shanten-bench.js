@@ -371,5 +371,3 @@ function benchmarkMahjongAI(opt) {
 
 // 暴露到全局，便于手机远程调试 / 桌面控制台
 try { window.benchmarkMahjongAI = benchmarkMahjongAI; } catch (e) { /* non-browser */ }
-
-/** 复制手牌并移除若干张（按内容） */

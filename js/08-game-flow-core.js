@@ -315,4 +315,3 @@ function nextTurn() {
 
     continueAfterFirstTurnCheck(player);
 }
-

@@ -426,5 +426,3 @@ function confirmFullReset() {
     initGame();
     logFlow('已清零，新的一局开始');
 }
-
-// 检查某张牌打出去后，是否会点炮给某个AI（用于给你手里的危险牌标红框）

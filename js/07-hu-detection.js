@@ -106,4 +106,3 @@ function decompose(tiles) {
     }
     return results;
 }
-

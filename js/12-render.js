@@ -136,4 +136,3 @@ function rotateDealer() {
     const dealerStays = winner === null ? true : (winner === dealer);
     if (!dealerStays) dealer = nextPlayerOf(dealer);
 }
-

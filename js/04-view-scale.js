@@ -192,5 +192,3 @@ document.addEventListener('webkitfullscreenchange', () => {
     syncAppViewportVars();
     schedulePortraitGuardChecks();
 });
-/** 竖屏引导层：竖屏时显示提示 + 一键进入横屏；横屏时自动隐藏，不做其它处理 */
-/** iOS / Android 检测 */

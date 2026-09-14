@@ -46,4 +46,3 @@ function tileName(t) {
     if (tileSuit(t) === '字') return honors[tileRank(t) - 1];
     return rankChinese[tileRank(t) - 1] + tileSuit(t);
 }
-
