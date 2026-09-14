@@ -128,11 +128,7 @@
         width: 44px;
         height: 44px;
     }
-    body.portrait-layout .bottom .player-score {
-        font-size: 11px;
-    }
-
-    /* 竖屏：AI 玩家头上的数字与底部手牌玩家数字保持相同字号 */
+    /* 竖屏：所有位置（含底部自家）玩家数字统一字号，用一条全局规则代替原先重复的 .bottom 专属声明 */
     body.portrait-layout .player-score {
         font-size: 11px;
     }
@@ -395,4 +391,3 @@
     }
     /* 横屏不使用 tile-tooltip */
     body:not(.portrait-layout) #tile-tooltip { display: none !important; }
-

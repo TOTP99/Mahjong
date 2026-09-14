@@ -78,6 +78,8 @@
         z-index: 20;
         pointer-events: auto;
     }
+    /* 横屏最大化：保留牌墙/缩放/查牌池等控件，便于操作
+       （下面按元素分别给出最终 display/opacity，避免中间值被立刻覆盖的冗余声明） */
     body.landscape-max #view-scale-btns,
     body.landscape-max #discard-query-btn,
     body.landscape-max #img-display-badge,
@@ -86,16 +88,12 @@
         opacity: 1;
         pointer-events: auto;
     }
-
-    /* 横屏最大化：保留牌墙/缩放/查牌池等控件，便于操作 */
     body.landscape-max #landscape-ctrl {
         opacity: 0.85;
         color: var(--ice);
     }
-    body.landscape-max #discard-query-btn,
-    body.landscape-max #view-scale-btns,
     body.landscape-max #img-display-badge {
-        display: unset; /* 强制保持可见 */
+        display: unset;
     }
     body.landscape-max #view-scale-btns {
         display: flex !important;
