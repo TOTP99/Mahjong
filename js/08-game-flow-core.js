@@ -2,6 +2,7 @@
 const DEAD_WALL = 16; // 荒牌墙：摸到只剩这些时流局
 
 function initGame() {
+    gameEpoch++; // 新的一局：让上一局遗留的延时回调全部作废
     resetSpeechQueue();
     buildDeck();
     hands = { top: [], left: [], right: [], bottom: [] };
@@ -24,7 +25,7 @@ function initGame() {
     markDealer();
     render();
     logFlow('发牌完成，游戏开始');
-    setTimeout(() => nextTurn(), 600);
+    gameTimeout(() => nextTurn(), 600);
 }
 
 const suitOrder = ['万', '条', '筒', '字'];
@@ -198,7 +199,7 @@ function continueAfterFirstTurnCheck(player) {
         offerSelfGangIfAny();
         logFlow('轮到你，请点击一张牌出牌');
     } else {
-        setTimeout(() => aiDiscard(player), 700);
+        gameTimeout(() => aiDiscard(player), 700);
     }
 }
 

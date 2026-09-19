@@ -174,17 +174,21 @@ function loadSavedViewPan() {
         return isFinite(n) ? n : 0;
     } catch (e) { return 0; }
 }
-function applyViewPan() {
+// persist=true 才写 localStorage：拖动过程中每次 pointermove 都同步写盘会造成卡顿，
+// 所以拖动时只更新 CSS 变量，松手（onEnd）时再存一次
+function applyViewPan(persist) {
     viewPanY = Math.max(-VIEW_PAN_MAX, Math.min(VIEW_PAN_MAX, viewPanY));
     document.documentElement.style.setProperty('--view-pan-y', viewPanY.toFixed(1) + 'px');
-    try { localStorage.setItem(VIEW_PAN_STORAGE_KEY, String(viewPanY)); } catch (e) {}
+    if (persist) {
+        try { localStorage.setItem(VIEW_PAN_STORAGE_KEY, String(viewPanY)); } catch (e) {}
+    }
 }
 function initTablePan() {
     const wrap = document.getElementById('table-wrap');
     const frame = document.getElementById('table-frame');
     if (!wrap || !frame) return;
     viewPanY = loadSavedViewPan();
-    applyViewPan();
+    applyViewPan(false);
 
     const isInteractive = (t) => !!(t && t.closest && t.closest(
         '.tile, .tileback, .discardTile, .pool-tile, .player-label, button, .meld-group, #claim-indicator, #wall-count, #landscape-ctrl, #discard-query-btn, #discardWall, #pool-modal, #result-modal, #reveal-modal, #chi-choice-modal, img, .claim-btn, .reset-btn, .avatar, input'
@@ -201,13 +205,13 @@ function initTablePan() {
         if (!panDrag) return;
         const dy = clientY - panDrag.startY;
         viewPanY = panDrag.startPan + dy;
-        applyViewPan();
+        applyViewPan(false);
     };
     const onEnd = () => {
         if (!panDrag) return;
         panDrag = null;
         wrap.classList.remove('panning');
-        applyViewPan();
+        applyViewPan(true);
     };
 
     frame.addEventListener('pointerdown', (e) => {

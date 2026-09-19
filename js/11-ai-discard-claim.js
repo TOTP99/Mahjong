@@ -1,3 +1,17 @@
+/** 向听缓存：向听数只取决于「暗牌多重集 + 还缺几个面子」，同一手牌在一次 AI 决策里会被反复计算，
+ *  这里按 排序后暗牌 + 副露数 缓存，结果与 estimateShanten 完全一致，只是不重复跑 DFS */
+const _shantenCache = new Map();
+function estimateShantenCached(concealed, exposed) {
+    const key = concealed.slice().sort().join(',') + '|' + (exposed ? exposed.length : 0);
+    let v = _shantenCache.get(key);
+    if (v === undefined) {
+        v = estimateShanten(concealed, exposed);
+        if (_shantenCache.size > 4000) _shantenCache.clear();
+        _shantenCache.set(key, v);
+    }
+    return v;
+}
+
 function removeTilesFromHand(hand, tilesToRemove) {
     const next = hand.slice();
     for (const t of tilesToRemove) {
@@ -24,10 +38,10 @@ function suitDiversity(hand, exposed) {
 /** 评估一种吃法：向听下降优先，其次三门齐，再次不拆对子 */
 function scoreChiCombo(hand, tile, combo, exposed, player) {
     const style = aiPersonality[player] || 'shrewd';
-    const before = estimateShanten(hand, exposed);
+    const before = estimateShantenCached(hand, exposed);
     const handAfter = removeTilesFromHand(hand, combo);
     const expAfter = exposed.concat([{ type: 'chi', tiles: [...combo, tile].sort(tileCompare) }]);
-    const after = estimateShanten(handAfter, expAfter);
+    const after = estimateShantenCached(handAfter, expAfter);
     let score = (before - after) * 10; // 向听改善越大越好
     // 未开门时，吃能开门有额外价值：没开门自摸要被单独×2惩罚、没开门点炮也×2，
     // 未开门代价比以前更高，这里把权重从 4 调到 6，让AI更愿意为了开门吃这口
@@ -128,20 +142,32 @@ function wallUrgencyBonus() {
 }
 
 // 给定手牌+副露，若已是听牌形态，返回可胡的牌列表，否则 []
+// 听牌缓存：结果只取决于 暗牌 + 副露(含类型/是否暗杠) + 该玩家的亮牌加成，按这三样做键。
+// render 每次都要给四家算听牌提示、给手牌算危险标记，命中缓存后不再重复扫 34 种牌
+const _winTilesCache = new Map();
 function getWinningTilesOf(concealed, exposed, player) {
     const neededLen = (4 - exposed.length) * 3 + 2;
     if (concealed.length !== neededLen - 1) return [];
-    return allTileTypes().filter(t => checkHu([...concealed, t], exposed, player));
+    const key = (player || '') + (player && windDragonBonus[player] ? '+' : '-') + '|'
+        + concealed.slice().sort().join(',') + '|'
+        + exposed.map(m => m.type + (m.concealed ? 'c' : '') + m.tiles.join('')).join(';');
+    let res = _winTilesCache.get(key);
+    if (res === undefined) {
+        res = allTileTypes().filter(t => checkHu([...concealed, t], exposed, player));
+        if (_winTilesCache.size > 3000) _winTilesCache.clear();
+        _winTilesCache.set(key, res);
+    }
+    return res.slice(); // 返回副本，调用方随便改也不会污染缓存
 }
 
 // 进张数：打出这张后，还有多少种（未死绝的）牌摸到能让向听数继续下降
 // 用于同保留档位打平时的 tie-break，取代纯随机，让AI优先留住选择面更宽的牌
 function ukeireCount(hand, exposed) {
-    const shan = estimateShanten(hand, exposed);
+    const shan = estimateShantenCached(hand, exposed);
     let count = 0;
     for (const t of allTileTypes()) {
         if (isTileDead(t)) continue; // 已经死绝的牌摸不到，没有实际意义
-        if (estimateShanten([...hand, t], exposed) < shan) count++;
+        if (estimateShantenCached([...hand, t], exposed) < shan) count++;
     }
     return count;
 }
@@ -190,7 +216,7 @@ function chooseAiDiscardTile(hand, player) {
     const candidates = [];
     for (const t of hand) {
         const remain = removeTilesFromHand(hand, [t]);
-        const shan = estimateShanten(remain, exposed);
+        const shan = estimateShantenCached(remain, exposed);
         const tier = tileKeepTier(hand, t);
         const safe = !isTileDangerousFor(player, t);
         // 穷胡专属条件：打出这张后，三门齐/幺九/刻子还保不保得住（标准向听算法看不到这三条，靠这里补）
@@ -376,8 +402,8 @@ function shouldAiPeng(p, tile) {
     const hand = hands[p];
     const handAfter = removeTilesFromHand(hand, [tile, tile]);
     const expAfter = exposed.concat([{ type: 'peng', tiles: [tile, tile, tile] }]);
-    const shanBefore = estimateShanten(hand, exposed);
-    const shanAfter = estimateShanten(handAfter, expAfter);
+    const shanBefore = estimateShantenCached(hand, exposed);
+    const shanAfter = estimateShantenCached(handAfter, expAfter);
 
     const otherPairs = [...new Set(hand)].filter(t => t !== tile && hand.filter(x => x === t).length >= 2);
     // 中发白可作将，也可直接算有价值字牌
@@ -498,7 +524,7 @@ function aiPengClaim(p, tile) {
         logFlow(nameOf(p) + ' 碰了 ' + tileGlyph(tile));
         speak('碰' + tileName(tile));
         render();
-        setTimeout(() => aiDiscard(p), 700);
+        gameTimeout(() => aiDiscard(p), 700);
     }
 }
 
@@ -514,7 +540,7 @@ function aiChiClaim(p, tile, combo) {
     logFlow(nameOf(p) + ' 吃了 ' + tileGlyph(tile));
     speak('吃' + tileName(tile));
     render();
-    setTimeout(() => aiDiscard(p), 700);
+    gameTimeout(() => aiDiscard(p), 700);
 }
 
 // AI杠后摸替补牌，检查杠上开花，否则继续正常出牌
@@ -545,7 +571,7 @@ function aiDrawReplacement(p) {
         showResultModal(p, 'selfdraw', null, bonus, result, drawn);
         return;
     }
-    setTimeout(() => aiDiscard(p), 700);
+    gameTimeout(() => aiDiscard(p), 700);
 }
 
 // 你放弃碰/吃/杠（或没有机会）之后：先看有没有AI能碰/杠，再看下家AI能不能吃，否则正常进入下一家
@@ -702,6 +728,6 @@ function handleDiscard(event) {
 function advanceTurn() {
     if (gameOver) return;
     currentIndex = (currentIndex + 1) % turnOrder.length;
-    setTimeout(() => nextTurn(), 500);
+    gameTimeout(() => nextTurn(), 500);
 }
 

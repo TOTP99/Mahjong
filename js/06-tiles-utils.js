@@ -1,5 +1,9 @@
+// 你的这张牌会不会点炮给某个 AI：等价于「该 AI 的听牌列表里有这张牌」。
+// 原先每张牌、每次渲染都要对三家各跑一次完整 checkHu；改用带缓存的 getWinningTilesOf，
+// 结果一致（getWinningTilesOf 要求暗牌张数=完整手牌-1，与 checkHu([...手牌, tile]) 的张数要求相同），
+// 同一副手牌命中缓存后不再重复计算。
 function isDangerousTile(tile) {
-    return ['top', 'left', 'right'].some(p => checkHu([...hands[p], tile], exposedMelds[p], p));
+    return ['top', 'left', 'right'].some(p => getWinningTilesOf(hands[p], exposedMelds[p], p).includes(tile));
 }
 
 function buildDeck() {

@@ -82,7 +82,7 @@ function adjustViewScale(delta) {
         return;
     }
     if (delta < 0 && viewScale <= VIEW_SCALE_MIN + 1e-9) {
-        logFlow('已缩小到原始大小的 80%，无法再缩');
+        logFlow('已缩小到原始大小的 ' + Math.round(VIEW_SCALE_MIN * 100) + '%，无法再缩');
         applyViewScale();
         return;
     }

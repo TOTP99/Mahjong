@@ -92,6 +92,47 @@ function learnFromDraw(tenpaiPlayers) {
 // DOM 查询简写：全文本用 $(id) 代替 document.getElementById(id)
 const $ = (id) => document.getElementById(id);
 
+// ---------- 局号 + 游戏流程定时器 ----------
+// gameEpoch：每开一局（initGame）+1。流程里的延时回调（AI 摸牌/出牌/吃碰后出牌等）
+// 都通过 gameTimeout 调度：局号变了（清零重启/开下一局）就直接作废，不会串到新局里多摸/多打一次；
+// 骰子仪式期间（diceBusy）自动顺延，不让 AI 在清零菜单弹出时继续推进牌局、覆盖你的吃碰杠提示。
+let gameEpoch = 0;
+function gameTimeout(fn, ms) {
+    const epoch = gameEpoch;
+    const run = () => {
+        if (epoch !== gameEpoch) return; // 已经不是这一局了
+        if (typeof diceBusy !== 'undefined' && diceBusy) { setTimeout(run, 200); return; } // 骰子仪式期间暂停
+        fn();
+    };
+    return setTimeout(run, ms);
+}
+
+// ---------- 牌总数守恒检查 ----------
+// 一副牌固定 136 张：牌墙 + 四家暗牌 + 四家副露 + 弃牌堆，任何时刻都应等于这个数
+// （局已结束时不检查：抢杠等结算路径会把牌挪来挪去）
+function totalTilesOf(s) {
+    let n = ((s.deck || []).length) + ((s.discardPile || []).length);
+    for (const p of PLAYERS) {
+        n += ((s.hands && s.hands[p]) || []).length;
+        for (const m of ((s.exposedMelds && s.exposedMelds[p]) || [])) n += ((m && m.tiles) || []).length;
+    }
+    return n;
+}
+const FULL_DECK_SIZE = suits.length * 9 * 4 + honors.length * 4; // 136
+let _lastTileWarnKey = '';
+function checkTileConservation(reason) {
+    if (gameOver) return true;
+    const n = totalTilesOf({ deck, discardPile, hands, exposedMelds });
+    if (n === FULL_DECK_SIZE) return true;
+    const key = reason + ':' + n;
+    if (key !== _lastTileWarnKey) {
+        _lastTileWarnKey = key;
+        try { console.warn('[tile-check] 牌总数异常', n, '/', FULL_DECK_SIZE, '@' + reason, { deck: deck.length, discard: discardPile.length, hands: cloneState(hands), melds: cloneState(exposedMelds) }); } catch (e) {}
+        try { logFlow('⚠️牌总数异常 ' + n + '/' + FULL_DECK_SIZE + (reason ? ' @' + reason : '')); } catch (e) {}
+    }
+    return false;
+}
+
 /* ==================== 函数索引（按职责分类，函数按原顺序散落在下文，此处仅作导航） ====================
  * 存档/进度：      cloneState scheduleSaveProgress flushSaveProgress saveGameProgress loadGameProgress resumeFromSave
  * 算番/胡牌判定：   hasSiGuiYi scoreWinningHand settleScore analyzeHu checkHu decompose allTileTypes
@@ -203,6 +244,7 @@ function flushSaveProgress() {
 
 function saveGameProgress() {
     if (restoringGame) return;
+    if (!checkTileConservation('save')) return; // 牌数不对的异常状态不落盘，保留上一份正常存档
     try {
         localStorage.setItem(MAHJONG_STORAGE_KEY, JSON.stringify({
             v: 2,
@@ -273,6 +315,11 @@ function loadGameProgress() {
 
         // 完整对局快照（v2）才恢复牌面
         if (saved.v !== 2 || !Array.isArray(saved.deck) || !saved.hands) return false;
+        // 进行中的牌局：牌总数必须是 136，否则说明存档已损坏，放弃牌面、只保留积分/庄家重开一局
+        if (!saved.gameOver && totalTilesOf(saved) !== FULL_DECK_SIZE) {
+            try { console.warn('[tile-check] 存档牌总数异常，已放弃该存档牌面：', totalTilesOf(saved)); } catch (e) {}
+            return false;
+        }
 
         restoringGame = true;
         deck = saved.deck;
@@ -326,7 +373,7 @@ function resumeFromSave() {
     const lastDiscard = discardPile[discardPile.length - 1];
     if (player !== 'bottom' && hands[player].length % 3 === 1 && lastDiscard && lastDiscard.player === player) {
         logFlow('继续对局…');
-        setTimeout(() => checkClaimOrAdvance(player, lastDiscard.tile), 600);
+        gameTimeout(() => checkClaimOrAdvance(player, lastDiscard.tile), 600);
         return;
     }
     // 恢复时先判断“当前该轮到的这家”这一轮是否已经摸过牌：
@@ -340,11 +387,11 @@ function resumeFromSave() {
             offerSelfGangIfAny();
         } else {
             logFlow('继续对局…');
-            setTimeout(() => nextTurn(), 600);
+            gameTimeout(() => nextTurn(), 600);
         }
     } else {
         logFlow('继续对局…');
-        setTimeout(() => {
+        gameTimeout(() => {
             if (needDiscard) aiDiscard(player);
             else nextTurn();
         }, 600);
