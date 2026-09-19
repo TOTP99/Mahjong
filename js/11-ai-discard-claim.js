@@ -104,16 +104,16 @@ function tileKeepTier(hand, tile) {
             // 连张/搭子（如45、56、67）：默认高优先级保留；但若是边张（12等3 / 89等7）
             // 且那张已经死绝（记牌确认4张都看得见了），就不用死守这个没指望的等张
             let edgeDeadWait = false;
-            if (rank === 1 && hand.includes(2 + suit) && isTileDead(3 + suit)) edgeDeadWait = true;
-            if (rank === 2 && hand.includes(1 + suit) && isTileDead(3 + suit)) edgeDeadWait = true;
-            if (rank === 8 && hand.includes(9 + suit) && isTileDead(7 + suit)) edgeDeadWait = true;
-            if (rank === 9 && hand.includes(8 + suit) && isTileDead(7 + suit)) edgeDeadWait = true;
+            if (rank === 1 && hand.includes(2 + suit) && isTileDead(3 + suit, hand)) edgeDeadWait = true;
+            if (rank === 2 && hand.includes(1 + suit) && isTileDead(3 + suit, hand)) edgeDeadWait = true;
+            if (rank === 8 && hand.includes(9 + suit) && isTileDead(7 + suit, hand)) edgeDeadWait = true;
+            if (rank === 9 && hand.includes(8 + suit) && isTileDead(7 + suit, hand)) edgeDeadWait = true;
             tier = edgeDeadWait ? 1 : 5;
         } else {
             // 嵌张（如4_6空档等5）：记牌检查缺的那张是不是已经死了，死了就不用留着盼了
             let deadWait = false;
-            if (hand.includes((rank - 2) + suit) && isTileDead((rank - 1) + suit)) deadWait = true;
-            if (hand.includes((rank + 2) + suit) && isTileDead((rank + 1) + suit)) deadWait = true;
+            if (hand.includes((rank - 2) + suit) && isTileDead((rank - 1) + suit, hand)) deadWait = true;
+            if (hand.includes((rank + 2) + suit) && isTileDead((rank + 1) + suit, hand)) deadWait = true;
             tier = deadWait ? 1 : 3;
         }
     }
@@ -166,7 +166,7 @@ function ukeireCount(hand, exposed) {
     const shan = estimateShantenCached(hand, exposed);
     let count = 0;
     for (const t of allTileTypes()) {
-        if (isTileDead(t)) continue; // 已经死绝的牌摸不到，没有实际意义
+        if (isTileDead(t, hand)) continue; // 已经死绝的牌（含自己手里的）摸不到，没有实际意义
         if (estimateShantenCached([...hand, t], exposed) < shan) count++;
     }
     return count;
@@ -284,7 +284,7 @@ function aiDiscard(player) {
                     const ix = hands[player].indexOf(gTile);
                     if (ix > -1) hands[player].splice(ix, 1);
                     if (robber === 'bottom') {
-                        offerHu({ mode: 'dianpao', tile: gTile, fromPlayer: player, concealed: [...hands.bottom, gTile] });
+                        offerHu({ mode: 'dianpao', tile: gTile, fromPlayer: player, robGang: true, concealed: [...hands.bottom, gTile] });
                         return;
                     }
                     hands[robber].push(gTile);
@@ -599,26 +599,6 @@ function checkClaimOrAdvance(player, tile) {
     resolveAiPengOrAdvance(player, tile);
 }
 
-// 点✅：按 杠 > 碰 > 吃 优先级执行
-function acceptClaim() {
-    if (!pendingClaim) return;
-    if (pendingClaim.mode === 'diceMenu') return; // 清零菜单用专用按钮，不走✅
-    if (pendingClaim.mode === 'nextGame') {
-        pendingClaim = null;
-        hideIndicator();
-        startGame();
-        return;
-    }
-    if (pendingClaim.mode === 'selfGang') {
-        executeSelfGang();
-        return;
-    }
-    // 别人打牌的吃碰杠
-    if (pendingClaim.canGang) { callGang(); return; }
-    if (pendingClaim.canPeng) { callPeng(); return; }
-    if (pendingClaim.chiCombos && pendingClaim.chiCombos.length) { callChi(); return; }
-}
-
 /** 从指定玩家手牌里移除最多 count 张指定牌（自家/AI 碰杠共用，从末尾往前找） */
 function takeTilesFromHand(player, tile, count) {
     let removed = 0;
@@ -627,102 +607,6 @@ function takeTilesFromHand(player, tile, count) {
         if (hand[i] === tile) { hand.splice(i, 1); removed++; }
     }
     return removed;
-}
-
-function callGang() {
-    if (gameOver) { logFlow('本局已结束'); return; }
-    // 明杠：别人打出的牌，手里已有3张（由 acceptClaim 在 canGang 时调用）
-    // 加杠/暗杠走 executeSelfGang，不在此重复
-    if (!pendingClaim || !pendingClaim.canGang) { logFlow('现在不能杠'); return; }
-    const { tile, fromPlayer } = pendingClaim;
-    discardPile.pop();
-    takeTilesFromHand('bottom', tile, 3);
-    exposedMelds.bottom.push({ type: 'gang', tiles: [tile, tile, tile, tile], concealed: false });
-    pendingClaim = null;
-    currentIndex = turnOrder.indexOf('bottom');
-    hideIndicator();
-    logFlow('你杠了 ' + tileGlyph(tile) + '（' + nameOf(fromPlayer) + '打出），补牌中...');
-    speak('杠' + tileName(tile));
-    render();
-    drawReplacementAndContinue();
-}
-
-// 杠后从牌墙补一张，检查杠上开花，否则等你出牌
-function drawReplacementAndContinue() {
-    if (deck.length <= DEAD_WALL) { declareDraw(); return; }
-    const drawn = deck.pop();
-    hands.bottom.push(drawn);
-    hands.bottom.sort(tileCompare);
-    lastDrawnTile.bottom = drawn;
-    lastDrawWasFinal.bottom = deck.length === DEAD_WALL;
-    lastDrawnIndex = hands.bottom.lastIndexOf(drawn);
-    selectedIndex = null;
-    markKongDraw('bottom');
-    validateHandCounts('drawReplacement');
-    render();
-    if (checkHu(hands.bottom, exposedMelds.bottom, 'bottom')) {
-        offerHu({ mode: 'selfdraw', concealed: hands.bottom }); // 杠上开花×2 在 offerHu/applyKongBonuses
-        return;
-    }
-    offerSelfGangIfAny();
-    logFlow('补牌：' + tileGlyph(drawn) + '，请出牌');
-}
-
-function handleDiscard(event) {
-    if (gameOver) return;
-    // 别人打牌的吃碰杠必须先处理；自己的可选杠不挡出牌
-    if (pendingClaim && pendingClaim.mode !== 'selfGang') return;
-    if (pendingClaim && pendingClaim.mode === 'selfGang') {
-        pendingClaim = null;
-        hideIndicator();
-    }
-    if (turnOrder[currentIndex] !== 'bottom') return; // 不是你的回合
-    const target = event.target.closest('.tile');
-    if (!target || target.dataset.index === undefined) return;
-    const idx = parseInt(target.dataset.index, 10);
-    if (isNaN(idx) || idx < 0 || idx >= hands.bottom.length) return;
-
-    if (selectedIndex !== idx) {
-        // 第一次点这张（或改按了别的牌）：标记➡️等待确认，不真正出牌
-        selectedIndex = idx;
-        render();
-        return;
-    }
-
-    // 再次点同一张：真正打出
-    const card = hands.bottom[idx];
-    hands.bottom.splice(idx, 1);
-    markKongDiscardIfNeeded('bottom');
-    discardPile.push({ player: 'bottom', tile: card });
-    selectedIndex = null;
-    lastDrawnIndex = null;
-    speak(tileName(card));
-    logFlow('你打出了 ' + tileGlyph(card));
-    validateHandCounts('handleDiscard');
-    render();
-
-    // 检查是否有AI能胡你打出的这张牌
-    const ronPlayer = findRonPriority('bottom', card);
-    if (ronPlayer) {
-        discardPile.pop();
-        hands[ronPlayer].push(card);
-        gameOver = true;
-        winner = ronPlayer;
-        const before = [...hands[ronPlayer]];
-        before.splice(before.indexOf(card), 1);
-        const bonus = scoreWinningHand(before, card, exposedMelds[ronPlayer], false, false);
-        applyKongBonuses(bonus, ronPlayer, 'dianpao', 'bottom');
-        const result = settleScore(ronPlayer, 'dianpao', 'bottom', bonus);
-        clearKongFlags();
-        logFlow(nameOf(ronPlayer) + ' 点炮胡了你打出的牌！' + result.detail);
-        speak('胡了，' + voiceName('bottom') + '点炮');
-        learnFromWin(ronPlayer, 'bottom');
-        render();
-        showResultModal(ronPlayer, 'dianpao', 'bottom', bonus, result, card);
-        return;
-    }
-    if (afterKongDiscardPlayer === 'bottom') afterKongDiscardPlayer = null;
-    resolveAiPengOrAdvance('bottom', card);
 }
 
 function advanceTurn() {

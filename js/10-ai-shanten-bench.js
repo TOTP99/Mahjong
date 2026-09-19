@@ -22,8 +22,12 @@ function tileSeenCount(tile) {
     return count;
 }
 
-function isTileDead(tile) {
-    return tileSeenCount(tile) >= 4; // 4张都已经在看得见的地方了，这张没指望了
+// ownHand（可选）：做决策的这位 AI 自己的暗牌——自己手里的牌当然看得见，也要算进"已知张数"。
+// 不传则和原来一样，只数场面上的牌。
+function isTileDead(tile, ownHand) {
+    let seen = tileSeenCount(tile);
+    if (ownHand) seen += ownHand.filter(t => t === tile).length;
+    return seen >= 4; // 4张都已经在看得见的地方了，这张没指望了
 }
 
 // ---------- AI：精确结构向听（DFS 拆面子 + 剩余搭子评估） / 吃碰评估 ----------
@@ -45,11 +49,12 @@ function buildCount34(concealed) {
     return c;
 }
 
-/** 在已去掉完整面子、并已取走将牌（或确定无将）的剩余里，贪心数搭子 */
+/** 在已去掉完整面子、并已取走将牌（或确定无将）的剩余里，贪心数搭子。
+ *  搭子 = 连张(45) / 嵌张(46) / 对子(55，可碰)。对子以前漏数了，导致多对子的手牌向听被高估。 */
 function countTaatsu34(cnt) {
     const c = cnt.slice();
     let taatsu = 0;
-    // 数牌：连张优先，再嵌张
+    // 数牌：连张优先，再嵌张，再对子；剩下的是孤张
     for (let base = 0; base < 27; base += 9) {
         for (let i = 0; i < 9; i++) {
             const p = base + i;
@@ -60,13 +65,19 @@ function countTaatsu34(cnt) {
                 } else if (i <= 6 && c[p + 2] > 0) {
                     c[p]--; c[p + 2]--;
                     taatsu++;
+                } else if (c[p] >= 2) {
+                    c[p] -= 2; // 对子也是搭子（等碰）
+                    taatsu++;
                 } else {
                     c[p]--; // 孤张
                 }
             }
         }
     }
-    // 字牌无顺子搭子；对子已在上层处理
+    // 字牌没有顺子搭子，但对子同样是搭子
+    for (let p = 27; p < 34; p++) {
+        if (c[p] >= 2) taatsu++;
+    }
     return taatsu;
 }
 
@@ -79,11 +90,9 @@ function shantenFromRest(cnt, melds, needMelds) {
     const mNeed = Math.max(0, needMelds - melds);
 
     const evalWith = (pair, taatsu) => {
+        // 搭子最多补 mNeed 个面子（面子+搭子的块数不能超过还缺的面子数）
         let t = taatsu;
-        // 面子+搭子(+将) 的块数不能超过 needMelds+1
-        const maxT = pair ? mNeed : mNeed; // 搭子最多补 mNeed 个面子
-        // 无将时多出的对子型搭子已计入 taatsu
-        if (t > maxT) t = maxT;
+        if (t > mNeed) t = mNeed;
         if (t < 0) t = 0;
         // 完成形：melds==needMelds 且 pair→ -1；听牌 → 0
         return 2 * mNeed - (pair ? 1 : 0) - t;

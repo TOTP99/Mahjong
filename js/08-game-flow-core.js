@@ -52,8 +52,10 @@ function poolTileCompare(a, b) {
 // 流局：查一下四家听牌情况再宣布
 function declareDraw() {
     gameOver = true;
-    const tenpaiPlayers = turnOrder.filter(p => isTenpai(p));
-    const notTenpai = turnOrder.filter(p => !isTenpai(p));
+    const tenpaiFlags = {};
+    turnOrder.forEach(p => { tenpaiFlags[p] = isTenpai(p); });
+    const tenpaiPlayers = turnOrder.filter(p => tenpaiFlags[p]);
+    const notTenpai = turnOrder.filter(p => !tenpaiFlags[p]);
     let msg = '牌墙已尽，流局。';
     if (tenpaiPlayers.length === 4) {
         msg += '四家都听牌。';
