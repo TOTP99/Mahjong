@@ -167,6 +167,7 @@ function markDealer() {
 const MAHJONG_STORAGE_KEY = 'qionghu_mahjong_progress_v2';
 let restoringGame = false;
 let saveProgressTimer = 0;
+let savedPendingReveal = null; // 存档里记下的「等你选亮牌」类型，读档后由 resumeFromSave 使用
 
 function cloneState(obj) {
     // 优先使用原生 structuredClone（更快），失败时回退到 JSON 方式
@@ -217,7 +218,9 @@ function saveGameProgress() {
             lastDrawWasFinal: cloneState(lastDrawWasFinal),
             aiWaitTiles: cloneState(aiWaitTiles),
             // 仅持久化「下一局」；进行中吃碰杠刷新后由玩家重选，避免半自动卡死
-            pendingClaimMode: pendingClaim && pendingClaim.mode === 'nextGame' ? 'nextGame' : null
+            pendingClaimMode: pendingClaim && pendingClaim.mode === 'nextGame' ? 'nextGame' : null,
+            // 等你选「亮牌/不亮」时刷新：记下类型，读档后重新弹窗
+            pendingRevealKind: (typeof pendingReveal !== 'undefined') ? pendingReveal : null
         }));
     } catch (e) { /* 隐私模式等不可用时忽略 */ }
 }
@@ -287,6 +290,7 @@ function loadGameProgress() {
         selectedIndex = saved.selectedIndex ?? null;
         lastDrawnIndex = saved.lastDrawnIndex ?? null;
         pendingClaim = saved.pendingClaimMode === 'nextGame' ? { mode: 'nextGame' } : null;
+        savedPendingReveal = saved.pendingRevealKind || null;
         restoringGame = false;
         return true;
     } catch (e) {
@@ -305,6 +309,24 @@ function resumeFromSave() {
         pendingClaim = { mode: 'nextGame' };
         showIndicator('🔔 下一局', true);
         logFlow((winner ? (nameOf(winner) + ' 胡了。') : '流局。') + '点✅开下一局（积分与庄家已保留）');
+        return;
+    }
+    // 情形一：刷新时你正在「亮牌/不亮」弹窗里——重新弹出，选完会接着做自摸判断
+    if (player === 'bottom' && savedPendingReveal) {
+        const kind = savedPendingReveal;
+        savedPendingReveal = null;
+        if (hands.bottom.length % 3 === 2 && checkWindDragonPattern(hands.bottom) === kind) {
+            offerReveal(kind);
+            return;
+        }
+    }
+    // 情形二：AI 刚打出牌、正在等你吃碰杠时刷新——currentIndex 还停在打牌那家，
+    // 他手牌是 %3==1，但这一轮其实已经摸过并打完了。不能当成“还没摸牌”再摸一次
+    // （否则他会连摸两次、下家被跳过、你的吃碰杠机会也丢了），应重新走吃碰杠/换人流程
+    const lastDiscard = discardPile[discardPile.length - 1];
+    if (player !== 'bottom' && hands[player].length % 3 === 1 && lastDiscard && lastDiscard.player === player) {
+        logFlow('继续对局…');
+        setTimeout(() => checkClaimOrAdvance(player, lastDiscard.tile), 600);
         return;
     }
     // 恢复时先判断“当前该轮到的这家”这一轮是否已经摸过牌：
