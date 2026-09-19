@@ -61,14 +61,14 @@
         body:not(.portrait-layout) .bottom { max-width: 98%; }
     }
 
-    /* 很窄宽度 */
+    /* 很窄宽度（弹窗字号放大后，宽度相应放宽） */
     @media screen and (max-width: 520px) {
         #wall-count-row { gap: 2px 3px; }
         #wall-count-text { font-size: 10px; }
         #landscape-ctrl { font-size: 9px; }
         #view-scale-btns button { font-size: 8px; padding: 2px 5px; min-width: 26px; }
         .result-box { width: min(88vw, 200px); }
-        .hu-box { width: min(88vw, 180px); }
+        .hu-box { width: min(88vw, 240px); }
     }
 
     /* 高分屏稍收紧阴影，更利落 */
@@ -101,14 +101,15 @@
         box-sizing: border-box;
     }
 
-    /* 偏好减少动效 */
+    /* 偏好减少动效（含胡牌高亮呼吸动画） */
     @media (prefers-reduced-motion: reduce) {
         #table-wrap,
         #result-modal .result-box,
         #reveal-modal .hu-box,
         #chi-choice-modal .hu-box,
         #dice-scene,
-        .claim-bell {
+        .claim-bell,
+        .tile.win-glow {
             transition: none !important;
             animation: none !important;
         }

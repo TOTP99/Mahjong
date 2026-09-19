@@ -274,30 +274,31 @@
     body.portrait-layout .ai-exposed {
         display: none !important;
     }
-    /* 竖屏吃碰杠提示：龙(上家)右侧、狮(右家)上方空地居中 */
-    body.portrait-layout #claim-indicator {
-        position: absolute !important;
-        top: 3% !important;
-        left: 86% !important;
-        right: auto !important;
-        transform: translate(-50%, 0) !important;
-        width: auto !important;
-        max-width: 38% !important;
-        max-height: none !important;
-        margin: 0 !important;
-        margin-left: 0 !important;
-        margin-top: 0 !important;
-        z-index: 25 !important;
-        overflow: visible !important;
+    /* 竖屏吃碰杠提示：龙(上家)右侧、狮(右家)上方空地居中
+       用 html + body.portrait-layout + #id 把优先级抬到 (1,1,2)，
+       高于 03 里的 #claim-indicator (1,0,0) 与 #claim-indicator.show (1,1,0)，无需 !important。
+       已核对 JS：只对该元素做 classList.add/remove('show')、innerHTML、appendChild 换父节点，
+       没有任何 element.style 写入，所以不会被内联样式盖过。 */
+    html body.portrait-layout #claim-indicator {
+        position: absolute;
+        top: 3%;
+        left: 86%;
+        right: auto;
+        transform: translate(-50%, 0);
+        width: auto;
+        max-width: 38%;
+        max-height: none;
+        margin: 0;
+        z-index: 25;
+        overflow: visible;
         white-space: nowrap;
         text-align: center;
     }
-    body.portrait-layout #claim-indicator.show {
-        display: flex !important;
+    html body.portrait-layout #claim-indicator.show {
+        display: flex;
         flex-direction: column;
         align-items: center;
         gap: 6px;
-        margin-top: 0 !important;
     }
     body.portrait-layout #claim-indicator .claim-bell { font-size: 22px; line-height: 1; }
     body.portrait-layout #claim-indicator .claim-actions { gap: 14px; }
