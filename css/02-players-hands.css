@@ -103,32 +103,21 @@
         position: relative;
         z-index: 1;
     }
-    /* 自家头像外包一层：占位与原来 .avatar 完全相同 → 猫中心位置不变。
-       .tenpai-side 绝对贴在头像右侧：💬 +（点亮后）听牌胶囊同一行，不撑开头像占位。 */
+    /* 自家头像外包：占位仍等于头像 → 猫中心不变。
+       同一行：💬（绝对贴左）→ 猫 → 胶囊（绝对贴右） */
     .avatar-with-toggle {
         display: inline-block;
         position: relative;
         line-height: 0;
         z-index: 8;
     }
-    .tenpai-side {
+    /* 听牌开关：头像左侧 */
+    .tenpai-hint-toggle {
         position: absolute;
-        left: 100%;
+        right: 100%;
         top: 50%;
         transform: translateY(-50%);
-        margin-left: 6px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 6px;
-        z-index: 45;
-        pointer-events: none;
-        max-width: min(58vw, 320px);
-    }
-    /* 听牌提示开关：胶囊 💬；点亮后 #tenpai-hint 出现在它右边同一行 */
-    .tenpai-hint-toggle {
-        position: relative;
-        margin: 0;
+        margin: 0 6px 0 0;
         padding: 0 8px;
         min-width: 28px;
         height: 26px;
@@ -145,7 +134,7 @@
         opacity: 0.72;
         transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease,
             box-shadow 0.18s ease, opacity 0.18s ease;
-        flex-shrink: 0;
+        z-index: 9;
         pointer-events: auto;
         white-space: nowrap;
     }
@@ -165,7 +154,7 @@
             0 0 18px 4px rgba(142, 200, 240, 0.2);
     }
     .tenpai-hint-toggle:active {
-        transform: scale(0.96);
+        transform: translateY(-50%) scale(0.96);
     }
     /* 外侧光晕环：只画在头像外缘，不作用在面部像素上 */
     .avatar::after {

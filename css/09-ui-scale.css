@@ -35,16 +35,13 @@ body:not(.portrait-layout) .avatar img {
 body:not(.portrait-layout) .player-score {
     font-size: calc(var(--score-base) * var(--ui-k, 1));
 }
-/* 听牌侧栏（💬 + 胶囊）：跟头像一起放大，仍不改变头像占位 */
-body:not(.portrait-layout) .tenpai-side {
-    margin-left: calc(6px * var(--ui-k, 1));
-    gap: calc(6px * var(--ui-k, 1));
-}
+/* 听牌开关：跟头像一起放大；仍绝对贴在头像左侧，不改变猫占位 */
 body:not(.portrait-layout) .tenpai-hint-toggle {
     height: calc(26px * var(--ui-k, 1));
     min-width: calc(28px * var(--ui-k, 1));
     padding: 0 calc(8px * var(--ui-k, 1));
     font-size: calc(14px * var(--ui-k, 1));
+    margin-right: calc(6px * var(--ui-k, 1));
 }
 
 /* 手牌上方的文字提示 */
@@ -98,21 +95,27 @@ html.orient-changing #table-wrap {
 }
 
 /* ========== 听牌提示（js/12-render.js 的 updateTenpaiHint） ==========
- * 挂在 .tenpai-side 里；默认不出现，只有开关点亮且有内容时才 .show。
- * 横屏：💬 右侧同一行；竖屏：💬 正上方（仍在猫右边），始终单行。
- * 父级 .tenpai-side 绝对定位在头像右侧，不改变猫位置。 */
+ * 挂在 .avatar-with-toggle 上：绝对贴在头像右侧；💬 在左侧。横竖屏同一行：💬 → 猫 → 胶囊。
+ * 始终单行；竖屏上听只显示胡啥（JS）；横屏完整信息。不改变猫占位。 */
 #tenpai-hint {
-    position: relative;
-    left: auto;
-    bottom: auto;
-    transform: none;
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 6px;
     display: none;
     max-width: min(48vw, 260px);
-    padding: 2px 12px;
+    padding: 3px 12px;
     border-radius: 999px;
-    background: rgba(14, 22, 34, 0.78);
-    border: 1px solid var(--gold-dim);
-    color: var(--text);
+    /* 半透明冷色玻璃，避免死黑块；与金色边框统一主题 */
+    background: rgba(28, 48, 72, 0.72);
+    border: 1px solid var(--gold-dim, rgba(212, 175, 55, 0.45));
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--text, #e8eef6);
     font-size: 12px;
     line-height: 1.5;
     white-space: nowrap;
@@ -121,12 +124,10 @@ html.orient-changing #table-wrap {
     pointer-events: none;
     z-index: 45;
     opacity: 0;
-    flex-shrink: 1;
-    min-width: 0;
     transition: opacity 0.18s ease;
 }
 #tenpai-hint.show {
-    display: inline-block;
+    display: block;
     opacity: 1;
 }
 #tenpai-hint .th-lab { color: var(--gold); font-weight: 700; margin-right: 6px; letter-spacing: 0.06em; }
@@ -137,19 +138,13 @@ html.orient-changing #table-wrap {
 #tenpai-hint .th-w.th-none { opacity: 0.45; }
 #tenpai-hint .th-sum, #tenpai-hint .th-miss, #tenpai-hint .th-more { color: var(--text-muted); }
 #tenpai-hint .th-sum::before { content: '· '; }
-/* 横屏：字号随 --ui-k；胶囊在 💬 右侧同一行（.tenpai-side 默认 row） */
+/* 横屏：字号随 --ui-k */
 body:not(.portrait-layout) #tenpai-hint {
     font-size: calc(12px * var(--ui-k, 1));
-}
-/* 竖屏：DOM 顺序为 💬 → 胶囊，用 column-reverse 让胶囊在 💬 正上方；间距 4px 贴近 */
-body.portrait-layout .tenpai-side {
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    gap: 4px;
-    max-width: min(70vw, 240px);
+    margin-left: calc(6px * var(--ui-k, 1));
 }
 body.portrait-layout #tenpai-hint {
-    max-width: min(70vw, 240px);
+    max-width: min(55vw, 200px);
 }
 /* 减少动效偏好：不做淡入淡出 */
 @media (prefers-reduced-motion: reduce) {
