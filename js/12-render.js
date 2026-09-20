@@ -146,14 +146,14 @@ function fitBottomHand() {
 const TENPAI_HINT_ENABLED = true;
 const TENPAI_HINT_MAX_TYPES = 6;   // 最多列出几种听牌，多了显示「…」
 const TENPAI_HINT_UI_KEY = 'qionghu_mahjong_tenpai_hint_ui_v1';
-/** UI 开关：只有为 true 时才显示 #tenpai-hint 胶囊；由猫头像旁 💬 控制，localStorage 持久化 */
+/** UI 开关：只有为 true 时才显示 #tenpai-hint 胶囊；由猫头像旁 💬 控制，localStorage 持久化。默认关。 */
 let tenpaiHintUiOn = (function () {
     try {
         const v = localStorage.getItem(TENPAI_HINT_UI_KEY);
-        if (v === '0' || v === 'false') return false;
         if (v === '1' || v === 'true') return true;
+        if (v === '0' || v === 'false') return false;
     } catch (e) {}
-    return true; // 默认开
+    return false; // 默认不出现胶囊，需点 💬 才开
 })();
 const _partialCache = new Map();
 let _tenpaiHintHtml = null;
@@ -263,12 +263,12 @@ function computeTenpaiHint() {
     return `<span class="th-lab">可听牌</span><span class="th-miss">打 ${outs.map(tileGlyph).join(' ')}</span>`;
 }
 
-/** 把提示画到你的区域上方（绝对定位的小胶囊，不占布局、不挡点击） */
+/** 把提示画到 💬 右侧同一行（.tenpai-side 内）；开关关或无内容时不显示 */
 function updateTenpaiHint() {
     try { syncTenpaiHintToggleUi(); } catch (e) {}
     let el = $('tenpai-hint');
     if (!el) {
-        const host = $('p-bottom');
+        const host = document.querySelector('.tenpai-side') || $('p-bottom');
         if (!host || !document.createElement) return;
         el = document.createElement('div');
         el.id = 'tenpai-hint';
