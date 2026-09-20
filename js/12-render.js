@@ -90,6 +90,7 @@ function render() {
     fitBottomHand();
     // 局数变化 / 副露数量变化时，重新核对横屏界面放大系数（04-view-scale.js）
     try { if (typeof uiScaleOnRender === 'function') uiScaleOnRender(); } catch (e) {}
+    try { updateTenpaiHint(); } catch (e) {}
     try { validateHandCounts('render'); } catch (e) {}
 }
 
@@ -132,6 +133,118 @@ function fitBottomHand() {
             }
         });
     }
+}
+
+// ---------- 听牌提示（只针对你自己的手牌） ----------
+// · 你出完牌、等别人时（暗牌张数 = 完整手牌 - 1）：显示「听 🀇2 🀊1 · 共3张」——听哪几张、每张场上还剩几张
+// · 轮到你、点选了一张牌（➡️）：显示「打🀃 → 听 …」，告诉你打这张之后听什么；不听则显示「未听牌」
+// · 轮到你、还没点选：如果有能听牌的打法，列出来「可听牌：打 🀃 🀆」
+// · 结构上已经成型、但穷胡规则还缺条件（开门/三门齐/幺九/刻子）时：显示「成型 · 缺：开门」
+// 「余」= 4 − 你能看到的张数（你的手牌、所有弃牌、所有明面副露、你自己的暗杠）；别人手里的暗牌和暗杠你看不到，不计入。
+// 听哪几张直接用 getWinningTilesOf（与真正判胡的 checkHu 同一套规则、带缓存），不会和实际能不能胡不一致。
+// 关掉：把 TENPAI_HINT_ENABLED 改成 false。
+const TENPAI_HINT_ENABLED = true;
+const TENPAI_HINT_MAX_TYPES = 6;   // 最多列出几种听牌，多了显示「…」
+const _partialCache = new Map();
+let _tenpaiHintHtml = null;
+
+/** 你能看到的这张牌的张数（hypoHand：你「假设」的手牌；extraSeen：假设刚打出的那张，也算已见） */
+function humanSeenCount(tile, hypoHand, extraSeen) {
+    let seen = hypoHand.filter(t => t === tile).length + (extraSeen === tile ? 1 : 0);
+    seen += discardPile.filter(d => d.tile === tile).length;
+    for (const p of turnOrder) {
+        for (const m of (exposedMelds[p] || [])) {
+            if (p !== 'bottom' && m.type === 'gang' && m.concealed) continue; // 别人的暗杠你看不到
+            seen += m.tiles.filter(x => x === tile).length;
+        }
+    }
+    return seen;
+}
+
+/** 结构成型（能拆成面子+将）、但穷胡规则还缺条件的「最接近」的一种：{ tile, missing:[…] } 或 null */
+function partialWaitInfo(concealed, exposed) {
+    const key = concealed.slice().sort().join(',') + '|'
+        + exposed.map(m => m.type + (m.concealed ? 'c' : '') + m.tiles.join('')).join(';') + '|' + (windDragonBonus.bottom ? '+' : '-');
+    if (_partialCache.has(key)) return _partialCache.get(key);
+    let best = null;
+    for (const t of allTileTypes()) {
+        const a = analyzeHu([...concealed, t], exposed, 'bottom');
+        if (!a.structuralOk) continue;
+        const missing = [];
+        if (!a.kaimen) missing.push('开门');
+        if (!a.sanmenqi) missing.push('三门齐');
+        if (!a.yaojiu) missing.push('幺九');
+        if (!a.kezi) missing.push('刻子');
+        if (!missing.length) continue; // 真能胡的走 getWinningTilesOf
+        if (!best || missing.length < best.missing.length) best = { tile: t, missing };
+    }
+    if (_partialCache.size > 2000) _partialCache.clear();
+    _partialCache.set(key, best);
+    return best;
+}
+
+/** 听牌 HTML：waits 非空 → 「听 🀇2 🀊1 · 共3张」；否则看是否「成型但缺条件」；都没有返回 null */
+function formatWaitsHtml(concealed, exposed, extraSeen) {
+    const waits = getWinningTilesOf(concealed, exposed, 'bottom');
+    if (waits.length) {
+        let total = 0;
+        const items = waits.map(t => {
+            const left = Math.max(0, 4 - humanSeenCount(t, concealed, extraSeen));
+            total += left;
+            return { t, left };
+        });
+        const shown = items.slice(0, TENPAI_HINT_MAX_TYPES).map(x =>
+            `<span class="th-w${x.left === 0 ? ' th-none' : ''}"><b>${tileGlyph(x.t)}</b><i>${x.left}</i></span>`).join('');
+        const more = items.length > TENPAI_HINT_MAX_TYPES ? '<span class="th-more">…</span>' : '';
+        return `<span class="th-lab">听</span>${shown}${more}<span class="th-sum">共${total}张</span>`;
+    }
+    const part = partialWaitInfo(concealed, exposed);
+    if (part) return `<span class="th-lab th-part">成型</span><span class="th-miss">缺：${part.missing.join(' / ')}</span>`;
+    return null;
+}
+
+/** 当前应该显示的提示 HTML（不显示返回 ''） */
+function computeTenpaiHint() {
+    if (!TENPAI_HINT_ENABLED || gameOver || !hands || !hands.bottom || !hands.bottom.length) return '';
+    if (typeof diceBusy !== 'undefined' && diceBusy) return '';
+    const hand = hands.bottom, ex = exposedMelds.bottom || [];
+    const need = (4 - ex.length) * 3 + 2;
+    if (hand.length === need - 1) return formatWaitsHtml(hand, ex, null) || '';           // 等牌中
+    const myTurn = turnOrder[currentIndex] === 'bottom' && (!pendingClaim || pendingClaim.mode === 'selfGang');
+    if (hand.length !== need || !myTurn) return '';
+    if (selectedIndex !== null && selectedIndex !== undefined && selectedIndex >= 0 && selectedIndex < hand.length) {
+        const t = hand[selectedIndex];
+        const rest = hand.slice(); rest.splice(selectedIndex, 1);
+        const body = formatWaitsHtml(rest, ex, t);
+        return `<span class="th-lab th-dis">打${tileGlyph(t)}</span>` + (body || '<span class="th-miss">未听牌</span>');
+    }
+    // 还没点选：列出哪些打法能听牌
+    const outs = [];
+    for (const t of new Set(hand)) {
+        const rest = hand.slice(); rest.splice(rest.indexOf(t), 1);
+        if (getWinningTilesOf(rest, ex, 'bottom').length) outs.push(t);
+    }
+    outs.sort(tileCompare);
+    if (!outs.length) return '';
+    return `<span class="th-lab">可听牌</span><span class="th-miss">打 ${outs.map(tileGlyph).join(' ')}</span>`;
+}
+
+/** 把提示画到你的区域上方（绝对定位的小胶囊，不占布局、不挡点击） */
+function updateTenpaiHint() {
+    let el = $('tenpai-hint');
+    if (!el) {
+        const host = $('p-bottom');
+        if (!host || !document.createElement) return;
+        el = document.createElement('div');
+        el.id = 'tenpai-hint';
+        el.setAttribute('aria-live', 'polite');
+        host.appendChild(el);
+    }
+    const html = computeTenpaiHint();
+    if (html === _tenpaiHintHtml) return;   // 没变化就不动 DOM
+    _tenpaiHintHtml = html;
+    el.innerHTML = html;
+    if (html) el.classList.add('show'); else el.classList.remove('show');
 }
 
 function rotateDealer() {
