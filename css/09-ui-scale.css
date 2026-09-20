@@ -98,9 +98,9 @@ html.orient-changing #table-wrap {
 }
 
 /* ========== 听牌提示（js/12-render.js 的 updateTenpaiHint） ==========
- * 挂在 .tenpai-side 里、💬 右侧同一行；默认不出现，只有开关点亮且有内容时才 .show。
- * 父级 .tenpai-side 已绝对定位在头像右侧，故本节点用相对流布局即可，不改变猫位置。
- * 内容：听哪几张（小数字=场上还剩几张）、共几张；点选时「打X → 听…」；成型缺条件等。 */
+ * 挂在 .tenpai-side 里；默认不出现，只有开关点亮且有内容时才 .show。
+ * 横屏：💬 右侧同一行；竖屏：💬 正上方（仍在猫右边），始终单行。
+ * 父级 .tenpai-side 绝对定位在头像右侧，不改变猫位置。 */
 #tenpai-hint {
     position: relative;
     left: auto;
@@ -115,7 +115,6 @@ html.orient-changing #table-wrap {
     color: var(--text);
     font-size: 12px;
     line-height: 1.5;
-    /* 默认单行胶囊（横屏空间够，不折行） */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -138,18 +137,19 @@ html.orient-changing #table-wrap {
 #tenpai-hint .th-w.th-none { opacity: 0.45; }
 #tenpai-hint .th-sum, #tenpai-hint .th-miss, #tenpai-hint .th-more { color: var(--text-muted); }
 #tenpai-hint .th-sum::before { content: '· '; }
-/* 横屏：字号跟着界面放大系数走；保持单行 */
+/* 横屏：字号随 --ui-k；胶囊在 💬 右侧同一行（.tenpai-side 默认 row） */
 body:not(.portrait-layout) #tenpai-hint {
     font-size: calc(12px * var(--ui-k, 1));
-    white-space: nowrap;
 }
-/* 竖屏：侧栏窄，字多时允许折成最多两行；圆角沿用默认 999px，只把高度撑高容纳第二行 */
+/* 竖屏：DOM 顺序为 💬 → 胶囊，用 column-reverse 让胶囊在 💬 正上方；间距 4px 贴近 */
+body.portrait-layout .tenpai-side {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 4px;
+    max-width: min(70vw, 240px);
+}
 body.portrait-layout #tenpai-hint {
-    white-space: normal;
-    max-width: min(62vw, 200px);
-    line-height: 1.4;
-    max-height: calc(1.4em * 2 + 8px);
-    overflow: hidden;
+    max-width: min(70vw, 240px);
 }
 /* 减少动效偏好：不做淡入淡出 */
 @media (prefers-reduced-motion: reduce) {
