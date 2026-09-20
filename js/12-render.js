@@ -272,12 +272,12 @@ function computeTenpaiHint() {
     return `<span class="th-lab">可听牌</span><span class="th-miss">打 ${outs.map(tileGlyph).join(' ')}</span>`;
 }
 
-/** 把提示画到 💬 右侧同一行（.tenpai-side 内）；开关关或无内容时不显示 */
+/** 把提示画到猫右边（.avatar-with-toggle 内绝对定位）；开关关或无内容时不显示 */
 function updateTenpaiHint() {
     try { syncTenpaiHintToggleUi(); } catch (e) {}
     let el = $('tenpai-hint');
     if (!el) {
-        const host = document.querySelector('.tenpai-side') || $('p-bottom');
+        const host = document.querySelector('.avatar-with-toggle') || $('p-bottom');
         if (!host || !document.createElement) return;
         el = document.createElement('div');
         el.id = 'tenpai-hint';
