@@ -35,15 +35,16 @@ body:not(.portrait-layout) .avatar img {
 body:not(.portrait-layout) .player-score {
     font-size: calc(var(--score-base) * var(--ui-k, 1));
 }
-/* 听牌提示开关：跟头像一起放大 */
+/* 听牌侧栏（💬 + 胶囊）：跟头像一起放大，仍不改变头像占位 */
+body:not(.portrait-layout) .tenpai-side {
+    margin-left: calc(6px * var(--ui-k, 1));
+    gap: calc(6px * var(--ui-k, 1));
+}
 body:not(.portrait-layout) .tenpai-hint-toggle {
     height: calc(26px * var(--ui-k, 1));
     min-width: calc(28px * var(--ui-k, 1));
     padding: 0 calc(8px * var(--ui-k, 1));
     font-size: calc(14px * var(--ui-k, 1));
-}
-body:not(.portrait-layout) .avatar-with-toggle {
-    gap: calc(6px * var(--ui-k, 1));
 }
 
 /* 手牌上方的文字提示 */
@@ -97,15 +98,16 @@ html.orient-changing #table-wrap {
 }
 
 /* ========== 听牌提示（js/12-render.js 的 updateTenpaiHint） ==========
- * 绝对定位的小胶囊，挂在你的区域(#p-bottom)正上方：不占布局、不挡点击。
- * 内容：听哪几张（每张右边的小数字 = 场上还剩几张）、共几张；点选一张牌时显示「打X → 听…」；
- * 结构成型但穷胡规则缺条件时显示「成型 · 缺：开门」。没有提示时完全透明。 */
+ * 挂在 .tenpai-side 里、💬 右侧同一行；默认不出现，只有开关点亮且有内容时才 .show。
+ * 父级 .tenpai-side 已绝对定位在头像右侧，故本节点用相对流布局即可，不改变猫位置。
+ * 内容：听哪几张（小数字=场上还剩几张）、共几张；点选时「打X → 听…」；成型缺条件等。 */
 #tenpai-hint {
-    position: absolute;
-    left: 50%;
-    bottom: calc(100% + 4px);
-    transform: translateX(-50%);
-    max-width: 96%;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    display: none;
+    max-width: min(48vw, 260px);
     padding: 2px 12px;
     border-radius: 999px;
     background: rgba(14, 22, 34, 0.78);
@@ -119,9 +121,14 @@ html.orient-changing #table-wrap {
     pointer-events: none;
     z-index: 45;
     opacity: 0;
+    flex-shrink: 1;
+    min-width: 0;
     transition: opacity 0.18s ease;
 }
-#tenpai-hint.show { opacity: 1; }
+#tenpai-hint.show {
+    display: inline-block;
+    opacity: 1;
+}
 #tenpai-hint .th-lab { color: var(--gold); font-weight: 700; margin-right: 6px; letter-spacing: 0.06em; }
 #tenpai-hint .th-lab.th-part { color: var(--ice); }
 #tenpai-hint .th-w { display: inline-flex; align-items: baseline; margin-right: 6px; }

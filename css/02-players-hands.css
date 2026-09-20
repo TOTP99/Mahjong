@@ -103,15 +103,29 @@
         position: relative;
         z-index: 1;
     }
-    /* 自家头像 + 听牌提示开关并排 */
+    /* 自家头像外包一层：占位与原来 .avatar 完全相同 → 猫中心位置不变。
+       .tenpai-side 绝对贴在头像右侧：💬 +（点亮后）听牌胶囊同一行，不撑开头像占位。 */
     .avatar-with-toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+        display: inline-block;
         position: relative;
+        line-height: 0;
         z-index: 8;
     }
-    /* 听牌提示开关：胶囊 💬，点亮才显示 #tenpai-hint */
+    .tenpai-side {
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 6px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+        z-index: 45;
+        pointer-events: none;
+        max-width: min(58vw, 320px);
+    }
+    /* 听牌提示开关：胶囊 💬；点亮后 #tenpai-hint 出现在它右边同一行 */
     .tenpai-hint-toggle {
         position: relative;
         margin: 0;
@@ -132,8 +146,8 @@
         transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease,
             box-shadow 0.18s ease, opacity 0.18s ease;
         flex-shrink: 0;
-        z-index: 9;
         pointer-events: auto;
+        white-space: nowrap;
     }
     .tenpai-hint-toggle::after {
         content: '';
