@@ -35,6 +35,16 @@ body:not(.portrait-layout) .avatar img {
 body:not(.portrait-layout) .player-score {
     font-size: calc(var(--score-base) * var(--ui-k, 1));
 }
+/* 听牌提示开关：跟头像一起放大 */
+body:not(.portrait-layout) .tenpai-hint-toggle {
+    height: calc(26px * var(--ui-k, 1));
+    min-width: calc(28px * var(--ui-k, 1));
+    padding: 0 calc(8px * var(--ui-k, 1));
+    font-size: calc(14px * var(--ui-k, 1));
+}
+body:not(.portrait-layout) .avatar-with-toggle {
+    gap: calc(6px * var(--ui-k, 1));
+}
 
 /* 手牌上方的文字提示 */
 body:not(.portrait-layout) #flow-log {

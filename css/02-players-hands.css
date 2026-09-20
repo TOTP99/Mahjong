@@ -103,6 +103,56 @@
         position: relative;
         z-index: 1;
     }
+    /* 自家头像 + 听牌提示开关并排 */
+    .avatar-with-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        position: relative;
+        z-index: 8;
+    }
+    /* 听牌提示开关：胶囊 💬，点亮才显示 #tenpai-hint */
+    .tenpai-hint-toggle {
+        position: relative;
+        margin: 0;
+        padding: 0 8px;
+        min-width: 28px;
+        height: 26px;
+        border: 1px solid var(--gold-dim, rgba(212,175,55,0.45));
+        border-radius: 999px;
+        background: rgba(14, 22, 34, 0.55);
+        color: var(--text-muted, #8a9bb0);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        box-shadow: none;
+        opacity: 0.72;
+        transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease,
+            box-shadow 0.18s ease, opacity 0.18s ease;
+        flex-shrink: 0;
+        z-index: 9;
+        pointer-events: auto;
+    }
+    .tenpai-hint-toggle::after {
+        content: '';
+        position: absolute;
+        inset: -6px -4px;
+    }
+    .tenpai-hint-toggle.on {
+        color: var(--gold, #d4af37);
+        border-color: var(--gold, #d4af37);
+        background: rgba(212, 175, 55, 0.14);
+        opacity: 1;
+        box-shadow:
+            0 0 0 1px rgba(212, 175, 55, 0.35),
+            0 0 10px 2px rgba(212, 175, 55, 0.45),
+            0 0 18px 4px rgba(142, 200, 240, 0.2);
+    }
+    .tenpai-hint-toggle:active {
+        transform: scale(0.96);
+    }
     /* 外侧光晕环：只画在头像外缘，不作用在面部像素上 */
     .avatar::after {
         content: '';
