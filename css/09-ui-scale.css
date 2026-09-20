@@ -114,8 +114,9 @@ html.orient-changing #table-wrap {
     border: 1px solid var(--gold-dim);
     color: var(--text);
     font-size: 12px;
-    line-height: 1.45;
-    white-space: normal;
+    line-height: 1.5;
+    /* 默认单行胶囊（横屏空间够，不折行） */
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     pointer-events: none;
@@ -125,11 +126,8 @@ html.orient-changing #table-wrap {
     min-width: 0;
     transition: opacity 0.18s ease;
 }
-/* 过长时最多两行，超出省略；短内容仍单行 */
 #tenpai-hint.show {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    display: inline-block;
     opacity: 1;
 }
 #tenpai-hint .th-lab { color: var(--gold); font-weight: 700; margin-right: 6px; letter-spacing: 0.06em; }
@@ -140,9 +138,18 @@ html.orient-changing #table-wrap {
 #tenpai-hint .th-w.th-none { opacity: 0.45; }
 #tenpai-hint .th-sum, #tenpai-hint .th-miss, #tenpai-hint .th-more { color: var(--text-muted); }
 #tenpai-hint .th-sum::before { content: '· '; }
-/* 横屏：字号跟着界面放大系数走 */
+/* 横屏：字号跟着界面放大系数走；保持单行 */
 body:not(.portrait-layout) #tenpai-hint {
     font-size: calc(12px * var(--ui-k, 1));
+    white-space: nowrap;
+}
+/* 竖屏：侧栏窄，字多时允许折成最多两行；圆角沿用默认 999px，只把高度撑高容纳第二行 */
+body.portrait-layout #tenpai-hint {
+    white-space: normal;
+    max-width: min(62vw, 200px);
+    line-height: 1.4;
+    max-height: calc(1.4em * 2 + 8px);
+    overflow: hidden;
 }
 /* 减少动效偏好：不做淡入淡出 */
 @media (prefers-reduced-motion: reduce) {
