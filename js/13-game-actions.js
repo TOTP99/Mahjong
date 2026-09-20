@@ -268,6 +268,7 @@ function syncBodyScrollLock() {
         body.style.top = '';
         delete body.dataset.scrollY;
         window.scrollTo(0, y);
+        if (typeof scheduleAutoFitBurst === 'function') scheduleAutoFitBurst(); // 弹窗期间跳过的自动适配，关闭后补做
     }
 }
 (function watchModalsForScrollLock() {
@@ -361,8 +362,15 @@ viewScale = ORIGINAL_VIEW_SCALE;
 document.documentElement.style.setProperty('--view-scale', '1');
 setTimeout(() => {
     captureOriginalViewSize();
-    viewScale = loadSavedViewScale();
-    applyViewScale();
+    if (AUTO_FIT_LANDSCAPE) {
+        // 横屏自动适配接管：不再读取以前手动保存的缩放/平移，按当前可视区域自动算（竖屏不处理）
+        _autoFitReady = true;
+        autoFitLandscapeView();
+        scheduleAutoFitBurst();
+    } else {
+        viewScale = loadSavedViewScale();
+        applyViewScale();
+    }
 }, 0);
 // 启动：有完整存档则原样恢复，否则只带积分/庄家开新局
 if (loadGameProgress()) {
