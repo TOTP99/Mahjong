@@ -85,3 +85,46 @@ html.orient-changing #table-wrap {
     opacity: 0;
     transition: none;
 }
+
+/* ========== 听牌提示（js/12-render.js 的 updateTenpaiHint） ==========
+ * 绝对定位的小胶囊，挂在你的区域(#p-bottom)正上方：不占布局、不挡点击。
+ * 内容：听哪几张（每张右边的小数字 = 场上还剩几张）、共几张；点选一张牌时显示「打X → 听…」；
+ * 结构成型但穷胡规则缺条件时显示「成型 · 缺：开门」。没有提示时完全透明。 */
+#tenpai-hint {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    max-width: 96%;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: rgba(14, 22, 34, 0.78);
+    border: 1px solid var(--gold-dim);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    z-index: 45;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+#tenpai-hint.show { opacity: 1; }
+#tenpai-hint .th-lab { color: var(--gold); font-weight: 700; margin-right: 6px; letter-spacing: 0.06em; }
+#tenpai-hint .th-lab.th-part { color: var(--ice); }
+#tenpai-hint .th-w { display: inline-flex; align-items: baseline; margin-right: 6px; }
+#tenpai-hint .th-w b { font-weight: 400; font-size: 1.6em; line-height: 1; }
+#tenpai-hint .th-w i { font-style: normal; font-size: 0.85em; color: var(--gold); margin-left: 1px; }
+#tenpai-hint .th-w.th-none { opacity: 0.45; }
+#tenpai-hint .th-sum, #tenpai-hint .th-miss, #tenpai-hint .th-more { color: var(--text-muted); }
+#tenpai-hint .th-sum::before { content: '· '; }
+/* 横屏：字号跟着界面放大系数走 */
+body:not(.portrait-layout) #tenpai-hint {
+    font-size: calc(12px * var(--ui-k, 1));
+}
+/* 减少动效偏好：不做淡入淡出 */
+@media (prefers-reduced-motion: reduce) {
+    #tenpai-hint { transition: none; }
+}
