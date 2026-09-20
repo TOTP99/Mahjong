@@ -114,8 +114,8 @@ html.orient-changing #table-wrap {
     border: 1px solid var(--gold-dim);
     color: var(--text);
     font-size: 12px;
-    line-height: 1.5;
-    white-space: nowrap;
+    line-height: 1.45;
+    white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
     pointer-events: none;
@@ -125,8 +125,11 @@ html.orient-changing #table-wrap {
     min-width: 0;
     transition: opacity 0.18s ease;
 }
+/* 过长时最多两行，超出省略；短内容仍单行 */
 #tenpai-hint.show {
-    display: inline-block;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     opacity: 1;
 }
 #tenpai-hint .th-lab { color: var(--gold); font-weight: 700; margin-right: 6px; letter-spacing: 0.06em; }
