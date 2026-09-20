@@ -88,6 +88,8 @@ function render() {
         try { showExposedInfo(exposedInfoShownFor); } catch (e) {}
     }
     fitBottomHand();
+    // 局数变化 / 副露数量变化时，重新核对横屏界面放大系数（04-view-scale.js）
+    try { if (typeof uiScaleOnRender === 'function') uiScaleOnRender(); } catch (e) {}
     try { validateHandCounts('render'); } catch (e) {}
 }
 
@@ -105,13 +107,15 @@ function fitBottomHand() {
         handEl.style.setProperty('--tile-fs', '29px');
         return;
     }
-    const baseW = 29, baseH = 39, baseFS = 29;
+    // 横屏界面放大系数（04-view-scale.js 按牌桌里的可用空间算出，≥1；未启用时为 1）
+    const uiK = (typeof uiScaleK === 'number' && uiScaleK > 0) ? uiScaleK : 1;
+    const baseW = 29 * uiK, baseH = 39 * uiK, baseFS = 29 * uiK;
     const MIN_SCALE = 0.42;
     handEl.style.overflowX = 'hidden';
     handEl.style.justifyContent = 'center';
-    handEl.style.setProperty('--tile-w', baseW + 'px');
-    handEl.style.setProperty('--tile-h', baseH + 'px');
-    handEl.style.setProperty('--tile-fs', baseFS + 'px');
+    handEl.style.setProperty('--tile-w', baseW.toFixed(2) + 'px');
+    handEl.style.setProperty('--tile-h', baseH.toFixed(2) + 'px');
+    handEl.style.setProperty('--tile-fs', baseFS.toFixed(2) + 'px');
     const container = handEl.parentElement;
     if (!container) return;
     const availWidth = container.clientWidth;

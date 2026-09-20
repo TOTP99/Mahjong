@@ -131,6 +131,7 @@ function checkPortraitGuard() {
     const body = document.body;
     if (!body) return;
     const wasPortrait = body.classList.contains('portrait-layout');
+    if (wasPortrait !== !!isPortrait) { try { orientTransitionCheck(); } catch (e) { /* 04 未加载时忽略 */ } } // 方向翻转：先隐藏牌桌再切换布局
     // 双布局：竖屏用 portrait-layout，横屏用默认横屏样式；不再强制拦截
     body.classList.toggle('portrait-layout', !!isPortrait);
     placeClaimIndicatorForOrientation(!!isPortrait);
@@ -173,6 +174,7 @@ function getOrientationKey() {
  * 并做防抖，避免一次旋转触发十几次重排。
  */
 function handleOrientationEvent(source) {
+    try { orientTransitionCheck(); } catch (e) { /* 04 未加载时忽略 */ } // 第一时间发现方向翻转，抢在浏览器绘制「半成品」布局之前隐藏
     const key = getOrientationKey();
     // 同一稳定状态不重复打满定时器（resize 噪声多）
     if (source === 'resize' && key === _lastOrientationKey && !_orientationHandling) {
