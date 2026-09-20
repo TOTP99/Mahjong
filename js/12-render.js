@@ -217,10 +217,19 @@ function partialWaitInfo(concealed, exposed) {
     return best;
 }
 
-/** 听牌 HTML：waits 非空 → 「听 🀇2 🀊1 · 共3张」；否则看是否「成型但缺条件」；都没有返回 null */
+/** 听牌 HTML：waits 非空 → 横屏「听 🀇2 🀊1 · 共3张」；竖屏上听只显示胡啥「听 🀇 🀊」；否则成型缺条件；都没有返回 null */
 function formatWaitsHtml(concealed, exposed, extraSeen) {
     const waits = getWinningTilesOf(concealed, exposed, 'bottom');
     if (waits.length) {
+        const isPortrait = document.body && document.body.classList.contains('portrait-layout');
+        // 竖屏上听：只显示可胡的牌面，不带余张与合计（单行、省宽度）
+        if (isPortrait) {
+            const shown = waits.slice(0, TENPAI_HINT_MAX_TYPES).map(t =>
+                `<span class="th-w"><b>${tileGlyph(t)}</b></span>`).join('');
+            const more = waits.length > TENPAI_HINT_MAX_TYPES ? '<span class="th-more">…</span>' : '';
+            return `<span class="th-lab">听</span>${shown}${more}`;
+        }
+        // 横屏：完整信息（牌 + 场上余张 + 共几张）
         let total = 0;
         const items = waits.map(t => {
             const left = Math.max(0, 4 - humanSeenCount(t, concealed, extraSeen));
