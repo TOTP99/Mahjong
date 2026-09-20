@@ -142,11 +142,45 @@ function fitBottomHand() {
 // · 结构上已经成型、但穷胡规则还缺条件（开门/三门齐/幺九/刻子）时：显示「成型 · 缺：开门」
 // 「余」= 4 − 你能看到的张数（你的手牌、所有弃牌、所有明面副露、你自己的暗杠）；别人手里的暗牌和暗杠你看不到，不计入。
 // 听哪几张直接用 getWinningTilesOf（与真正判胡的 checkHu 同一套规则、带缓存），不会和实际能不能胡不一致。
-// 关掉：把 TENPAI_HINT_ENABLED 改成 false。
+// 总开关：改成 false 可彻底禁用听牌提示（连 UI 开关也不出现逻辑）。
 const TENPAI_HINT_ENABLED = true;
 const TENPAI_HINT_MAX_TYPES = 6;   // 最多列出几种听牌，多了显示「…」
+const TENPAI_HINT_UI_KEY = 'qionghu_mahjong_tenpai_hint_ui_v1';
+/** UI 开关：只有为 true 时才显示 #tenpai-hint 胶囊；由猫头像旁 💬 控制，localStorage 持久化 */
+let tenpaiHintUiOn = (function () {
+    try {
+        const v = localStorage.getItem(TENPAI_HINT_UI_KEY);
+        if (v === '0' || v === 'false') return false;
+        if (v === '1' || v === 'true') return true;
+    } catch (e) {}
+    return true; // 默认开
+})();
 const _partialCache = new Map();
 let _tenpaiHintHtml = null;
+
+/** 同步 💬 按钮外观与 aria；在 DOM 就绪后调用 */
+function syncTenpaiHintToggleUi() {
+    const btn = $('tenpai-hint-toggle');
+    if (!btn) return;
+    if (tenpaiHintUiOn) {
+        btn.classList.add('on');
+        btn.setAttribute('aria-pressed', 'true');
+    } else {
+        btn.classList.remove('on');
+        btn.setAttribute('aria-pressed', 'false');
+    }
+}
+
+/** 点击猫头像旁 💬：切换听牌提示开关并立刻刷新胶囊 */
+function toggleTenpaiHint() {
+    if (!TENPAI_HINT_ENABLED) return;
+    tenpaiHintUiOn = !tenpaiHintUiOn;
+    try { localStorage.setItem(TENPAI_HINT_UI_KEY, tenpaiHintUiOn ? '1' : '0'); } catch (e) {}
+    syncTenpaiHintToggleUi();
+    _tenpaiHintHtml = null; // 强制 updateTenpaiHint 重写 DOM
+    try { updateTenpaiHint(); } catch (e) {}
+    try { logFlow(tenpaiHintUiOn ? '听牌提示：开' : '听牌提示：关'); } catch (e) {}
+}
 
 /** 你能看到的这张牌的张数（hypoHand：你「假设」的手牌；extraSeen：假设刚打出的那张，也算已见） */
 function humanSeenCount(tile, hypoHand, extraSeen) {
@@ -205,7 +239,7 @@ function formatWaitsHtml(concealed, exposed, extraSeen) {
 
 /** 当前应该显示的提示 HTML（不显示返回 ''） */
 function computeTenpaiHint() {
-    if (!TENPAI_HINT_ENABLED || gameOver || !hands || !hands.bottom || !hands.bottom.length) return '';
+    if (!TENPAI_HINT_ENABLED || !tenpaiHintUiOn || gameOver || !hands || !hands.bottom || !hands.bottom.length) return '';
     if (typeof diceBusy !== 'undefined' && diceBusy) return '';
     const hand = hands.bottom, ex = exposedMelds.bottom || [];
     const need = (4 - ex.length) * 3 + 2;
@@ -231,6 +265,7 @@ function computeTenpaiHint() {
 
 /** 把提示画到你的区域上方（绝对定位的小胶囊，不占布局、不挡点击） */
 function updateTenpaiHint() {
+    try { syncTenpaiHintToggleUi(); } catch (e) {}
     let el = $('tenpai-hint');
     if (!el) {
         const host = $('p-bottom');
