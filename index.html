@@ -126,7 +126,11 @@
     </div>
     <div class="player bottom" id="p-bottom">
         <div class="player-label">
-            <span class="player-score" id="score-bottom"></span><span class="avatar" onclick="toggleExposedInfo('bottom')"><img src="avatar-bottom.webp" alt="东"></span>
+            <span class="player-score" id="score-bottom"></span>
+            <span class="avatar-with-toggle">
+                <span class="avatar" onclick="toggleExposedInfo('bottom')"><img src="avatar-bottom.webp" alt="东"></span>
+                <button type="button" id="tenpai-hint-toggle" class="tenpai-hint-toggle on" title="听牌提示开关（亮=显示）" aria-pressed="true" aria-label="听牌提示开关" onclick="event.stopPropagation();toggleTenpaiHint()">💬</button>
+            </span>
         </div>
         <div id="hand-bottom" class="hand" onclick="handleDiscard(event)"></div>
         <div id="flow-log"></div>
