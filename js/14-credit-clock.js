@@ -1,6 +1,6 @@
 /* 14-credit-clock.js
  * 接管 #credit-label / #credit-label-2 的全部内容（仅竖屏可见，横屏由 CSS 隐藏）：
- *   第一行（金字）：TP制作🌸🦋🍁❄️🧿📿🪷🛫🎏3️⃣6️⃣9️⃣
+ *   第一行（金字）：TP制作🐈🌸🦋🍁❄️🧿📿🪷🛫🎏3️⃣6️⃣9️⃣🏵️
  *   第二行：时:分:秒 星期(英文全称) 月-日-年(两位) 均为金字（继承 #credit-label-2 的颜色），
  *           ⏰ 本次已玩时间 为红色粗体
  * 已玩时间严格按5分钟一档：<5 mins、5 mins、10 mins … 25 mins（25~29分钟都显示 25 mins）。
@@ -10,9 +10,11 @@
 (function () {
     'use strict';
 
-    var LINE1 = 'TP制作🌸🦋🍁❄️🧿📿🪷🛫🎏3️⃣6️⃣9️⃣';
+    var LINE1 = 'TP制作🐈🌸🦋🍁❄️🧿📿🪷🛫🎏3️⃣6️⃣9️⃣🏵️';
     var WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     var PLAYED_STYLE = 'color:#ff4d4d;font-weight:700;';
+    // 时分秒盒子：宽度取 6.8 个数字宽（6位数字+2个冒号的最大宽度），右侧间隙 0.6em（原空格约 0.3em 的两倍）
+    var HMS_STYLE = 'display:inline-block;width:6.8ch;margin-right:0.6em;';
 
     var el1 = document.getElementById('credit-label');
     var el2 = document.getElementById('credit-label-2');
@@ -56,8 +58,10 @@
         accumulate();
         var d = new Date();
         var mins = Math.floor(playedMs / 60000);
-        var clock = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
-                    ' ' + WEEK[d.getDay()] + ' ' +
+        var hms = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        // 时分秒放进固定宽度的盒子，间隙约为原来一个空格的两倍；秒数变化时后面的文字不再左右抖动
+        var clock = '<span style="' + HMS_STYLE + '">' + hms + '</span>' +
+                    WEEK[d.getDay()] + ' ' +
                     pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getFullYear() % 100);
         // 用 innerHTML 是因为要给已玩时间单独上色；内容全部由本脚本生成，没有外部输入
         var html2 = clock + ' <span style="' + PLAYED_STYLE + '">⏰ ' +
