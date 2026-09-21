@@ -1,16 +1,18 @@
 /* 14-credit-clock.js
  * 接管 #credit-label / #credit-label-2 的全部内容（仅竖屏可见，横屏由 CSS 隐藏）：
- *   第一行（金字）：TP制作🐈🌸🦋🍁❄️🧿📿🪷🛫🎏3️⃣6️⃣9️⃣🏵️
+ *   第一行（金字）：TP制作✈️🧿3️⃣6️⃣9️⃣🎏🏵️
  *   第二行：时:分:秒 星期(英文全称) 月-日-年(两位) 均为金字（继承 #credit-label-2 的颜色），
  *           ⏰ 本次已玩时间 为红色粗体
  * 已玩时间严格按5分钟一档：<5 mins、5 mins、10 mins … 25 mins（25~29分钟都显示 25 mins）。
  * 只存内存，不写 localStorage；页面切到后台时暂停计时。
+ * 横屏：竖屏那两行被 CSS 隐藏，改为在左侧栏的 #img-display-badge（TP制作）后面加当前时间的 分:秒，
+ *       竖屏时该标签保持原样只显示"TP制作"。
  * 必须放在 13-game-actions.js 之后加载。
  */
 (function () {
     'use strict';
 
-    var LINE1 = 'TP制作🐈🌸🦋🍁❄️🧿📿🪷🛫🎏3️⃣6️⃣9️⃣🏵️';
+    var LINE1 = 'TP制作✈️🧿3️⃣6️⃣9️⃣🎏🏵️';
     var WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     var PLAYED_STYLE = 'color:#ff4d4d;font-weight:700;';
     // 时分秒盒子：宽度取 6.8 个数字宽（6位数字+2个冒号的最大宽度），右侧间隙 0.6em（原空格约 0.3em 的两倍）
@@ -18,7 +20,11 @@
 
     var el1 = document.getElementById('credit-label');
     var el2 = document.getElementById('credit-label-2');
+    var badge = document.getElementById('img-display-badge'); // 横屏左侧栏的"TP制作"
     if (!el1 || !el2) return;
+    var BADGE_TEXT = 'TP制作';
+    // 分:秒 放固定宽度盒子（4位数字+冒号最大宽度），秒数变化时右边的牌墙文字不抖动
+    var MS_STYLE = 'display:inline-block;width:4.6ch;margin-left:0.4em;';
 
     // 两行都不换行，数字等宽，避免每秒跳动时宽度抖动
     [el1, el2].forEach(function (el) {
@@ -53,6 +59,7 @@
     }
 
     var lastHtml2 = '';
+    var lastBadgeHtml = null;
 
     function render() {
         accumulate();
@@ -68,6 +75,13 @@
                     playedText(mins).replace('<', '&lt;') + '</span>';
         if (el1.textContent !== LINE1) el1.textContent = LINE1;
         if (html2 !== lastHtml2) { el2.innerHTML = html2; lastHtml2 = html2; }
+
+        if (badge) {
+            var portrait = document.body && document.body.classList.contains('portrait-layout');
+            var bh = portrait ? BADGE_TEXT
+                : BADGE_TEXT + '<span style="' + MS_STYLE + '">' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '</span>';
+            if (bh !== lastBadgeHtml) { badge.innerHTML = bh; lastBadgeHtml = bh; }
+        }
     }
 
     render();
