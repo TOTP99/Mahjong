@@ -5,7 +5,7 @@
  *           ⏰ 本次已玩时间 为红色粗体
  * 已玩时间严格按5分钟一档：<5 mins、5 mins、10 mins … 25 mins（25~29分钟都显示 25 mins）。
  * 只存内存，不写 localStorage；页面切到后台时暂停计时。
- * 横屏：竖屏那两行被 CSS 隐藏，改为在左侧栏的 #img-display-badge（TP制作）后面加当前时间的 分:秒，
+ * 横屏：竖屏那两行被 CSS 隐藏，改为在左侧栏的 #img-display-badge（TP制作）后面加当前时间的 时:分:秒，
  *       竖屏时该标签保持原样只显示"TP制作"。
  * 必须放在 13-game-actions.js 之后加载。
  */
@@ -23,8 +23,8 @@
     var badge = document.getElementById('img-display-badge'); // 横屏左侧栏的"TP制作"
     if (!el1 || !el2) return;
     var BADGE_TEXT = 'TP制作';
-    // 分:秒 放固定宽度盒子（4位数字+冒号最大宽度），秒数变化时右边的牌墙文字不抖动
-    var MS_STYLE = 'display:inline-block;width:4.6ch;margin-left:0.4em;';
+    // 时:分:秒 放固定宽度盒子（6位数字+2个冒号的最大宽度），秒数变化时右边的牌墙文字不抖动
+    var MS_STYLE = 'display:inline-block;width:6.8ch;margin-left:0.4em;';
 
     // 两行都不换行，数字等宽，避免每秒跳动时宽度抖动
     [el1, el2].forEach(function (el) {
@@ -79,7 +79,7 @@
         if (badge) {
             var portrait = document.body && document.body.classList.contains('portrait-layout');
             var bh = portrait ? BADGE_TEXT
-                : BADGE_TEXT + '<span style="' + MS_STYLE + '">' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '</span>';
+                : BADGE_TEXT + '<span style="' + MS_STYLE + '">' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '</span>';
             if (bh !== lastBadgeHtml) { badge.innerHTML = bh; lastBadgeHtml = bh; }
         }
     }
