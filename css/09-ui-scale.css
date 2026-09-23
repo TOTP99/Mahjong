@@ -68,6 +68,20 @@ body:not(.portrait-layout) .ai-exposed {
 body:not(.portrait-layout) .left .ai-exposed,
 body:not(.portrait-layout) .right .ai-exposed {
     max-width: calc(127px * var(--ui-k, 1));
+    /* .left/.right 用 translateY(-50%) 把「容器自身高度的一半」当居中锚点：
+       只有一侧出副露时，该侧容器变高，连带头像一起被向上带偏，导致虎狮失去水平中线对齐。
+       把副露改成脱离文档流，使其不再计入容器高度——头像位置从此与副露数量、行数完全无关，
+       无论哪一侧有没有副露、有没有第二行，两侧头像永远对齐。 */
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+}
+/* 给上面的绝对定位提供正确的定位基准（= player-label 的外框，而不是整个 .player） */
+body:not(.portrait-layout) .left .player-side-stack,
+body:not(.portrait-layout) .right .player-side-stack {
+    position: relative;
 }
 body:not(.portrait-layout) .ai-exposed .tile {
     width: calc(var(--side-tile-w) * 0.814 * var(--ui-k, 1));
