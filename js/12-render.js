@@ -4,11 +4,11 @@ function renderTile(t, idx, clickable) {
     if (idx === selectedIndex) marker = '➡️';
     else if (idx === lastDrawnIndex) marker = '⬇️';
     const danger = isDangerousTile(t) ? 'danger' : '';
-    return `<div class="tile-wrap"><div class="tile-marker">${marker}</div><div class="tile ${clickable ? '' : 'disabled'} ${danger}" data-index="${idx}">${tileGlyph(t)}</div></div>`;
+    return `<div class="tile-wrap"><div class="tile-marker">${marker}</div><div class="tile ${clickable ? '' : 'disabled'} ${danger}" data-index="${idx}">${tileImg(t)}</div></div>`;
 }
 
 function renderExposedFace(t) {
-    return `<div class="tile-wrap"><div class="tile-marker"></div><div class="tile exposed">${tileGlyph(t)}</div></div>`;
+    return `<div class="tile-wrap"><div class="tile-marker"></div><div class="tile exposed">${tileImg(t)}</div></div>`;
 }
 
 function renderExposedBack() {
@@ -48,7 +48,7 @@ function renderPoolGrid() {
     if (count) count.textContent = '（' + discardPile.length + ' 张）';
     const sortedPool = [...discardPile].sort((a, b) => poolTileCompare(a.tile, b.tile));
     grid.innerHTML = sortedPool.length
-        ? sortedPool.map(d => `<div class="pool-tile">${tileGlyph(d.tile)}</div>`).join('')
+        ? sortedPool.map(d => `<div class="pool-tile">${tileImg(d.tile)}</div>`).join('')
         : '<div class="pool-empty">暂无弃牌</div>';
 }
 
@@ -75,7 +75,7 @@ function render() {
     const isPortrait = document.body && document.body.classList.contains('portrait-layout');
     const discardView = discardPile.slice(isPortrait ? -24 : -12);
     wall.innerHTML = discardView.map((d, i, arr) =>
-        `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileGlyph(d.tile)}</div>`).join('');
+        `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
     $('wall-count-text').innerText = '牌墙: ' + deck.length + ' 张' + (aiLearn.games > 0 ? ' · 💡' + aiLearn.games : '');
     $('wall-count-text').title = aiLearn.games > 0
         ? 'AI已学习' + aiLearn.games + '局：保守' + aiLearn.confidence.conservative.toFixed(1)
@@ -225,7 +225,7 @@ function formatWaitsHtml(concealed, exposed, extraSeen) {
         // 竖屏上听：只显示可胡的牌面，不带余张与合计（单行、省宽度）
         if (isPortrait) {
             const shown = waits.slice(0, TENPAI_HINT_MAX_TYPES).map(t =>
-                `<span class="th-w"><b>${tileGlyph(t)}</b></span>`).join('');
+                `<span class="th-w"><b>${tileImg(t, 'inline')}</b></span>`).join('');
             const more = waits.length > TENPAI_HINT_MAX_TYPES ? '<span class="th-more">…</span>' : '';
             return `<span class="th-lab">听</span>${shown}${more}`;
         }
@@ -237,7 +237,7 @@ function formatWaitsHtml(concealed, exposed, extraSeen) {
             return { t, left };
         });
         const shown = items.slice(0, TENPAI_HINT_MAX_TYPES).map(x =>
-            `<span class="th-w${x.left === 0 ? ' th-none' : ''}"><b>${tileGlyph(x.t)}</b><i>${x.left}</i></span>`).join('');
+            `<span class="th-w${x.left === 0 ? ' th-none' : ''}"><b>${tileImg(x.t, 'inline')}</b><i>${x.left}</i></span>`).join('');
         const more = items.length > TENPAI_HINT_MAX_TYPES ? '<span class="th-more">…</span>' : '';
         return `<span class="th-lab">听</span>${shown}${more}<span class="th-sum">共${total}张</span>`;
     }
@@ -259,7 +259,7 @@ function computeTenpaiHint() {
         const t = hand[selectedIndex];
         const rest = hand.slice(); rest.splice(selectedIndex, 1);
         const body = formatWaitsHtml(rest, ex, t);
-        return `<span class="th-lab th-dis">打${tileGlyph(t)}</span>` + (body || '<span class="th-miss">未听牌</span>');
+        return `<span class="th-lab th-dis">打${tileImg(t, 'inline')}</span>` + (body || '<span class="th-miss">未听牌</span>');
     }
     // 还没点选：列出哪些打法能听牌
     const outs = [];
@@ -269,7 +269,7 @@ function computeTenpaiHint() {
     }
     outs.sort(tileCompare);
     if (!outs.length) return '';
-    return `<span class="th-lab">可听牌</span><span class="th-miss">打 ${outs.map(tileGlyph).join(' ')}</span>`;
+    return `<span class="th-lab">可听牌</span><span class="th-miss">打 ${outs.map(t => tileImg(t, 'inline')).join(' ')}</span>`;
 }
 
 /** 把提示画到猫右边（.avatar-with-toggle 内绝对定位）；开关关或无内容时不显示 */

@@ -92,7 +92,7 @@ function callChi() {
     opts.innerHTML = pendingClaim.chiCombos.map((combo, i) => {
         const tiles = [...combo, pendingClaim.tile].sort(tileCompare);
         const tilesHtml = tiles.map(t =>
-            `<div class="tile-wrap"><div class="tile-marker"></div><div class="tile exposed">${tileGlyph(t)}</div></div>`
+            `<div class="tile-wrap"><div class="tile-marker"></div><div class="tile exposed">${tileImg(t)}</div></div>`
         ).join('');
         return `<div class="hu-opt enabled" onclick="chooseChiCombo(${i})">${tilesHtml}</div>`;
     }).join('');

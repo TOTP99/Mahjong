@@ -40,7 +40,7 @@ function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
         concealedSorted.map(t => {
             const isWin = !winMarked && t === winTile;
             if (isWin) winMarked = true;
-            return `<div class="tile-wrap"><div class="tile-marker"></div><div class="tile exposed${isWin ? ' win-glow' : ''}">${tileGlyph(t)}</div></div>`;
+            return `<div class="tile-wrap"><div class="tile-marker"></div><div class="tile exposed${isWin ? ' win-glow' : ''}">${tileImg(t)}</div></div>`;
         }).join('') || '（无）';
     $('result-exposed').innerHTML =
         exposedMelds[winnerPlayer].map(renderMeldGroup).join('') || '（无）';

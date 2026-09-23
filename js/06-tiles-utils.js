@@ -50,3 +50,30 @@ function tileName(t) {
     if (tileSuit(t) === '字') return honors[tileRank(t) - 1];
     return rankChinese[tileRank(t) - 1] + tileSuit(t);
 }
+
+// ---------- 牌面图片（tiles/*.webp，与 index.html 同级的 tiles 文件夹）----------
+// 牌码仍是 '5万' '3条' '7筒' '1字'(=东)…；字牌顺序与 honors 一致：东南西北中发白
+const TILE_IMG_DIR = 'tiles/';
+const TILE_IMG_SUITS = { '万': 'man', '条': 'sou', '筒': 'pin' };
+const TILE_IMG_HONORS = ['east', 'south', 'west', 'north', 'red', 'green', 'white'];
+
+function tileImgSrc(t) {
+    const suit = tileSuit(t), rank = tileRank(t);
+    const name = suit === '字' ? TILE_IMG_HONORS[rank - 1] : TILE_IMG_SUITS[suit] + rank;
+    return TILE_IMG_DIR + name + '.webp';
+}
+
+// 牌面 <img>：cls 传 'inline' 用于听牌提示等行内文字里的小牌
+function tileImg(t, cls) {
+    return '<img class="tile-img' + (cls ? ' tile-img-' + cls : '') + '" src="' + tileImgSrc(t) + '" alt="" draggable="false">';
+}
+
+// 提前加载 34 张牌面，避免第一次亮牌/摸牌时闪一下
+(function preloadTileImages() {
+    try {
+        const all = [];
+        for (const s of suits) for (let n = 1; n <= 9; n++) all.push(n + s);
+        for (let n = 1; n <= honors.length; n++) all.push(n + '字');
+        all.forEach(t => { const im = new Image(); im.src = tileImgSrc(t); });
+    } catch (e) {}
+})();
