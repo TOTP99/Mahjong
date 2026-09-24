@@ -64,13 +64,13 @@ function declareDraw() {
     } else {
         msg += '听牌：' + tenpaiPlayers.map(nameOf).join('、') + '；不听：' + notTenpai.map(nameOf).join('、');
     }
-    logFlow(msg + ' 点✅开下一局');
+    logFlow(msg + ' 点确认开下一局');
     speak('流局');
     learnFromDraw(tenpaiPlayers);
     render();
     // 骰子按钮已移除：流局后用提示条开下一局
     pendingClaim = { mode: 'nextGame' };
-    showIndicator('🔔 流局', true);
+    showIndicator('流局', true);
 }
 
 
@@ -83,7 +83,7 @@ const SPEECH_QUEUE_MAX = 2; // 等待中最多囤2句，避免动作太密时语
 function speak(text) {
     try {
         if (!window.speechSynthesis) return;
-        const clean = text.replace(/🐲|🐯|🦁|🐈|👑/g, '');
+        const clean = text.replace(/🐲|🐯|🦁|🐈/g, '');
         speechQueue.push(clean);
         // 队列积压太多时丢弃最旧的等待项，只保留最近的，让语音尽量追上当前局面
         while (speechQueue.length > SPEECH_QUEUE_MAX) speechQueue.shift();
@@ -205,15 +205,15 @@ function continueAfterFirstTurnCheck(player) {
     }
 }
 
-// 检查自己回合是否可暗杠或加杠，弹出 🔔杠 ✅❎（可选，点❎或不理会都能继续出牌）
+// 检查自己回合是否可暗杠或加杠，弹出「杠」提示与确认/过按钮（可选，点过或不理会都能继续出牌）
 function offerSelfGangIfAny() {
     if (gameOver || pendingClaim) return;
     // 加杠：已碰过的牌，手里又有第4张
     for (const meld of exposedMelds.bottom) {
         if (meld.type === 'peng' && hands.bottom.includes(meld.tiles[0])) {
             pendingClaim = { mode: 'selfGang', kind: 'jia', tile: meld.tiles[0] };
-            showIndicator('🔔 杠', true);
-            logFlow('可以加杠 ' + tileGlyph(meld.tiles[0]) + '，点✅杠 / 点❎或直接出牌');
+            showIndicator('杠', true);
+            logFlow('可以加杠 ' + tileGlyph(meld.tiles[0]) + '，点确认杠 / 点过或直接出牌');
             return;
         }
     }
@@ -224,8 +224,8 @@ function offerSelfGangIfAny() {
         for (const t in counts) {
             if (counts[t] >= 4) {
                 pendingClaim = { mode: 'selfGang', kind: 'an', tile: t };
-                showIndicator('🔔 杠', true);
-                logFlow('可以暗杠 ' + tileGlyph(t) + '，点✅杠 / 点❎或直接出牌');
+                showIndicator('杠', true);
+                logFlow('可以暗杠 ' + tileGlyph(t) + '，点确认杠 / 点过或直接出牌');
                 return;
             }
         }

@@ -128,7 +128,7 @@ function checkTileConservation(reason) {
     if (key !== _lastTileWarnKey) {
         _lastTileWarnKey = key;
         try { console.warn('[tile-check] 牌总数异常', n, '/', FULL_DECK_SIZE, '@' + reason, { deck: deck.length, discard: discardPile.length, hands: cloneState(hands), melds: cloneState(exposedMelds) }); } catch (e) {}
-        try { logFlow('⚠️牌总数异常 ' + n + '/' + FULL_DECK_SIZE + (reason ? ' @' + reason : '')); } catch (e) {}
+        try { logFlow('【异常】牌总数异常 ' + n + '/' + FULL_DECK_SIZE + (reason ? ' @' + reason : '')); } catch (e) {}
     }
     return false;
 }
@@ -154,7 +154,7 @@ function checkTileConservation(reason) {
  *                  closeResultModal showIndicator hideIndicator highlightActive syncBodyScrollLock nameOf stripEmoji speak logFlow
  * ==================================================================================================== */
 
-// 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像 风位 奖杯 庄家 听牌提示（例如 🐲 西 🏆 🎲 ⚠️）
+// 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像 风位 奖杯 庄家 听牌提示（例如 🐲 西 ★ 庄 听）
 function renderStatRow(elId, cellFor) {
     const el = $(elId);
     if (!el) return;
@@ -181,17 +181,17 @@ function markDealer() {
         ensurePortraitStatRows();
         renderStatRow('stat-avatar', p => statAvatar[p]);
         renderStatRow('stat-wind', p => baseNames[p]);
-        renderStatRow('stat-medal', p => (maxScore > 0 && scores[p] === maxScore) ? '🏆' : '');
-        renderStatRow('stat-dealer', p => p === dealer ? '🎲' : '');
-        renderStatRow('stat-tenpai', p => isTenpai(p) ? '⚠️' : '');
+        renderStatRow('stat-medal', p => (maxScore > 0 && scores[p] === maxScore) ? '<span class="ico-star">★</span>' : '');
+        renderStatRow('stat-dealer', p => p === dealer ? '<span class="ico-badge ico-dealer">庄</span>' : '');
+        renderStatRow('stat-tenpai', p => isTenpai(p) ? '<span class="ico-badge ico-tenpai">听</span>' : '');
     } else {
         // 横屏：侧栏每人一行
         const ps = $('player-stats');
         if (ps) {
             ps.innerHTML = statOrder.map(p => {
-                const medal = (maxScore > 0 && scores[p] === maxScore) ? ' 🏆' : '';
-                const dealerMark = p === dealer ? ' 🎲' : '';
-                const tenpaiMark = isTenpai(p) ? ' ⚠️' : '';
+                const medal = (maxScore > 0 && scores[p] === maxScore) ? ' <span class="ico-star">★</span>' : '';
+                const dealerMark = p === dealer ? ' <span class="ico-badge ico-dealer">庄</span>' : '';
+                const tenpaiMark = isTenpai(p) ? ' <span class="ico-badge ico-tenpai">听</span>' : '';
                 return `<div class="stat-line">${statAvatar[p]} ${baseNames[p]}${medal}${dealerMark}${tenpaiMark}</div>`;
             }).join('');
         }
@@ -354,8 +354,8 @@ function resumeFromSave() {
     if (gameOver) {
         // 结算弹窗无法原样恢复：统一给出「开下一局」入口（庄家轮转仍按 winner 计算）
         pendingClaim = { mode: 'nextGame' };
-        showIndicator('🔔 下一局', true);
-        logFlow((winner ? (nameOf(winner) + ' 胡了。') : '流局。') + '点✅开下一局（积分与庄家已保留）');
+        showIndicator('下一局', true);
+        logFlow((winner ? (nameOf(winner) + ' 胡了。') : '流局。') + '点确认开下一局（积分与庄家已保留）');
         return;
     }
     // 情形一：刷新时你正在「亮牌/不亮」弹窗里——重新弹出，选完会接着做自摸判断

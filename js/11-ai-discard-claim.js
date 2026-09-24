@@ -592,8 +592,8 @@ function checkClaimOrAdvance(player, tile) {
     if (canP || canG || chiCombos.length) {
         pendingClaim = { tile, fromPlayer: player, canPeng: canP, canGang: canG, chiCombos, mode: 'claim' };
         const options = [canG ? '杠' : null, canP ? '碰' : null, chiCombos.length ? '吃' : null].filter(Boolean).join('/');
-        showIndicator('🔔 ' + options, true);
-        logFlow('可以' + options + '，点✅执行 / 点❎过');
+        showIndicator(options, true);
+        logFlow('可以' + options + '，点确认执行 / 点过');
         return;
     }
     resolveAiPengOrAdvance(player, tile);

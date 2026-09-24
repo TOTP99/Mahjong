@@ -141,8 +141,8 @@ function checkPortraitGuard() {
         try { markDealer(); } catch (e) {}
         try { render(); } catch (e) {}
     }
-    setTimeout(fitBottomHand, 60);
-    if (isPortrait) setTimeout(fitBottomHand, 200);
+    setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);
+    if (isPortrait) setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 200);
 }
 
 /** 旋转/尺寸变化后多次复核（iOS 地址栏收起与旋转动画期间尺寸会变） */

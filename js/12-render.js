@@ -1,8 +1,8 @@
 // ---------- 渲染 ----------
 function renderTile(t, idx, clickable) {
     let marker = '';
-    if (idx === selectedIndex) marker = '➡️';
-    else if (idx === lastDrawnIndex) marker = '⬇️';
+    if (idx === selectedIndex) marker = '<span class="mk-sel">▼</span>';
+    else if (idx === lastDrawnIndex) marker = '<span class="mk-new">●</span>';
     const danger = isDangerousTile(t) ? 'danger' : '';
     return `<div class="tile-wrap"><div class="tile-marker">${marker}</div><div class="tile ${clickable ? '' : 'disabled'} ${danger}" data-index="${idx}">${tileImg(t)}</div></div>`;
 }
@@ -12,7 +12,7 @@ function renderExposedFace(t) {
 }
 
 function renderExposedBack() {
-    return `<div class="tile-wrap"><div class="tile-marker"></div><div class="tileback">🀫</div></div>`;
+    return `<div class="tile-wrap"><div class="tile-marker"></div><div class="tileback">${tileBackImg()}</div></div>`;
 }
 
 // 按组渲染一组已亮出的牌：亮牌(风/箭)用黑色虚线框；暗杠用黄色虚线框，3张扣着1张露出(避免完全认不出是什么牌)；其余照常整组亮出
@@ -76,7 +76,7 @@ function render() {
     const discardView = discardPile.slice(isPortrait ? -24 : -12);
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
-    $('wall-count-text').innerText = '牌墙: ' + deck.length + ' 张' + (aiLearn.games > 0 ? ' · 💡' + aiLearn.games : '');
+    $('wall-count-text').innerText = '牌墙: ' + deck.length + ' 张' + (aiLearn.games > 0 ? ' · 学' + aiLearn.games + '局' : '');
     $('wall-count-text').title = aiLearn.games > 0
         ? 'AI已学习' + aiLearn.games + '局：保守' + aiLearn.confidence.conservative.toFixed(1)
             + ' 激进' + aiLearn.confidence.aggressive.toFixed(1) + ' 精明' + aiLearn.confidence.shrewd.toFixed(1)
@@ -136,9 +136,9 @@ function fitBottomHand() {
 }
 
 // ---------- 听牌提示（只针对你自己的手牌） ----------
-// · 你出完牌、等别人时（暗牌张数 = 完整手牌 - 1）：显示「听 🀇2 🀊1 · 共3张」——听哪几张、每张场上还剩几张
-// · 轮到你、点选了一张牌（➡️）：显示「打🀃 → 听 …」，告诉你打这张之后听什么；不听则显示「未听牌」
-// · 轮到你、还没点选：如果有能听牌的打法，列出来「可听牌：打 🀃 🀆」
+// · 你出完牌、等别人时（暗牌张数 = 完整手牌 - 1）：显示「听 一万2 四万1 · 共3张」——听哪几张、每张场上还剩几张
+// · 轮到你、点选了一张牌（▼）：显示「打北 → 听 …」，告诉你打这张之后听什么；不听则显示「未听牌」
+// · 轮到你、还没点选：如果有能听牌的打法，列出来「可听牌：打 北 白」
 // · 结构上已经成型、但穷胡规则还缺条件（开门/三门齐/幺九/刻子）时：显示「成型 · 缺：开门」
 // 「余」= 4 − 你能看到的张数（你的手牌、所有弃牌、所有明面副露、你自己的暗杠）；别人手里的暗牌和暗杠你看不到，不计入。
 // 听哪几张直接用 getWinningTilesOf（与真正判胡的 checkHu 同一套规则、带缓存），不会和实际能不能胡不一致。
@@ -146,19 +146,19 @@ function fitBottomHand() {
 const TENPAI_HINT_ENABLED = true;
 const TENPAI_HINT_MAX_TYPES = 6;   // 最多列出几种听牌，多了显示「…」
 const TENPAI_HINT_UI_KEY = 'qionghu_mahjong_tenpai_hint_ui_v1';
-/** UI 开关：只有为 true 时才显示 #tenpai-hint 胶囊；由猫头像旁 💬 控制，localStorage 持久化。默认关。 */
+/** UI 开关：只有为 true 时才显示 #tenpai-hint 胶囊；由猫头像旁的对话气泡按钮控制，localStorage 持久化。默认关。 */
 let tenpaiHintUiOn = (function () {
     try {
         const v = localStorage.getItem(TENPAI_HINT_UI_KEY);
         if (v === '1' || v === 'true') return true;
         if (v === '0' || v === 'false') return false;
     } catch (e) {}
-    return false; // 默认不出现胶囊，需点 💬 才开
+    return false; // 默认不出现胶囊，需点对话气泡才开
 })();
 const _partialCache = new Map();
 let _tenpaiHintHtml = null;
 
-/** 同步 💬 按钮外观与 aria；在 DOM 就绪后调用 */
+/** 同步对话气泡按钮外观与 aria；在 DOM 就绪后调用 */
 function syncTenpaiHintToggleUi() {
     const btn = $('tenpai-hint-toggle');
     if (!btn) return;
@@ -171,7 +171,7 @@ function syncTenpaiHintToggleUi() {
     }
 }
 
-/** 点击猫头像旁 💬：切换听牌提示开关并立刻刷新胶囊 */
+/** 点击猫头像旁的对话气泡：切换听牌提示开关并立刻刷新胶囊 */
 function toggleTenpaiHint() {
     if (!TENPAI_HINT_ENABLED) return;
     tenpaiHintUiOn = !tenpaiHintUiOn;
@@ -217,7 +217,7 @@ function partialWaitInfo(concealed, exposed) {
     return best;
 }
 
-/** 听牌 HTML：waits 非空 → 横屏「听 🀇2 🀊1 · 共3张」；竖屏上听只显示胡啥「听 🀇 🀊」；否则成型缺条件；都没有返回 null */
+/** 听牌 HTML：waits 非空 → 横屏「听 一万2 四万1 · 共3张」；竖屏上听只显示胡啥「听 一万 四万」；否则成型缺条件；都没有返回 null */
 function formatWaitsHtml(concealed, exposed, extraSeen) {
     const waits = getWinningTilesOf(concealed, exposed, 'bottom');
     if (waits.length) {

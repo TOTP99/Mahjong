@@ -74,7 +74,7 @@ function applyViewScale() {
         if (wrapEl) void wrapEl.offsetHeight;
         if (frameEl) void frameEl.offsetHeight;
     });
-    setTimeout(fitBottomHand, 120);
+    setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 120);
 }
 
 /** delta: +0.05 扩大 / -0.05 缩小；相对「原始正常大小」等比缩放 */
@@ -199,7 +199,7 @@ function autoFitLandscapeView() {
             requestAnimationFrame(() => wrap.classList.remove('panning'));
         }
         syncViewScaleButtons();
-        setTimeout(fitBottomHand, 60);
+        setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);
         return true;
     } catch (e) {
         try { document.getElementById('table-wrap').classList.remove('panning'); } catch (e2) {}
@@ -295,7 +295,7 @@ const AUTO_UI_SCALE = true;   // false：不放大，一切保持原尺寸
 const UI_K_MAX = 2;           // 放大上限
 const UI_GAP = 2;             // 各区域之间至少留的空隙（牌桌自身像素）
 const UI_SAFETY = 0.998;      // 在算出的最大值上只留 0.2% 余量（再复核一次，仍冲突就继续减小）
-const UI_SAMPLE_LOG = '可以暗杠 🀇，点✅杠 / 点❎或直接出牌'; // 按较长的一句提示来预留高度
+const UI_SAMPLE_LOG = '可以暗杠 三万，点确认杠 / 点过或直接出牌'; // 按较长的一句提示来预留高度
 let uiScaleK = 1;
 let _uiSig = '';
 let _uiBaseExtra = new Set(); // 系数=1 时就已经和「牌墙统计栏 W / 弃牌区 D」重叠的组合（原布局如此，不当作放大造成的冲突）
@@ -517,8 +517,8 @@ async function toggleLandscapeMaximize() {
             setTimeout(() => { syncAppViewportVars(); fitBottomHand(); }, ms);
         });
     }
-    setTimeout(fitBottomHand, 180);
-    setTimeout(fitBottomHand, 450);
+    setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 180);
+    setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 450);
     scheduleAutoFitBurst();
 }
 document.addEventListener('fullscreenchange', () => {

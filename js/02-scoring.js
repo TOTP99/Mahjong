@@ -150,7 +150,7 @@ function validateHandCounts(reason) {
         const alt = expectedConcealedLen(p, !needDiscard);
         if (len !== expect && len !== alt) {
             ok = false;
-            const msg = '⚠️手牌张数异常 ' + nameOf(p) + ' 暗牌' + len + '张/副露' + expN
+            const msg = '【异常】手牌张数异常 ' + nameOf(p) + ' 暗牌' + len + '张/副露' + expN
                 + '（期望' + expect + '或' + alt + '）' + (reason ? ' @' + reason : '');
             try { logFlow(msg); } catch (e) {}
             try { console.warn('[hand-check]', msg, hands[p], exposedMelds[p]); } catch (e2) {}

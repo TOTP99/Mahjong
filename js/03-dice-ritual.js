@@ -191,8 +191,7 @@ function startDiceRitual() {
 function showDiceResetMenu() {
     const el = $('claim-indicator');
     el.innerHTML =
-        '<span class="claim-bell">🔔</span>'
-        + '<div class="reset-menu">'
+        '<div class="reset-menu">'
         + '<button type="button" class="reset-btn" onclick="event.stopPropagation();confirmFullReset()">清零重启</button>'
         + '<button type="button" class="reset-btn" onclick="event.stopPropagation();cancelDiceRitual()">继续加油</button>'
         + '</div>';
@@ -208,16 +207,16 @@ function cancelDiceRitual() {
     diceSavedClaim = null;
     if (!pendingClaim) return;
     if (pendingClaim.mode === 'nextGame') {
-        showIndicator('🔔 下一局', true);
+        showIndicator('下一局', true);
     } else if (pendingClaim.mode === 'selfGang') {
-        showIndicator('🔔 杠', true);
+        showIndicator('杠', true);
     } else if (pendingClaim.mode === 'claim') {
         const options = [
             pendingClaim.canGang ? '杠' : null,
             pendingClaim.canPeng ? '碰' : null,
             (pendingClaim.chiCombos && pendingClaim.chiCombos.length) ? '吃' : null
         ].filter(Boolean).join('/');
-        showIndicator('🔔 ' + options, true);
+        showIndicator(options, true);
     }
 }
 

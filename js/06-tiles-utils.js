@@ -57,6 +57,11 @@ function tileImg(t, cls) {
     return '<img class="tile-img' + (cls ? ' tile-img-' + cls : '') + '" src="' + tileImgSrc(t) + '" alt="" draggable="false">';
 }
 
+// 牌背 <img>（tiles/back.webp）：加载失败时给外层 .tileback 加 no-img，回退成原来的蓝色牌背底
+function tileBackImg() {
+    return '<img class="tile-img tile-img-back" src="' + TILE_IMG_DIR + 'back.webp" alt="" draggable="false" onerror="if(this.parentNode)this.parentNode.classList.add(\'no-img\');this.remove()">';
+}
+
 // 提前加载 34 张牌面，避免第一次亮牌/摸牌时闪一下
 (function preloadTileImages() {
     try {
@@ -64,5 +69,6 @@ function tileImg(t, cls) {
         for (const s of suits) for (let n = 1; n <= 9; n++) all.push(n + s);
         for (let n = 1; n <= honors.length; n++) all.push(n + '字');
         all.forEach(t => { const im = new Image(); im.src = tileImgSrc(t); });
+        const bk = new Image(); bk.src = TILE_IMG_DIR + 'back.webp';
     } catch (e) {}
 })();

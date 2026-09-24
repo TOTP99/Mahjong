@@ -6,7 +6,7 @@ function startGame() {
 }
 
 
-// 🤫🚫：主动放弃当前可以碰/吃/杠的机会，不用等10秒超时
+// 点过：主动放弃当前可以碰/吃/杠的机会，不用等10秒超时
 function declineClaim() {
     if (!pendingClaim) { logFlow('现在没有可以碰/吃/杠的牌'); return; }
     if (pendingClaim.mode === 'diceMenu') return;
@@ -16,7 +16,7 @@ function declineClaim() {
     pendingClaim = null;
     hideIndicator();
     if (mode === 'nextGame') {
-        startGame(); // 流局后点❎也开下一局
+        startGame(); // 流局后点过也开下一局
         return;
     }
     if (mode === 'selfGang') {
@@ -131,11 +131,11 @@ function executeChi(combo) {
 }
 
 
-// ---------- 你自己的操作：点✅ / 杠 / 杠后补牌 / 点牌出牌（原先放在 11-ai-discard-claim.js） ----------
-// 点✅：按 杠 > 碰 > 吃 优先级执行
+// ---------- 你自己的操作：点确认 / 杠 / 杠后补牌 / 点牌出牌（原先放在 11-ai-discard-claim.js） ----------
+// 点确认：按 杠 > 碰 > 吃 优先级执行
 function acceptClaim() {
     if (!pendingClaim) return;
-    if (pendingClaim.mode === 'diceMenu') return; // 清零菜单用专用按钮，不走✅
+    if (pendingClaim.mode === 'diceMenu') return; // 清零菜单用专用按钮，不走确认
     if (pendingClaim.mode === 'nextGame') {
         pendingClaim = null;
         hideIndicator();
@@ -206,7 +206,7 @@ function handleDiscard(event) {
     if (isNaN(idx) || idx < 0 || idx >= hands.bottom.length) return;
 
     if (selectedIndex !== idx) {
-        // 第一次点这张（或改按了别的牌）：标记➡️等待确认，不真正出牌
+        // 第一次点这张（或改按了别的牌）：标记▼等待确认，不真正出牌
         selectedIndex = idx;
         render();
         return;

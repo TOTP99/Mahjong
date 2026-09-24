@@ -220,16 +220,18 @@ function closeResultModal() {
     if (gameOver) startGame();
 }
 
+// 确认/放弃按钮的图标（内联 SVG：绿底对勾、红底叉；大小跟随 .claim-btn 的 font-size）
+const ICON_CLAIM_YES = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#2f9e5f"/><path d="M6.6 12.6l3.7 3.7 7.1-7.6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_CLAIM_NO = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#c8453b"/><path d="M8.2 8.2l7.6 7.6M15.8 8.2l-7.6 7.6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>';
+
 function showIndicator(text, interactive) {
     const el = $('claim-indicator');
     if (interactive) {
-        const label = text.replace(/^🔔\s*/, '');
-        el.innerHTML = '<span class="claim-bell">🔔</span>'
-            + '<span class="claim-actions">'
-            + '<span class="claim-btn claim-yes" onclick="event.stopPropagation();acceptClaim()">✅</span>'
-            + '<span class="claim-btn claim-no" onclick="event.stopPropagation();declineClaim()">❎</span>'
+        el.innerHTML = '<span class="claim-actions">'
+            + '<span class="claim-btn claim-yes" role="button" aria-label="确认" onclick="event.stopPropagation();acceptClaim()">' + ICON_CLAIM_YES + '</span>'
+            + '<span class="claim-btn claim-no" role="button" aria-label="过" onclick="event.stopPropagation();declineClaim()">' + ICON_CLAIM_NO + '</span>'
             + '</span>'
-            + '<span class="claim-label">' + label + '</span>';
+            + '<span class="claim-label">' + text + '</span>';
     } else {
         el.innerText = text;
     }
@@ -324,7 +326,7 @@ const PLAYER_INTRO = {
     bottom: {
         title: '猫 · 东',
         sub: '由你做主',
-        body: '💬 可开关听牌提示；点头像可查看副露（竖屏）。'
+        body: '头像左侧的对话气泡可开关听牌提示；点头像可查看副露（竖屏）。'
     }
 };
 
