@@ -93,6 +93,9 @@
         line-height: 0;
         z-index: 8;
         pointer-events: auto;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
     }
     .avatar img {
         width: 48px; height: 48px; display: block; object-fit: cover; border-radius: 50%;
@@ -102,6 +105,10 @@
         filter: none;
         position: relative;
         z-index: 1;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        pointer-events: none;
     }
     /* 自家头像外包：占位仍等于头像 → 猫中心不变。
        同一行：💬（绝对贴左）→ 猫 → 胶囊（绝对贴右） */
