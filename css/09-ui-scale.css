@@ -109,7 +109,7 @@ html.orient-changing #table-wrap {
 }
 
 /* ========== 听牌提示（js/12-render.js 的 updateTenpaiHint） ==========
- * 挂在 .avatar-with-toggle 上：绝对贴在头像右侧；💬 在左侧。横竖屏同一行：💬 → 猫 → 胶囊。
+ * 挂在 .avatar-with-toggle 上：绝对贴在头像右侧；对话气泡按钮在左侧。横竖屏同一行：气泡 → 猫 → 胶囊。
  * 始终单行；竖屏上听只显示胡啥（JS）；横屏完整信息。不改变猫占位。 */
 #tenpai-hint {
     position: absolute;

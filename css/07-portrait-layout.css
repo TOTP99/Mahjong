@@ -300,7 +300,6 @@
         align-items: center;
         gap: 6px;
     }
-    body.portrait-layout #claim-indicator .claim-bell { font-size: 22px; line-height: 1; }
     body.portrait-layout #claim-indicator .claim-actions { gap: 14px; }
     body.portrait-layout #claim-indicator .claim-btn { font-size: 26px; }
     body.portrait-layout #claim-indicator .claim-label {

@@ -111,7 +111,7 @@
         pointer-events: none;
     }
     /* 自家头像外包：占位仍等于头像 → 猫中心不变。
-       同一行：💬（绝对贴左）→ 猫 → 胶囊（绝对贴右） */
+       同一行：对话气泡按钮（绝对贴左）→ 猫 → 胶囊（绝对贴右） */
     .avatar-with-toggle {
         display: inline-block;
         position: relative;

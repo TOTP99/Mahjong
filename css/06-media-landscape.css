@@ -108,7 +108,6 @@
         #reveal-modal .hu-box,
         #chi-choice-modal .hu-box,
         #dice-scene,
-        .claim-bell,
         .tile.win-glow {
             transition: none !important;
             animation: none !important;
