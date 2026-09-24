@@ -234,6 +234,11 @@ function showIndicator(text, interactive) {
         el.innerText = text;
     }
     el.classList.add('show');
+    // 竖屏：提示与副露浮层同坐标，提示出现时只藏浮层视觉，不改 exposedInfoShownFor（点头像逻辑不变）
+    if (document.body && document.body.classList.contains('portrait-layout')) {
+        const tip = $('tile-tooltip');
+        if (tip) tip.classList.remove('show');
+    }
     // 横屏：提示在左侧列表下方，滚入可视区；竖屏固定在牌桌空地，不滚动
     if (!(document.body && document.body.classList.contains('portrait-layout'))) {
         try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
@@ -244,6 +249,11 @@ function hideIndicator() {
     const el = $('claim-indicator');
     el.classList.remove('show');
     el.innerHTML = '';
+    // 竖屏：提示关掉后，若用户仍在「查看某家副露」状态，把浮层重新打开
+    if (document.body && document.body.classList.contains('portrait-layout')
+        && typeof exposedInfoShownFor !== 'undefined' && exposedInfoShownFor) {
+        try { showExposedInfo(exposedInfoShownFor); } catch (e) {}
+    }
 }
 
 // ---- 竖屏副露：点击头像显示/隐藏（横屏仍用头像下常驻副露，不走此浮层）----
@@ -285,7 +295,10 @@ function showExposedInfo(player) {
         return `<div class="tt-meld"><span class="tt-tiles">${tilesHtml}</span></div>`;
     }).join('');
     tooltip.innerHTML = head + rows;
-    tooltip.classList.add('show');
+    // 吃碰提示正在显示时不叠层：只更新内容与状态，等 hideIndicator 再亮出
+    const claimOn = $('claim-indicator') && $('claim-indicator').classList.contains('show');
+    if (claimOn) tooltip.classList.remove('show');
+    else tooltip.classList.add('show');
 }
 
 function hideExposedInfo() {
