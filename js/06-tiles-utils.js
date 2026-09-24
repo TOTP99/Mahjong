@@ -29,26 +29,15 @@ function shuffle(array) {
 function tileSuit(t){ return t.slice(-1); }
 function tileRank(t){ return parseInt(t.slice(0, -1), 10); }
 
-// Unicode 麻将牌字符（万/条/筒/字）
-const wanGlyphs  = ['🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'];
-const tiaoGlyphs = ['🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'];
-const tongGlyphs = ['🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'];
-const honorGlyphs = ['🀀','🀁','🀂','🀃','🀄','🀅','🀆']; // 东南西北中发白
-
-function tileGlyph(t) {
-    const suit = tileSuit(t);
-    const rank = tileRank(t);
-    if (suit === '万') return wanGlyphs[rank - 1];
-    if (suit === '条') return tiaoGlyphs[rank - 1];
-    if (suit === '筒') return tongGlyphs[rank - 1];
-    if (suit === '字') return honorGlyphs[rank - 1];
-    return t;
-}
-
 const rankChinese = ['一','二','三','四','五','六','七','八','九'];
 function tileName(t) {
     if (tileSuit(t) === '字') return honors[tileRank(t) - 1];
     return rankChinese[tileRank(t) - 1] + tileSuit(t);
+}
+
+// 流程日志等纯文字场景：用中文牌名（三万、东…），不再使用 Unicode 麻将字符
+function tileGlyph(t) {
+    return tileName(t);
 }
 
 // ---------- 牌面图片（tiles/*.webp，与 index.html 同级的 tiles 文件夹）----------
