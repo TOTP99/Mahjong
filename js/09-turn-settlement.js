@@ -234,7 +234,7 @@ function showIndicator(text, interactive) {
         el.innerText = text;
     }
     el.classList.add('show');
-    // 竖屏：提示与副露浮层同坐标，提示出现时只藏浮层视觉，不改 exposedInfoShownFor（点头像逻辑不变）
+    // 竖屏：提示与副露浮层同坐标，提示出现时只藏浮层视觉，不改 exposedInfoShownFor
     if (document.body && document.body.classList.contains('portrait-layout')) {
         const tip = $('tile-tooltip');
         if (tip) tip.classList.remove('show');
@@ -249,7 +249,7 @@ function hideIndicator() {
     const el = $('claim-indicator');
     el.classList.remove('show');
     el.innerHTML = '';
-    // 竖屏：提示关掉后，若用户仍在「查看某家副露」状态，把浮层重新打开
+    // 竖屏：提示关掉后，若仍在查看某家副露，重新打开浮层
     if (document.body && document.body.classList.contains('portrait-layout')
         && typeof exposedInfoShownFor !== 'undefined' && exposedInfoShownFor) {
         try { showExposedInfo(exposedInfoShownFor); } catch (e) {}
@@ -261,7 +261,6 @@ let exposedInfoShownFor = null;
 
 function toggleExposedInfo(player) {
     if (!(document.body && document.body.classList.contains('portrait-layout'))) {
-        // 横屏：不使用浮层，保持原有头像下副露逻辑
         return;
     }
     if (exposedInfoShownFor === player) {
@@ -284,7 +283,6 @@ function showExposedInfo(player) {
     }
     const avatar = (typeof statAvatar !== 'undefined' && statAvatar[player]) ? statAvatar[player] : '';
     const head = avatar ? `<div class="tt-avatar">${avatar}</div>` : '';
-    // 仅三排牌面，无文字标签；最上排上方显示该家 emoji 头像
     const rows = melds.slice(0, 3).map(m => {
         let tilesHtml;
         if (m.type === 'gang' && m.concealed) {
@@ -295,7 +293,6 @@ function showExposedInfo(player) {
         return `<div class="tt-meld"><span class="tt-tiles">${tilesHtml}</span></div>`;
     }).join('');
     tooltip.innerHTML = head + rows;
-    // 吃碰提示正在显示时不叠层：只更新内容与状态，等 hideIndicator 再亮出
     const claimOn = $('claim-indicator') && $('claim-indicator').classList.contains('show');
     if (claimOn) tooltip.classList.remove('show');
     else tooltip.classList.add('show');
@@ -306,6 +303,115 @@ function hideExposedInfo() {
     const tooltip = $('tile-tooltip');
     if (tooltip) tooltip.classList.remove('show');
 }
+
+// ---- 长按头像：玩家文字介绍（禁系统复制/分享菜单）----
+const PLAYER_INTRO = {
+    top: {
+        title: '龙 · 西',
+        sub: '性格精明 · 攻守平衡',
+        body: '吃碰看收益，不乱开火。中发白、风牌多留；危险牌会躲，不僵持。副露适中，重听牌质量与安全。'
+    },
+    left: {
+        title: '虎 · 北',
+        sub: '性格保守 · 求稳少险',
+        body: '优先安全牌，少点炮。吃碰很挑，向听变差基本不做；副露也少。听后更不拆牌，偏稳。'
+    },
+    right: {
+        title: '狮 · 南',
+        sub: '性格激进 · 敢打敢冲',
+        body: '为求速度更敢吃碰、开门，可接受向听稍差。副露可偏多，常往碰碰胡靠。躲炮少，进攻强，也易放炮。'
+    },
+    bottom: {
+        title: '猫 · 东',
+        sub: '由你做主',
+        body: '💬 可开关听牌提示；点头像可查看副露（竖屏）。'
+    }
+};
+
+const AVATAR_LONGPRESS_MS = 480;
+let _avatarLpTimer = 0;
+let _avatarLpFired = false;
+let _avatarLpPlayer = null;
+
+function playerFromAvatarEl(el) {
+    const p = el && el.closest && el.closest('.player');
+    if (!p || !p.id || p.id.indexOf('p-') !== 0) return null;
+    return p.id.slice(2);
+}
+
+function showPlayerIntro(player) {
+    const info = PLAYER_INTRO[player];
+    if (!info) return;
+    const modal = $('player-intro-modal');
+    if (!modal) return;
+    const t = $('player-intro-title');
+    const s = $('player-intro-sub');
+    const b = $('player-intro-body');
+    if (t) t.textContent = info.title;
+    if (s) s.textContent = info.sub;
+    if (b) b.textContent = info.body;
+    modal.classList.add('show');
+}
+
+function closePlayerIntro() {
+    const modal = $('player-intro-modal');
+    if (modal) modal.classList.remove('show');
+}
+
+function clearAvatarLongPress() {
+    if (_avatarLpTimer) {
+        clearTimeout(_avatarLpTimer);
+        _avatarLpTimer = 0;
+    }
+}
+
+function onAvatarPointerDown(e) {
+    const av = e.target && e.target.closest && e.target.closest('.avatar');
+    if (!av) return;
+    if (e.pointerType === 'mouse' && e.button != null && e.button !== 0) return;
+    const player = playerFromAvatarEl(av);
+    if (!player) return;
+    _avatarLpFired = false;
+    _avatarLpPlayer = player;
+    clearAvatarLongPress();
+    _avatarLpTimer = setTimeout(() => {
+        _avatarLpTimer = 0;
+        _avatarLpFired = true;
+        showPlayerIntro(player);
+    }, AVATAR_LONGPRESS_MS);
+}
+
+function onAvatarPointerUp(e) {
+    clearAvatarLongPress();
+}
+
+function onAvatarClickCapture(e) {
+    const av = e.target && e.target.closest && e.target.closest('.avatar');
+    if (!av) return;
+    if (_avatarLpFired) {
+        e.preventDefault();
+        e.stopPropagation();
+        _avatarLpFired = false;
+    }
+}
+
+function onAvatarContextMenu(e) {
+    const av = e.target && e.target.closest && e.target.closest('.avatar');
+    if (!av) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const player = playerFromAvatarEl(av);
+    if (player) showPlayerIntro(player);
+}
+
+(function bindAvatarLongPress() {
+    const root = document;
+    root.addEventListener('pointerdown', onAvatarPointerDown, { passive: true });
+    root.addEventListener('pointerup', onAvatarPointerUp, { passive: true });
+    root.addEventListener('pointercancel', onAvatarPointerUp, { passive: true });
+    root.addEventListener('click', onAvatarClickCapture, true);
+    root.addEventListener('contextmenu', onAvatarContextMenu, true);
+})();
 
 function highlightActive(player) {
     document.querySelectorAll('.player').forEach(el => el.classList.remove('active'));

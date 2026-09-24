@@ -250,7 +250,7 @@ function handleDiscard(event) {
 
 // 弹窗打开时锁定页面滚动，避免底层与弹层抢惯性
 function syncBodyScrollLock() {
-    const ids = ['result-modal', 'reveal-modal', 'chi-choice-modal', 'pool-modal'];
+    const ids = ['result-modal', 'reveal-modal', 'chi-choice-modal', 'pool-modal', 'player-intro-modal'];
     const open = ids.some(id => {
         const el = $(id);
         return el && el.classList.contains('show');
@@ -272,7 +272,7 @@ function syncBodyScrollLock() {
     }
 }
 (function watchModalsForScrollLock() {
-    const ids = ['result-modal', 'reveal-modal', 'chi-choice-modal', 'pool-modal'];
+    const ids = ['result-modal', 'reveal-modal', 'chi-choice-modal', 'pool-modal', 'player-intro-modal'];
     const obs = new MutationObserver(syncBodyScrollLock);
     ids.forEach(id => {
         const el = $(id);
@@ -312,7 +312,7 @@ function initTablePan() {
     applyViewPan(false);
 
     const isInteractive = (t) => !!(t && t.closest && t.closest(
-        '.tile, .tileback, .discardTile, .pool-tile, .player-label, button, .meld-group, #claim-indicator, #wall-count, #landscape-ctrl, #discard-query-btn, #discardWall, #pool-modal, #result-modal, #reveal-modal, #chi-choice-modal, img, .claim-btn, .reset-btn, .avatar, input'
+        '.tile, .tileback, .discardTile, .pool-tile, .player-label, button, .meld-group, #claim-indicator, #wall-count, #landscape-ctrl, #discard-query-btn, #discardWall, #pool-modal, #result-modal, #reveal-modal, #chi-choice-modal, #player-intro-modal, img, .claim-btn, .reset-btn, .avatar, input'
     ));
 
     const onStart = (clientY, target) => {
