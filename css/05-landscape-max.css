@@ -35,7 +35,7 @@
     /* Android 横屏矮屏：再收紧控件字号，避免挡牌 */
     @media screen and (orientation: landscape) and (max-height: 420px) {
         html.is-android #wall-count-text,
-        body.is-android #wall-count-text { font-size: 10px; }
+        body.is-android #wall-count-text { font-size: 9px; }
         html.is-android #discard-query-btn,
         body.is-android #discard-query-btn { font-size: 9px; }
         html.is-android #view-scale-btns button,

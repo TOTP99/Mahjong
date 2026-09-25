@@ -64,7 +64,7 @@
     /* 很窄宽度（弹窗字号放大后，宽度相应放宽） */
     @media screen and (max-width: 520px) {
         #wall-count-row { gap: 2px 3px; }
-        #wall-count-text { font-size: 10px; }
+        #wall-count-text { font-size: 9px; }
         #landscape-ctrl { font-size: 9px; }
         #view-scale-btns button { font-size: 8px; padding: 2px 5px; min-width: 26px; }
         .result-box { width: min(88vw, 200px); }

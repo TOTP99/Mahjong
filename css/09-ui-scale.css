@@ -9,15 +9,15 @@
 body:not(.portrait-layout) {
     --avatar-base: 48px;
     --score-base: 13.2px;
-    --log-fs-base: 12px;
-    --log-minh-base: 30px;
+    --log-fs-base: 14px;
+    --log-minh-base: 34px;
 }
 @media screen and (orientation: landscape) and (max-height: 420px) {
     body:not(.portrait-layout) {
         --avatar-base: 36px;
         --score-base: 10px;
-        --log-fs-base: 10px;
-        --log-minh-base: 24px;
+        --log-fs-base: 12px;
+        --log-minh-base: 28px;
     }
 }
 @media screen and (orientation: landscape) and (max-height: 360px) {
