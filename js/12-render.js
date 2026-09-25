@@ -71,8 +71,8 @@ function render() {
         }
     }
     const wall = $('discardWall');
-    // 横竖屏都显示最近 24 张（横屏 4 列 = 6 行，竖屏原版就是 24 张）
-    const discardView = discardPile.slice(-24);
+    // 横竖屏都显示最近 20 张（横屏 4 列 = 5 行）
+    const discardView = discardPile.slice(-20);
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
     $('wall-count-text').innerText = '牌墙: ' + deck.length + '张-' + aiLearn.games + '局';
