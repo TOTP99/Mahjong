@@ -30,7 +30,7 @@ function stripEmoji(s) { return s.replace(/🐲|🐯|🦁|🐈/g, ''); } // 兼�
 
 // 显示验胡结算画面：谁胡/自摸or点炮/完整手牌/吃碰杠亮/计分明细/每家加减分
 function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
-    $('result-title').innerText = stripEmoji(nameOf(winnerPlayer)) + '胡';
+    $('result-title').innerText = stripEmoji(nameOf(winnerPlayer)) + ' 胡';
     $('result-subtitle').innerText =
         mode === 'selfdraw' ? '自摸' : (stripEmoji(nameOf(payer)) + ' 点炮');
 
