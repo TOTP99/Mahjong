@@ -83,8 +83,7 @@ const SPEECH_QUEUE_MAX = 2; // 等待中最多囤2句，避免动作太密时语
 function speak(text) {
     try {
         if (!window.speechSynthesis) return;
-        const clean = text.replace(/🐲|🐯|🦁|🐈/g, '');
-        speechQueue.push(clean);
+        speechQueue.push(text);
         // 队列积压太多时丢弃最旧的等待项，只保留最近的，让语音尽量追上当前局面
         while (speechQueue.length > SPEECH_QUEUE_MAX) speechQueue.shift();
         processSpeechQueue();

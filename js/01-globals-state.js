@@ -6,10 +6,10 @@ const turnOrder = ['bottom', 'right', 'top', 'left'];
 const baseNames = { top: '西', left: '北', right: '南', bottom: '东' };
 const statOrder = ['right', 'top', 'left', 'bottom'];
 const statAvatar = {
-    right:  '<img class="stat-avatar-img" src="avatars/stat-lion.webp" alt="">',
-    top:    '<img class="stat-avatar-img" src="avatars/stat-dragon.webp" alt="">',
-    left:   '<img class="stat-avatar-img" src="avatars/stat-tiger.webp" alt="">',
-    bottom: '<img class="stat-avatar-img" src="avatars/stat-cat.webp" alt="">'
+    right: '<img class="stat-avatar-img" src="avatars/stat-lion.webp" alt="南">',
+    top: '<img class="stat-avatar-img" src="avatars/stat-dragon.webp" alt="西">',
+    left: '<img class="stat-avatar-img" src="avatars/stat-tiger.webp" alt="北">',
+    bottom: '<img class="stat-avatar-img" src="avatars/stat-cat.webp" alt="东">'
 };
 
 let deck = [];
@@ -140,7 +140,7 @@ function checkTileConservation(reason) {
 
 // 全部 JS 按 01→14 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
 
-// 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像 风位 奖杯 庄家 听牌提示（例如 🐲 西 ★ 庄 听）
+// 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像图标 风位 奖杯 庄家 听牌提示（例如 [头像] 西 ★ 庄 听）
 function renderStatRow(elId, cellFor) {
     const el = $(elId);
     if (!el) return;

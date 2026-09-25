@@ -23,16 +23,14 @@ function findChiCombos(hand, tile) {
 }
 
 function nameOf(p) {
-    return { top: '西 Dragon', left: '北 Tiger', right: '南 Lion', bottom: '东 Cat' }[p];
+    return { top: '西', left: '北', right: '南', bottom: '东' }[p];
 }
-
-function stripEmoji(s) { return s.replace(/🐲|🐯|🦁|🐈/g, ''); } // 兼容旧文本，当前名字已无 emoji
 
 // 显示验胡结算画面：谁胡/自摸or点炮/完整手牌/吃碰杠亮/计分明细/每家加减分
 function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
-    $('result-title').innerText = stripEmoji(nameOf(winnerPlayer)) + ' 胡';
+    $('result-title').innerText = nameOf(winnerPlayer) + '胡';
     $('result-subtitle').innerText =
-        mode === 'selfdraw' ? '自摸' : (stripEmoji(nameOf(payer)) + ' 点炮');
+        mode === 'selfdraw' ? '自摸' : (nameOf(payer) + ' 点炮');
 
     const concealedSorted = [...hands[winnerPlayer]].sort(tileCompare);
     let winMarked = false;
@@ -82,7 +80,7 @@ function renderSettlementView() {
         const cls = v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
         const sign = v > 0 ? '+' : '';
         const tag = noKaimenPlayers.includes(p) ? ' <span class="no-kaimen-tag">没开门</span>' : '';
-        return `<div class="${cls}">${stripEmoji(nameOf(p))} ${sign}${v}${tag}</div>`;
+        return `<div class="${cls}">${nameOf(p)} ${sign}${v}${tag}</div>`;
     }).join('');
 
     // 调分面板（仅打开时可见）
@@ -91,7 +89,7 @@ function renderSettlementView() {
         const cls = v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
         const tag = noKaimenPlayers.includes(p) ? ' <span class="no-kaimen-tag">没开门</span>' : '';
         return `<div class="payout-row ${cls}">
-            <span class="pname">${stripEmoji(nameOf(p))}${tag}</span>
+            <span class="pname">${nameOf(p)}${tag}</span>
             <button type="button" class="payout-btn" onclick="event.stopPropagation();adjustSettlementPayoutFactor('${p}', 0.5)">÷2</button>
             <input type="number" step="1" value="${v}" data-player="${p}"
                 onchange="onSettlementPayoutEdit(this)">
