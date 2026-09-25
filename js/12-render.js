@@ -71,12 +71,11 @@ function render() {
         }
     }
     const wall = $('discardWall');
-    // 竖屏按原版显示最近 24 张；横屏保持 12 张以免侧栏过挤
-    const isPortrait = document.body && document.body.classList.contains('portrait-layout');
-    const discardView = discardPile.slice(isPortrait ? -24 : -12);
+    // 横竖屏都显示最近 24 张（横屏 4 列 = 6 行，竖屏原版就是 24 张）
+    const discardView = discardPile.slice(-24);
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
-    $('wall-count-text').innerText = '牌墙: ' + deck.length + ' 张' + (aiLearn.games > 0 ? ' · 学' + aiLearn.games + '局' : '');
+    $('wall-count-text').innerText = '牌墙: ' + deck.length + '张-' + aiLearn.games + '局';
     $('wall-count-text').title = aiLearn.games > 0
         ? 'AI已学习' + aiLearn.games + '局：保守' + aiLearn.confidence.conservative.toFixed(1)
             + ' 激进' + aiLearn.confidence.aggressive.toFixed(1) + ' 精明' + aiLearn.confidence.shrewd.toFixed(1)

@@ -2,8 +2,8 @@
  * 接管 #credit-label / #credit-label-2 的全部内容（仅竖屏可见，横屏由 CSS 隐藏）：
  *   第一行（金字）：TP制作✈️🧿3️⃣6️⃣9️⃣🎏🏵️
  *   第二行：时:分:秒 星期(英文全称) 月-日-年(两位) 均为金字（继承 #credit-label-2 的颜色），
- *           「已玩 …」本次已玩时间 为红色粗体
- * 已玩时间严格按5分钟一档：<5 mins、5 mins、10 mins … 25 mins（25~29分钟都显示 25 mins）。
+ *           「在线 …」本次已玩时间 为红色粗体
+ * 在线时间严格按5分钟一档：<5 mins、5 mins、10 mins … 25 mins（25~29分钟都显示 25 mins）。
  * 只存内存，不写 localStorage；页面切到后台时暂停计时。
  * 横屏：竖屏那两行被 CSS 隐藏，改为在左侧栏的 #img-display-badge（TP制作）后面加当前时间的 时:分:秒，
  *       竖屏时该标签保持原样只显示"TP制作"。
@@ -32,7 +32,7 @@
         el.style.fontVariantNumeric = 'tabular-nums';
     });
 
-    // ---- 已玩时长（仅内存，页面隐藏时暂停）----
+    // ---- 在线时长（仅内存，页面隐藏时暂停）----
     var playedMs = 0;
     var lastTick = Date.now();
     var visible = !document.hidden;
@@ -70,8 +70,8 @@
         var clock = '<span style="' + HMS_STYLE + '">' + hms + '</span>' +
                     WEEK[d.getDay()] + ' ' +
                     pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getFullYear() % 100);
-        // 用 innerHTML 是因为要给已玩时间单独上色；内容全部由本脚本生成，没有外部输入
-        var html2 = clock + ' <span style="' + PLAYED_STYLE + '">已玩 ' +
+        // 用 innerHTML 是因为要给在线时间单独上色；内容全部由本脚本生成，没有外部输入
+        var html2 = clock + ' <span style="' + PLAYED_STYLE + '">在线 ' +
                     playedText(mins).replace('<', '&lt;') + '</span>';
         if (el1.textContent !== LINE1) el1.textContent = LINE1;
         if (html2 !== lastHtml2) { el2.innerHTML = html2; lastHtml2 = html2; }
