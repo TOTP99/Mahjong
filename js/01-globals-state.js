@@ -133,26 +133,7 @@ function checkTileConservation(reason) {
     return false;
 }
 
-/* ==================== 函数索引（按职责分类，函数按原顺序散落在下文，此处仅作导航） ====================
- * 存档/进度：      cloneState scheduleSaveProgress flushSaveProgress saveGameProgress loadGameProgress resumeFromSave
- * 算番/胡牌判定：   hasSiGuiYi scoreWinningHand settleScore analyzeHu checkHu decompose allTileTypes
- *                  isTenpai getWinningTiles getWinningTilesOf checkWindDragonPattern
- * 骰子开局仪式：    diceEls initDicePips playDiceSound onTableTap resetDiceDom startDiceRitual
- *                  showDiceResetMenu cancelDiceRitual confirmFullReset
- * 牌堆/牌面工具：   isDangerousTile buildDeck shuffle tileSuit tileRank tileGlyph tileName tileCompare
- * 游戏流程/回合：   initGame declareDraw applyReveal offerReveal confirmReveal continueAfterFirstTurnCheck
- *                  offerSelfGangIfAny executeSelfGang nextTurn advanceTurn handleDiscard
- *                  drawReplacementAndContinue rotateDealer startGame
- * 吃碰杠/AI决策：   canPeng canGang findChiCombos protectsThreeSuits tileSeenCount isTileDead tileKeepTier
- *                  isTileDangerousFor wallUrgencyBonus chooseAiDiscardTile aiDiscard isGoingForTriplets
- *                  shouldAiPeng findAiPeng findRonPriority nextPlayerOf findAiChi aiPengClaim aiChiClaim
- *                  aiDrawReplacement resolveAiPengOrAdvance checkClaimOrAdvance acceptClaim callGang
- *                  callPeng callChi chooseChiCombo closeChiChoice executeChi declineClaim offerHu
- * 渲染/弹窗/UI：    renderTile renderExposedFace renderExposedBack renderMeldGroup render markDealer
- *                  showResultModal renderSettlementView toggleSettlementAdjust onSettlementPayoutEdit
- *                  adjustSettlementPayoutFactor applySettlementPayoutValue resetSettlementPayouts
- *                  closeResultModal showIndicator hideIndicator highlightActive syncBodyScrollLock nameOf stripEmoji speak logFlow
- * ==================================================================================================== */
+// 全部 JS 按 01→14 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
 
 // 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像 风位 奖杯 庄家 听牌提示（例如 🐲 西 ★ 庄 听）
 function renderStatRow(elId, cellFor) {
