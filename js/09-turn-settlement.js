@@ -23,10 +23,10 @@ function findChiCombos(hand, tile) {
 }
 
 function nameOf(p) {
-    return { top: '西🐲', left: '北🐯', right: '南🦁', bottom: '东🐈' }[p];
+    return { top: '西 Dragon', left: '北 Tiger', right: '南 Lion', bottom: '东 Cat' }[p];
 }
 
-function stripEmoji(s) { return s.replace(/🐲|🐯|🦁|🐈/g, ''); }
+function stripEmoji(s) { return s.replace(/🐲|🐯|🦁|🐈/g, ''); } // 兼容旧文本，当前名字已无 emoji
 
 // 显示验胡结算画面：谁胡/自摸or点炮/完整手牌/吃碰杠亮/计分明细/每家加减分
 function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {

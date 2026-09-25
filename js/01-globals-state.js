@@ -5,7 +5,12 @@ const PLAYERS = ['top', 'left', 'right', 'bottom'];
 const turnOrder = ['bottom', 'right', 'top', 'left'];
 const baseNames = { top: '西', left: '北', right: '南', bottom: '东' };
 const statOrder = ['right', 'top', 'left', 'bottom'];
-const statAvatar = { right: '🦁', top: '🐲', left: '🐯', bottom: '🐈' };
+const statAvatar = {
+    right:  '<img class="stat-avatar-img" src="avatars/stat-lion.webp" alt="">',
+    top:    '<img class="stat-avatar-img" src="avatars/stat-dragon.webp" alt="">',
+    left:   '<img class="stat-avatar-img" src="avatars/stat-tiger.webp" alt="">',
+    bottom: '<img class="stat-avatar-img" src="avatars/stat-cat.webp" alt="">'
+};
 
 let deck = [];
 let hands = { top: [], left: [], right: [], bottom: [] };
