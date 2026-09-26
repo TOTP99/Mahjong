@@ -1,8 +1,8 @@
 // ========== 三击桌面：黄金骰子仪式（清零 / 继续） ==========
 // 流程：连点空白处 3 次 → 3D 旋转 2s → 缩小消失 → 弹出清零菜单
 const DICE = {
-    ROLL_MS: 2000,       // 旋转时长
-    VANISH_MS: 400,      // 缩小消失时长
+    ROLL_MS: 2400,       // 旋转时长（含惯性滑行段）
+    VANISH_MS: 380,      // 缩小消失时长
     TAP_WINDOW: 450,     // 三击判定窗口
     // 3×3 点数格索引（0–8）
     PIPS: {
@@ -29,6 +29,8 @@ let diceBusy = false;
 let diceRafId = 0;
 let diceVanishTimer = 0;
 let diceSavedClaim = null; // 仪式期间暂存吃碰杠/流局提示
+let diceRitualMode = 'reset'; // 'reset' | 'dealer'
+let diceLastFace = 1;
 
 function diceEls() {
     return {
@@ -121,9 +123,21 @@ function resetDiceDom() {
     }
 }
 
+/** 三击桌面清零菜单用 */
 function startDiceRitual() {
+    startDiceRitualWithMode('reset');
+}
+
+/** 长按猫头调庄：同一颗骰子，点数按东起顺时针数到谁做庄 */
+function startDiceDealerRitual() {
+    startDiceRitualWithMode('dealer');
+}
+
+function startDiceRitualWithMode(mode) {
     if (diceBusy) return;
+    if ($('result-modal') && $('result-modal').classList.contains('show')) return;
     diceBusy = true;
+    diceRitualMode = mode === 'dealer' ? 'dealer' : 'reset';
     diceSavedClaim = pendingClaim;
     pendingClaim = { mode: 'diceMenu' };
     hideIndicator();
@@ -134,44 +148,102 @@ function startDiceRitual() {
     playDiceSound();
 
     const face = 1 + Math.floor(Math.random() * 6);
+    diceLastFace = face;
     const end = DICE.FACE_ROT[face];
-    const spinsX = (4 + Math.floor(Math.random() * 5)) * 360;
-    const spinsY = (6 + Math.floor(Math.random() * 7)) * 360;
-    const spinsZ = (2 + Math.floor(Math.random() * 3)) * 360;
+    /* 惯性：主轴转得多、衰减慢；副轴摩擦大更快停 */
+    const spinsX = (5 + Math.floor(Math.random() * 6)) * 360;
+    const spinsY = (8 + Math.floor(Math.random() * 9)) * 360;
+    const spinsZ = (3 + Math.floor(Math.random() * 4)) * 360;
     const phase = Math.random() * Math.PI * 2;
+    const driftDir = (Math.random() < 0.5 ? -1 : 1);
     const t0 = performance.now();
+
+    /** 角速度积分型缓动：前段快转（冲量），中段滑行（惯性），末段摩擦刹停 */
+    function spinProgress(t) {
+        if (t <= 0) return 0;
+        if (t >= 1) return 1;
+        // 前 62%：快速释放大部分转角（≈90%）
+        if (t < 0.62) {
+            const u = t / 0.62;
+            return (1 - Math.pow(1 - u, 1.55)) * 0.90;
+        }
+        // 后 38%：剩余 10% 用更强摩擦慢慢咬住目标面
+        const u = (t - 0.62) / 0.38;
+        return 0.90 + 0.10 * (1 - Math.pow(1 - u, 2.4));
+    }
+    /** 副轴摩擦更大，更早贴近终值 */
+    function axisProgress(t, friction) {
+        const p = spinProgress(t);
+        // friction>1 → 更早接近 1
+        return 1 - Math.pow(1 - p, friction);
+    }
 
     function tick(now) {
         const t = Math.min(1, (now - t0) / DICE.ROLL_MS);
-        const ease = 1 - Math.pow(1 - t, 3); // ease-out
-        const inv = 1 - ease;
-        const lift = Math.sin(Math.PI * t);   // 0→1→0 抛起
-        const toss = lift * 54;
-        const scale = 1 + lift * 0.22;
-        const wobble = inv * 22 * Math.sin((now - t0) * 0.022 + phase);
-        const rx = spinsX * inv + end.x * ease + wobble;
-        const ry = spinsY * inv + end.y * ease + wobble * 0.65;
-        const rz = spinsZ * inv + wobble * 0.4;
+        const pY = axisProgress(t, 1.0);   // 主自旋：惯性最长
+        const pX = axisProgress(t, 1.35);  // 俯仰：略快停
+        const pZ = axisProgress(t, 1.55);  // 横滚：最先咬死
+        const invY = 1 - pY;
 
-        scene.style.transform = `translateY(${-toss}px) scale(${scale})`;
+        // 抛起 + 落地连跳（一次主跳 + 一次衰减小跳）
+        const lift = Math.sin(Math.PI * Math.min(1, t / 0.92));
+        let hop = 0;
+        if (t > 0.78 && t < 0.92) {
+            const u = (t - 0.78) / 0.14;
+            hop = Math.sin(u * Math.PI) * 6.2 * (1 - u * 0.5);
+        } else if (t >= 0.92 && t < 1) {
+            const u = (t - 0.92) / 0.08;
+            hop = Math.sin(u * Math.PI) * 2.2 * (1 - u);
+        }
+        const toss = lift * 46 + hop;
+
+        // 空中水平漂移，落地后被摩擦拉回中心
+        const air = Math.max(0, 1 - t / 0.85);
+        const driftX = driftDir * Math.sin(phase + t * 5.2) * 7.5 * air * air;
+        const driftZ = Math.cos(phase * 0.7 + t * 3.5) * 3.5 * air * air;
+
+        // 转速越高 wobble 越大，随惯性衰减
+        const wobbleAmp = 32 * invY * invY;
+        const wobble = wobbleAmp * Math.sin((now - t0) * 0.028 + phase);
+        const wobble2 = wobbleAmp * 0.55 * Math.sin((now - t0) * 0.041 + phase * 1.3);
+
+        // 接近终面时轻微过冲再回正（咬合感）
+        let overshoot = 0;
+        if (t > 0.72 && t < 1) {
+            const u = (t - 0.72) / 0.28;
+            overshoot = Math.sin(u * Math.PI) * 14 * (1 - u) * (1 - pY);
+        }
+
+        const rx = spinsX * (1 - pX) + end.x * pX + wobble * 0.85 + overshoot * 0.25;
+        const ry = spinsY * (1 - pY) + end.y * pY + wobble * 0.55;
+        const rz = spinsZ * (1 - pZ) + overshoot * 0.4 + wobble2 * 0.35;
+
+        const scale = 1 + lift * 0.26 + hop * 0.012;
+        scene.style.transform =
+            `translateX(${driftX}px) translateY(${-toss}px) translateZ(${driftZ}px) scale(${scale})`;
         cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
         if (shadow) {
-            shadow.style.transform = `translateZ(-30px) scale(${1 - lift * 0.45})`;
-            shadow.style.opacity = String(0.25 + 0.4 * (1 - lift));
+            // 阴影略滞后于骰子水平位置 → 惯性拖影
+            const lag = 0.65;
+            const shX = driftX * lag;
+            const shScale = Math.max(0.32, 1 - lift * 0.52 + hop * 0.03);
+            shadow.style.transform =
+                `translateX(${shX}px) translateZ(-28px) scale(${shScale}, ${0.85 + lift * 0.15})`;
+            shadow.style.opacity = String(0.18 + 0.42 * (1 - lift * 0.85));
         }
 
         if (t < 1) {
             diceRafId = requestAnimationFrame(tick);
             return;
         }
-        // 落地定格 → 缩小消失 → 菜单
+        // 落地定格 → 缩小消失
         diceRafId = 0;
         scene.style.transform = 'translateY(0) scale(1)';
         cube.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(0deg)`;
         cube.classList.add('settled');
         if (shadow) {
-            shadow.style.transform = 'translateZ(-30px) scale(1)';
-            shadow.style.opacity = '0.6';
+            shadow.style.transform = 'translateZ(-28px) scale(1)';
+            shadow.style.opacity = '0.55';
         }
         // 强制重绘一帧再加 vanish，确保 transition 生效
         void scene.offsetWidth;
@@ -182,7 +254,11 @@ function startDiceRitual() {
             scene.classList.remove('vanish');
             scene.style.transform = '';
             scene.style.opacity = '';
-            showDiceResetMenu();
+            if (diceRitualMode === 'dealer') {
+                applyDealerFromDice(diceLastFace);
+            } else {
+                showDiceResetMenu();
+            }
         }, DICE.VANISH_MS);
     }
     diceRafId = requestAnimationFrame(tick);
@@ -221,6 +297,50 @@ function cancelDiceRitual() {
 }
 
 /** 清零重启：积分/庄家/存档全部归零并开新局 */
+
+/**
+ * 调庄：一颗骰 1–6，从东（bottom/猫）起顺时针数
+ * turnOrder: bottom → right → top → left → bottom …
+ * 1=东猫 2=南狮 3=西龙 4=北虎 5=东猫 6=南狮
+ * 保留积分，按新庄重新发牌开一局
+ */
+function applyDealerFromDice(face) {
+    resetDiceDom();
+    hideIndicator();
+    diceBusy = false;
+    const saved = diceSavedClaim;
+    diceSavedClaim = null;
+    pendingClaim = null;
+
+    const f = Math.max(1, Math.min(6, face | 0));
+    const start = turnOrder.indexOf('bottom');
+    const idx = (start + (f - 1)) % 4;
+    dealer = turnOrder[idx];
+    try { markDealer(); } catch (e) {}
+
+    const who = (typeof seatLabel === 'function') ? seatLabel(dealer) : nameOf(dealer);
+    logFlow('调庄：骰子 ' + f + ' → ' + who + ' 做庄（保留积分开新局）');
+    try {
+        if (typeof speak === 'function') speak(nameOf(dealer) + '庄');
+    } catch (e) {}
+
+    // 关其它弹层，保留 scores
+    try {
+        const rm = $('result-modal'); if (rm) rm.classList.remove('show');
+        const rv = $('reveal-modal'); if (rv) rv.classList.remove('show');
+        const cm = $('chi-choice-modal'); if (cm) cm.classList.remove('show');
+    } catch (e) {}
+    lastSettlement = null;
+    winner = null;
+    gameOver = false;
+    selectedIndex = null;
+    lastDrawnIndex = null;
+    try { initGame(); } catch (e) {
+        logFlow('调庄发牌失败，请三击桌面重开');
+        pendingClaim = saved;
+    }
+}
+
 function confirmFullReset() {
     resetDiceDom();
     hideIndicator();
