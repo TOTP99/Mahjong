@@ -349,11 +349,12 @@
         justify-content: center;
         align-items: safe center;
         padding: 12px 8px;
-        overflow-x: auto;
+        overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
-        touch-action: pan-x pan-y;
+        touch-action: pan-y;
+        pointer-events: auto;
         background: rgba(6, 12, 20, 0.68);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
@@ -379,9 +380,29 @@
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         box-sizing: border-box;
-        /* 避免祖先 transform/filter 影响 fixed 子层点击（保险） */
         position: relative;
         z-index: 1;
+        transform: none !important; /* 横竖屏都不跟牌桌 scale，保证确认可点 */
+        pointer-events: auto;
+    }
+
+    /* 底部按钮：横竖屏都 sticky，滚动时仍能点到确定 */
+    #result-modal .result-adjust-btns {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        margin-top: 10px;
+        padding: 8px 0 2px;
+        background: linear-gradient(180deg, transparent, rgba(14, 22, 34, 0.94) 30%);
+        pointer-events: auto;
+    }
+    #result-modal .result-adjust-btns button,
+    #result-modal #btn-toggle-adjust {
+        pointer-events: auto;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+        z-index: 3;
     }
 
     /* 标题区 */
@@ -586,7 +607,7 @@
         gap: 12px;
         justify-content: center;
         flex-wrap: wrap;
-        margin-top: 14px;
+        margin-top: 10px;
     }
     .result-adjust-btns button { margin-top: 0; }
 
@@ -653,6 +674,58 @@
     }
     /* 黄金镶钻 3D 立方体骰子 */
 
+
+
+/* ===== 结算弹窗：横屏限制高度，内容滚动，底部确定 sticky ===== */
+@media (orientation: landscape) {
+    #result-modal {
+        align-items: center;
+        padding-top: max(4px, env(safe-area-inset-top, 0px));
+        padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+        padding-left: max(6px, env(safe-area-inset-left, 0px));
+        padding-right: max(6px, env(safe-area-inset-right, 0px));
+        overflow-x: hidden;
+        overflow-y: auto;
+        pointer-events: auto;
+        touch-action: pan-y;
+    }
+    #result-modal .result-box {
+        width: min(92vw, 400px);
+        /* 矮横屏也能完整用：高度锁在可视区内，靠内部滚动 */
+        max-height: min(72vh, calc(var(--app-height, 100dvh) - 16px), 340px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+        margin: auto;
+        transform: none !important;
+        pointer-events: auto;
+    }
+    #result-modal .result-adjust-btns {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        background: linear-gradient(180deg, transparent, rgba(14, 22, 34, 0.95) 28%);
+    }
+    #result-modal .result-adjust-btns button,
+    #result-modal #btn-toggle-adjust {
+        min-height: 40px;
+        touch-action: manipulation;
+        pointer-events: auto;
+    }
+}
+@media (orientation: landscape) and (max-height: 420px) {
+    #result-modal .result-box {
+        max-height: min(88vh, calc(var(--app-height, 100dvh) - 8px), 280px);
+        padding: 8px 10px 10px;
+    }
+    #result-modal .result-row .tile {
+        width: 22px;
+        height: 30px;
+        font-size: 18px;
+    }
+}
 
 /* ===== 结算弹窗：竖屏适配（保持四家一行 + 确认可点） ===== */
 @media (orientation: portrait) {
