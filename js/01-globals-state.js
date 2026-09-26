@@ -144,7 +144,7 @@ function checkTileConservation(reason) {
 function renderStatRow(elId, cellFor) {
     const el = $(elId);
     if (!el) return;
-    el.innerHTML = statOrder.map(p => `<span class="stat-cell">${cellFor(p)}</span>`).join('');
+    el.innerHTML = statOrder.map(p => `<span class="stat-cell" data-player="${p}">${cellFor(p)}</span>`).join('');
 }
 
 function ensurePortraitStatRows() {
@@ -178,7 +178,7 @@ function markDealer() {
                 const medal = (maxScore > 0 && scores[p] === maxScore) ? ' <span class="ico-star">★</span>' : '';
                 const dealerMark = p === dealer ? ' <span class="ico-badge ico-dealer">庄</span>' : '';
                 const tenpaiMark = isTenpai(p) ? ' <span class="ico-badge ico-tenpai">听</span>' : '';
-                return `<div class="stat-line">${statAvatar[p]} ${baseNames[p]}${medal}${dealerMark}${tenpaiMark}</div>`;
+                return `<div class="stat-line" data-player="${p}">${statAvatar[p]} ${baseNames[p]}${medal}${dealerMark}${tenpaiMark}</div>`;
             }).join('');
         }
     }
