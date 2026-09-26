@@ -1,9 +1,9 @@
 /* 14-credit-clock.js
  * 接管 #credit-label / #credit-label-2 的全部内容（仅竖屏可见，横屏由 CSS 隐藏）：
- *   第一行（金字）：TP制作➸☯369❖❁（纯文字符号，不用 emoji，各平台显示稳定）
+ *   第一行（金字）：TP制作➸369❖❁（纯文字符号，不用 emoji，各平台显示稳定）
  *   第二行：时:分:秒 星期(英文全称) 月-日-年(两位) 均为金字（继承 #credit-label-2 的颜色），
- *           「在线 …」本次已玩时间 为红色粗体
- * 在线时间严格按5分钟一档：<5 mins、5 mins、10 mins … 25 mins（25~29分钟都显示 25 mins）。
+ *           「在线 …」本次已玩时间 为白色粗体
+ * 在线时间严格按5分钟一档：0-5 mins、5 mins、10 mins …（向下取整到5的倍数）。
  * 只存内存，不写 localStorage；页面切到后台时暂停计时。
  * 横屏：竖屏那两行被 CSS 隐藏，改为在左侧栏的 #img-display-badge（TP制作）后面加当前时间的 时:分:秒，
  *       竖屏时该标签保持原样只显示"TP制作"。
@@ -12,9 +12,9 @@
 (function () {
     'use strict';
 
-    var LINE1 = 'TP制作➸☯369❖❁';
+    var LINE1 = 'TP制作➸369❖❁';
     var WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    var PLAYED_STYLE = 'color:#ff4d4d;font-weight:700;';
+    var PLAYED_STYLE = 'color:#ffffff;font-weight:700;';
     // 时分秒盒子：宽度取 6.8 个数字宽（6位数字+2个冒号的最大宽度），右侧间隙 0.6em（原空格约 0.3em 的两倍）
     var HMS_STYLE = 'display:inline-block;width:6.8ch;margin-right:0.6em;';
 
@@ -54,7 +54,7 @@
 
     // 严格5分钟一档：向下取整到5的倍数
     function playedText(mins) {
-        if (mins < 5) return '<5 mins';
+        if (mins < 5) return '0-5 mins';
         return (Math.floor(mins / 5) * 5) + ' mins';
     }
 
@@ -72,7 +72,7 @@
                     pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getFullYear() % 100);
         // 用 innerHTML 是因为要给在线时间单独上色；内容全部由本脚本生成，没有外部输入
         var html2 = clock + ' <span style="' + PLAYED_STYLE + '">在线 ' +
-                    playedText(mins).replace('<', '&lt;') + '</span>';
+                    playedText(mins) + '</span>';
         if (el1.textContent !== LINE1) el1.textContent = LINE1;
         if (html2 !== lastHtml2) { el2.innerHTML = html2; lastHtml2 = html2; }
 
