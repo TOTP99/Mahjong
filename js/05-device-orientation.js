@@ -125,6 +125,34 @@ function placeClaimIndicatorForOrientation(isPortrait) {
     }
 }
 
+
+/** 结算弹窗打开时：清 transform / 锁定偏移，保证横竖屏切换后「确定」仍可点 */
+function hardenResultModalInteract() {
+    try {
+        const body = document.body;
+        if (!body) return;
+        const rm = document.getElementById('result-modal');
+        const open = rm && rm.classList.contains('show');
+        if (!open) return;
+        if (body.classList.contains('modal-open')) {
+            body.style.top = '0px';
+            body.dataset.scrollY = '0';
+        }
+        rm.style.pointerEvents = 'auto';
+        rm.style.touchAction = 'pan-y';
+        const box = rm.querySelector('.result-box');
+        if (box) {
+            box.style.transform = 'none';
+            box.style.webkitTransform = 'none';
+            box.style.pointerEvents = 'auto';
+        }
+        rm.querySelectorAll('button').forEach(function (b) {
+            b.style.pointerEvents = 'auto';
+            b.style.touchAction = 'manipulation';
+        });
+    } catch (e) { /* ignore */ }
+}
+
 function checkPortraitGuard() {
     syncAppViewportVars();
     const isPortrait = isPortraitOrientation();
@@ -143,18 +171,7 @@ function checkPortraitGuard() {
     }
     setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);
     if (isPortrait) setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 200);
-    // 胡牌弹窗打开时旋转：避免 body.modal-open 的 top 偏移 + 横屏 view-scale 残留导致确认键点不到
-    try {
-        if (body.classList.contains('modal-open')) {
-            body.style.top = '0px';
-            body.dataset.scrollY = '0';
-        }
-        const rm = document.getElementById('result-modal');
-        if (rm && rm.classList.contains('show')) {
-            const box = rm.querySelector('.result-box');
-            if (box) box.style.transform = 'none';
-        }
-    } catch (e) { /* ignore */ }
+    try { hardenResultModalInteract(); } catch (e) {}
 }
 
 /** 旋转/尺寸变化后多次复核（iOS 地址栏收起与旋转动画期间尺寸会变） */
@@ -282,3 +299,25 @@ applyDevicePlatformClass();
 handleOrientationEvent('init');
 syncAppViewportVars();
 try { placeClaimIndicatorForOrientation(isPortraitOrientation()); } catch (e) {}
+
+/* harden-result-on-orient：旋转全程多次加固结算确认可点 */
+(function () {
+    function kick() {
+        try { hardenResultModalInteract(); } catch (e) {}
+    }
+    window.addEventListener('orientationchange', function () {
+        kick();
+        setTimeout(kick, 50);
+        setTimeout(kick, 200);
+        setTimeout(kick, 500);
+        setTimeout(kick, 900);
+    }, { passive: true });
+    window.addEventListener('resize', function () {
+        kick();
+    }, { passive: true });
+    try {
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', kick, { passive: true });
+        }
+    } catch (e) {}
+})();

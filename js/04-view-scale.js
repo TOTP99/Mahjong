@@ -274,12 +274,15 @@ function endOrientTransition() {
     clearTimeout(_orientTimer);
     const html = document.documentElement;
     try {
-        if (typeof checkPortraitGuard === 'function') checkPortraitGuard();  // 确保布局类是最终方向
+        if (typeof checkPortraitGuard === 'function') checkPortraitGuard();
         if (document.body.classList.contains('portrait-layout')) fitBottomHand();
-        else autoFitLandscapeView();                                          // 横屏：按最终可视区域适配（此时仍是隐藏状态，直接到位）
+        else autoFitLandscapeView();
+        if (typeof hardenResultModalInteract === 'function') hardenResultModalInteract();
     } catch (e) { /* 出任何问题都要继续去显示 */ }
-    // 双 rAF：等新布局真正绘制过一帧，再移除隐藏类 → 触发淡入
-    requestAnimationFrame(() => requestAnimationFrame(() => html.classList.remove('orient-changing')));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        html.classList.remove('orient-changing');
+        try { if (typeof hardenResultModalInteract === 'function') hardenResultModalInteract(); } catch (e2) {}
+    }));
 }
 
 /* ==================== 横屏界面元素自适应放大 ====================
