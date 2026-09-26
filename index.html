@@ -105,7 +105,7 @@
     </div>
     <div class="player top" id="p-top">
         <div class="player-label">
-            <span class="player-score" id="score-top"></span><span class="avatar" onclick="toggleExposedInfo('top')"><img src="avatars/avatar-top.webp" alt="西"></span>
+            <span class="player-score" id="score-top"></span><span class="avatar" onclick="toggleExposedInfo('top')"><img src="avatars/avatar-top.webp" alt="西" draggable="false"></span>
         </div>
         <div id="exposed-top" class="ai-exposed"></div>
         <div id="hand-top" class="hand"></div>
@@ -113,7 +113,7 @@
     <div class="player left" id="p-left">
         <div class="player-side-stack">
         <div class="player-label">
-            <span class="player-score" id="score-left"></span><span class="avatar" onclick="toggleExposedInfo('left')"><img src="avatars/avatar-left.webp" alt="北"></span>
+            <span class="player-score" id="score-left"></span><span class="avatar" onclick="toggleExposedInfo('left')"><img src="avatars/avatar-left.webp" alt="北" draggable="false"></span>
         </div>
         <div id="exposed-left" class="ai-exposed"></div>
         </div>
@@ -122,7 +122,7 @@
     <div class="player right" id="p-right">
         <div class="player-side-stack">
         <div class="player-label">
-            <span class="player-score" id="score-right"></span><span class="avatar" onclick="toggleExposedInfo('right')"><img src="avatars/avatar-right.webp" alt="南"></span>
+            <span class="player-score" id="score-right"></span><span class="avatar" onclick="toggleExposedInfo('right')"><img src="avatars/avatar-right.webp" alt="南" draggable="false"></span>
         </div>
         <div id="exposed-right" class="ai-exposed"></div>
         </div>
@@ -133,7 +133,7 @@
             <span class="player-score" id="score-bottom"></span>
             <span class="avatar-with-toggle">
                 <button type="button" id="tenpai-hint-toggle" class="tenpai-hint-toggle" title="听牌提示开关（亮=显示）" aria-pressed="false" aria-label="听牌提示开关" onclick="event.stopPropagation();toggleTenpaiHint()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4.5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="8" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="10" r="1.3" fill="currentColor"/><circle cx="16" cy="10" r="1.3" fill="currentColor"/></svg></button>
-                <span class="avatar" onclick="toggleExposedInfo('bottom')"><img src="avatars/avatar-bottom.webp" alt="东"></span>
+                <span class="avatar" onclick="toggleExposedInfo('bottom')"><img src="avatars/avatar-bottom.webp" alt="东" draggable="false"></span>
             </span>
         </div>
         <div id="hand-bottom" class="hand" onclick="handleDiscard(event)"></div>
