@@ -356,6 +356,13 @@ function initTablePan() {
 }
 
 initTablePan();
+/** 桌面鼠标端：右键点在牌面/牌背/副露上容易弹出浏览器"另存为图片"菜单，这里统一拦截
+    （头像的右键拦截已在 09-turn-settlement.js / 15-stat-avatar-longpress.js 里做了） */
+document.addEventListener('contextmenu', (e) => {
+    if (e.target.closest && e.target.closest('.tile, .tileback, .discardTile, .pool-tile, .meld-group')) {
+        e.preventDefault();
+    }
+}, true);
 initDicePips();
 // 先按原始比例量一次桌面，记下「正常大小」，再应用（可能已保存的）缩放
 viewScale = ORIGINAL_VIEW_SCALE;
