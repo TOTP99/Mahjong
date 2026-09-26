@@ -352,12 +352,8 @@ const PLAYER_INTRO = {
         title: '狮 · 南',
         sub: '性格激进 · 敢打敢冲',
         body: '为求速度更敢吃碰、开门，可接受向听稍差。副露可偏多，常往碰碰胡靠。躲炮少，进攻强，也易放炮。'
-    },
-    bottom: {
-        title: '猫 · 东',
-        sub: '由你做主',
-        body: '头像左侧的对话气泡可开关听牌提示；点头像可查看副露（竖屏）。'
     }
+    // bottom（猫 · 东）已取消性格介绍：长按大头像改为调庄，见下方 onAvatarPointerDown / onAvatarContextMenu
 };
 
 const AVATAR_LONGPRESS_MS = 480;
@@ -409,6 +405,14 @@ function onAvatarPointerDown(e) {
     _avatarLpTimer = setTimeout(() => {
         _avatarLpTimer = 0;
         _avatarLpFired = true;
+        if (player === 'bottom') {
+            // 东·大猫头：长按掉骰子调庄（原「小猫头」的 hidden gem 已迁移到这里）
+            try {
+                if (typeof diceBusy !== 'undefined' && diceBusy) return;
+                if (typeof startDiceDealerRitual === 'function') startDiceDealerRitual();
+            } catch (err) { /* ignore */ }
+            return;
+        }
         showPlayerIntro(player);
     }, AVATAR_LONGPRESS_MS);
 }
@@ -433,7 +437,15 @@ function onAvatarContextMenu(e) {
     e.preventDefault();
     e.stopPropagation();
     const player = playerFromAvatarEl(av);
-    if (player) showPlayerIntro(player);
+    if (!player) return;
+    if (player === 'bottom') {
+        try {
+            if (typeof diceBusy !== 'undefined' && diceBusy) return;
+            if (typeof startDiceDealerRitual === 'function') startDiceDealerRitual();
+        } catch (err) { /* ignore */ }
+        return;
+    }
+    showPlayerIntro(player);
 }
 
 (function bindAvatarLongPress() {

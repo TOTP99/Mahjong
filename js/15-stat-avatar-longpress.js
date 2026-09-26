@@ -1,6 +1,7 @@
 /* 15-stat-avatar-longpress.js
- * 四个状态栏小头像：长按保护（避免误触其它操作）
- * Hidden gem：长按「猫」(bottom) → 同一颗黄金骰子 → 按点数从东起顺时针调庄并保留积分开新局
+ * 四个状态栏小头像：仅长按保护（避免误触其它操作），四家均无动作
+ * 调庄 hidden gem 已迁移到「东」大头像（见 09-turn-settlement.js 的 onAvatarPointerDown）：
+ * 长按大猫头 → 同一颗黄金骰子 → 按点数从东起顺时针调庄并保留积分开新局
  * 须在 03-dice-ritual.js、13-game-actions.js 之后加载
  */
 (function () {
@@ -37,19 +38,8 @@
             y: e.clientY,
             el: cell,
             timer: setTimeout(function () {
-                var p = press && press.player;
                 clearPress();
-                if (!p) return;
-                if (p === 'bottom') {
-                    // 猫头：调庄 hidden gem
-                    try {
-                        if (typeof diceBusy !== 'undefined' && diceBusy) return;
-                        if (typeof startDiceDealerRitual === 'function') {
-                            startDiceDealerRitual();
-                        }
-                    } catch (err) { /* ignore */ }
-                }
-                // 其它三家：仅保护，无动作
+                // 四家小头像：仅长按保护，无动作（调庄已迁移到东大头像）
             }, LONG_MS)
         };
         cell.classList.add('stat-avatar-pressing');
