@@ -6,10 +6,10 @@ const turnOrder = ['bottom', 'right', 'top', 'left'];
 const baseNames = { top: '西', left: '北', right: '南', bottom: '东' };
 const statOrder = ['right', 'top', 'left', 'bottom'];
 const statAvatar = {
-    right: '<img class="stat-avatar-img" src="avatars/stat-lion.webp" alt="南">',
-    top: '<img class="stat-avatar-img" src="avatars/stat-dragon.webp" alt="西">',
-    left: '<img class="stat-avatar-img" src="avatars/stat-tiger.webp" alt="北">',
-    bottom: '<img class="stat-avatar-img" src="avatars/stat-cat.webp" alt="东">'
+    right: '<img class="stat-avatar-img" src="avatars/stat-lion.webp" alt="南" draggable="false">',
+    top: '<img class="stat-avatar-img" src="avatars/stat-dragon.webp" alt="西" draggable="false">',
+    left: '<img class="stat-avatar-img" src="avatars/stat-tiger.webp" alt="北" draggable="false">',
+    bottom: '<img class="stat-avatar-img" src="avatars/stat-cat.webp" alt="东" draggable="false">'
 };
 
 let deck = [];
