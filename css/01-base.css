@@ -86,7 +86,8 @@
         display: none;
         position: absolute;
         left: 50%;
-        top: 48%;
+        /* 原垂直居中再上移 60% 手牌高度（0.6×39px≈23.4px），避免挡猫上方提示字 */
+        top: calc(48% - 23.4px);
         transform: translate(-50%, -50%);
         z-index: 12;
         pointer-events: none;

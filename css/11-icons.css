@@ -37,9 +37,8 @@
    用 em 跟随所在文字的字号（.stat-cell / .stat-line / .tt-avatar 各断点字号不同，不用逐个改）。 */
 .stat-avatar-img {
     display: inline-block;
-    /* 相对原 1.15em 放大 20% → 1.38em；随 .stat-cell / .stat-line 字号走 */
-    width: 1.38em; height: 1.38em;
-    vertical-align: -0.28em;
+    width: 1.15em; height: 1.15em;
+    vertical-align: -0.22em;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
