@@ -25,12 +25,22 @@ function findChiCombos(hand, tile) {
 function nameOf(p) {
     return { top: '西', left: '北', right: '南', bottom: '东' }[p];
 }
+/** 座位对应动物（状态栏小头像：龙西/虎北/狮南/猫东） */
+function animalOf(p) {
+    return { top: '龙', left: '虎', right: '狮', bottom: '猫' }[p] || '';
+}
+/** 「东 猫」「南 狮」 */
+function seatLabel(p) {
+    const w = nameOf(p), a = animalOf(p);
+    return a ? (w + ' ' + a) : w;
+}
 
 // 显示验胡结算画面：谁胡/自摸or点炮/完整手牌/吃碰杠亮/计分明细/每家加减分
 function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
-    $('result-title').innerText = nameOf(winnerPlayer) + '胡';
+    // 例：东 猫 胡 / 自摸；或 东 猫 胡 / 南 狮 点炮
+    $('result-title').innerText = seatLabel(winnerPlayer) + ' 胡';
     $('result-subtitle').innerText =
-        mode === 'selfdraw' ? '自摸' : (nameOf(payer) + ' 点炮');
+        mode === 'selfdraw' ? '自摸' : (seatLabel(payer) + ' 点炮');
 
     const concealedSorted = [...hands[winnerPlayer]].sort(tileCompare);
     let winMarked = false;

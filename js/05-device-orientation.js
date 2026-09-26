@@ -143,6 +143,18 @@ function checkPortraitGuard() {
     }
     setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);
     if (isPortrait) setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 200);
+    // 胡牌弹窗打开时旋转：避免 body.modal-open 的 top 偏移 + 横屏 view-scale 残留导致确认键点不到
+    try {
+        if (body.classList.contains('modal-open')) {
+            body.style.top = '0px';
+            body.dataset.scrollY = '0';
+        }
+        const rm = document.getElementById('result-modal');
+        if (rm && rm.classList.contains('show')) {
+            const box = rm.querySelector('.result-box');
+            if (box) box.style.transform = 'none';
+        }
+    } catch (e) { /* ignore */ }
 }
 
 /** 旋转/尺寸变化后多次复核（iOS 地址栏收起与旋转动画期间尺寸会变） */
