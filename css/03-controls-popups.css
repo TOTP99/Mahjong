@@ -680,6 +680,7 @@
 @media (orientation: landscape) {
     #result-modal {
         align-items: center;
+        justify-content: center;
         padding-top: max(4px, env(safe-area-inset-top, 0px));
         padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
         padding-left: max(6px, env(safe-area-inset-left, 0px));
@@ -691,8 +692,8 @@
     }
     #result-modal .result-box {
         width: min(92vw, 400px);
-        /* 矮横屏也能完整用：高度锁在可视区内，靠内部滚动 */
-        max-height: min(72vh, calc(var(--app-height, 100dvh) - 16px), 340px);
+        /* 再矮约 10%，仍锁在可视区内，靠内部滚动；margin:auto 垂直居中 */
+        max-height: min(65vh, calc(var(--app-height, 100dvh) - 16px), 306px);
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
@@ -717,7 +718,7 @@
 }
 @media (orientation: landscape) and (max-height: 420px) {
     #result-modal .result-box {
-        max-height: min(88vh, calc(var(--app-height, 100dvh) - 8px), 280px);
+        max-height: min(79vh, calc(var(--app-height, 100dvh) - 8px), 252px);
         padding: 8px 10px 10px;
     }
     #result-modal .result-row .tile {
