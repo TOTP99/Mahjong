@@ -1,9 +1,9 @@
+    /* 弹层不跟牌桌 --view-scale：横屏缩小后转到竖屏会导致点击热区错位、确认无响应 */
     #result-modal .result-box,
     #reveal-modal .hu-box,
     #chi-choice-modal .hu-box {
-        transform: scale(var(--view-scale, 1));
+        transform: none;
         transform-origin: center center;
-        transition: transform 0.18s ease;
     }
     /* 左侧顶栏：TP制作 + 牌墙 + 横屏调整；下方 扩大/缩小 */
     #img-display-badge {
@@ -361,15 +361,15 @@
     #result-modal.show { display: flex; }
 
     .result-box {
-        width: min(92vw, 460px);
-        max-height: min(86vh, 520px);
+        width: min(94vw, 420px);
+        max-height: min(88vh, 560px);
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         touch-action: pan-y;
         margin: auto;
-        padding: 14px 16px 16px;
+        padding: 10px 12px 12px;
         border-radius: 12px;
         text-align: center;
         color: var(--text);
@@ -379,56 +379,61 @@
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         box-sizing: border-box;
+        /* 避免祖先 transform/filter 影响 fixed 子层点击（保险） */
+        position: relative;
+        z-index: 1;
     }
 
     /* 标题区 */
     .result-title {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 700;
         letter-spacing: 0.06em;
         color: var(--ice);
-        margin: 0 0 2px;
-        line-height: 1.3;
+        margin: 0;
+        line-height: 1.25;
+        display: inline;
     }
     .result-subtitle {
         display: inline-block;
-        margin: 4px 0 10px;
-        padding: 3px 12px;
-        font-size: 12px;
+        margin: 0 0 0 8px;
+        padding: 2px 10px;
+        font-size: 11px;
         color: var(--gold);
         background: transparent;
         border: 1px solid var(--gold-dim);
         border-radius: 999px;
         letter-spacing: 0.04em;
+        vertical-align: middle;
     }
 
     /* 分区标签 */
     .result-label {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--text-muted);
         text-align: left;
-        margin: 10px 0 5px;
-        letter-spacing: 0.08em;
+        margin: 6px 0 3px;
+        letter-spacing: 0.06em;
         font-weight: 600;
     }
 
-    /* 牌行：大牌面，清晰可读 */
+    /* 牌行：略紧凑 */
     .result-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px 5px;
+        gap: 3px 4px;
         justify-content: flex-start;
         align-items: center;
         min-height: 0;
-        padding: 8px 8px;
+        padding: 5px 6px;
         background: rgba(0,0,0,0.18);
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--gold-dim);
     }
     .result-row .tile {
-        width: 28px;
-        height: 38px;
-        font-size: 24px;
+        width: 26px;
+        height: 35px;
+        font-size: 22px;
         border-radius: 4px;
         flex-shrink: 0;
     }
@@ -446,29 +451,29 @@
     /* 番型/役种行 */
     .result-lines {
         text-align: left;
-        font-size: 12px;
-        margin-top: 8px;
-        line-height: 1.45;
+        font-size: 11px;
+        margin-top: 5px;
+        line-height: 1.35;
         color: var(--text-muted);
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 4px;
     }
     .result-lines > div {
-        padding: 4px 10px;
-        border-radius: 6px;
+        padding: 2px 7px;
+        border-radius: 5px;
         background: rgba(0,0,0,0.15);
         border: 1px solid var(--gold-dim);
         color: var(--text);
         white-space: nowrap;
-        font-size: 12px;
+        font-size: 11px;
     }
 
     /* 总分 */
     .result-total {
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 700;
-        margin-top: 10px;
+        margin-top: 6px;
         color: var(--ice);
         letter-spacing: 0.04em;
     }
@@ -477,25 +482,29 @@
     .result-divider {
         border: none;
         height: 1px;
-        margin: 14px 0;
+        margin: 8px 0;
         background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
     }
 
     /* 点数区：两列清晰显示 */
     .result-payouts {
-        text-align: left;
-        font-size: 13px;
-        line-height: 1.4;
+        text-align: center;
+        font-size: 12px;
+        line-height: 1.35;
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px 10px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px 5px;
     }
     .result-payouts > div,
     .result-payouts .payout-row {
-        padding: 8px 10px;
-        border-radius: 8px;
+        padding: 6px 4px;
+        border-radius: 6px;
         background: rgba(0,0,0,0.15);
         border: 1px solid var(--gold-dim);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     .result-payouts .pos { color: #6ee7b7; }
     .result-payouts .neg { color: #fca5a5; }
@@ -609,12 +618,15 @@
     /* 窄屏时点数区改为单列，更易读 */
     @media (max-width: 380px) {
         .result-payouts {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            font-size: 11px;
+            gap: 3px;
         }
+        .result-payouts > div { padding: 5px 2px; font-size: 11px; }
         .result-row .tile {
-            width: 26px;
-            height: 35px;
-            font-size: 22px;
+            width: 24px;
+            height: 32px;
+            font-size: 20px;
         }
     }
 
@@ -642,55 +654,61 @@
     /* 黄金镶钻 3D 立方体骰子 */
 
 
-/* ===== 结算弹窗：竖屏适配修复 ===== */
+/* ===== 结算弹窗：竖屏适配（保持四家一行 + 确认可点） ===== */
 @media (orientation: portrait) {
     #result-modal {
         align-items: flex-start;
-        padding-top: max(12px, env(safe-area-inset-top));
-        padding-right: 10px;
-        padding-bottom: max(12px, env(safe-area-inset-bottom));
-        padding-left: 10px;
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-right: 8px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        padding-left: 8px;
         overflow-x: hidden;
         overflow-y: auto;
         box-sizing: border-box;
+        /* 旋转后确保弹层自身可点，不被底层 touch-action 影响 */
+        pointer-events: auto;
+        touch-action: pan-y;
     }
 
     #result-modal .result-box {
-        width: min(94vw, 460px);
-        max-width: 460px;
-        max-height: none;
-        margin: 12px auto;
-        padding: 14px 12px 18px;
+        width: min(96vw, 420px);
+        max-width: 420px;
+        max-height: min(92vh, 640px);
+        margin: 8px auto;
+        padding: 10px 10px 12px;
         overflow-x: hidden;
-        overflow-y: visible;
+        overflow-y: auto;
         box-sizing: border-box;
+        transform: none !important; /* 竖屏绝不跟横屏 view-scale */
+        pointer-events: auto;
     }
 
-    /* 竖屏下牌面略缩小，避免内容过宽 */
     #result-modal .result-row .tile {
-        width: 25px;
-        height: 34px;
-        font-size: 21px;
+        width: 24px;
+        height: 32px;
+        font-size: 20px;
     }
 
-    /* 竖屏下点数区单列显示 */
+    /* 竖屏仍四家一行，节约纵向空间 */
     #result-modal .result-payouts {
-        grid-template-columns: 1fr;
-        gap: 7px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
     }
 
-    /* 底部按钮区保持完整可见，并预留安全距离 */
     #result-modal .result-adjust-btns {
         display: flex;
         width: 100%;
         gap: 10px;
-        margin-top: 16px;
-        padding-bottom: 4px;
+        margin-top: 10px;
+        padding: 8px 0 4px;
         justify-content: center;
         box-sizing: border-box;
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(180deg, transparent, rgba(14, 22, 34, 0.92) 28%);
+        z-index: 2;
     }
 
-    /* 增大实际触摸热区，避免竖屏手机点不到确认键 */
     #result-modal .result-adjust-btns button,
     #result-modal #btn-toggle-adjust {
         min-width: 100px;
@@ -699,26 +717,35 @@
         margin-top: 0;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
+        pointer-events: auto;
+        position: relative;
+        z-index: 3;
     }
 }
 
 /* ===== 极窄竖屏手机 ===== */
 @media (orientation: portrait) and (max-width: 380px) {
     #result-modal {
-        padding-right: 6px;
-        padding-left: 6px;
+        padding-right: 4px;
+        padding-left: 4px;
     }
 
     #result-modal .result-box {
-        width: 96vw;
-        padding-right: 10px;
-        padding-left: 10px;
+        width: 98vw;
+        padding-right: 8px;
+        padding-left: 8px;
+        transform: none !important;
     }
 
     #result-modal .result-row .tile {
-        width: 23px;
-        height: 32px;
-        font-size: 20px;
+        width: 22px;
+        height: 30px;
+        font-size: 18px;
+    }
+
+    #result-modal .result-payouts {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        font-size: 10px;
     }
 
     #result-modal .result-adjust-btns button,
