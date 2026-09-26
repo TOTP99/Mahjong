@@ -43,3 +43,17 @@
     object-fit: cover;
     flex-shrink: 0;
 }
+
+/* 状态栏小头像长按反馈（调庄 hidden gem 等） */
+.stat-cell.stat-avatar-pressing .stat-avatar-img,
+.stat-avatar-img.stat-avatar-pressing {
+    filter: brightness(1.15) drop-shadow(0 0 4px rgba(212, 175, 55, 0.65));
+    transform: scale(1.08);
+}
+.stat-cell .stat-avatar-img {
+    transition: filter 0.15s ease, transform 0.15s ease;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    pointer-events: auto;
+}

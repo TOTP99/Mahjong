@@ -3,96 +3,98 @@
         z-index: 25;
         display: none; align-items: center; justify-content: center;
         pointer-events: none;
-        background: radial-gradient(ellipse at center, rgba(8,14,24,0.35) 0%, transparent 65%);
+        background: radial-gradient(ellipse at center, rgba(8,14,24,0.4) 0%, transparent 62%);
         contain: layout style;
-        perspective: 320px;
-        perspective-origin: 50% 40%;
+        /* 更强透视 → 更立体 */
+        perspective: 420px;
+        perspective-origin: 50% 38%;
     }
     #dice-stage.show { display: flex; }
+    /* 整体缩小约 15%：21.6 → 18.36 */
     #dice-scene {
-        width: 21.6px; height: 21.6px;
+        width: 18.36px; height: 18.36px;
         position: relative;
         transform-style: preserve-3d;
         will-change: transform;
         transition: none;
     }
-    /* 旋转结束后：缩小并淡出 */
     #dice-scene.vanish {
-        transition: transform 0.4s ease, opacity 0.4s ease;
-        transform: scale(0.15) !important;
+        transition: transform 0.38s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.38s ease;
+        transform: scale(0.12) !important;
         opacity: 0;
     }
     #dice-cube {
-        width: 21.6px; height: 21.6px; position: relative;
+        width: 18.36px; height: 18.36px; position: relative;
         transform-style: preserve-3d;
         will-change: transform;
     }
     #dice-cube .face {
-        position: absolute; width: 22.2px; height: 22.2px;
-        /* 略大于理论尺寸并去掉边框，避免棱上亮线/细缝 */
-        left: -0.3px; top: -0.3px;
-        border-radius: 2.4px;
+        position: absolute; width: 18.9px; height: 18.9px;
+        left: -0.27px; top: -0.27px;
+        border-radius: 2.1px;
         border: none;
         outline: none;
-        box-shadow: none;
         display: grid; place-items: center;
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
+        /* 轻微厚度感 */
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.35),
+            inset 0 -1px 1px rgba(0, 0, 0, 0.18);
     }
-    /* 六面略作明暗差，旋转时能看出体积 */
-    #dice-cube .f1 { background: linear-gradient(145deg, #fff8d0, #e8c44a 55%, #b8921e); }
-    #dice-cube .f2 { background: linear-gradient(145deg, #f5e08a, #d4a82a 55%, #9a7210); }
-    #dice-cube .f3 { background: linear-gradient(145deg, #e8d070, #c49a22 55%, #8a6410); }
-    #dice-cube .f4 { background: linear-gradient(145deg, #f0dc90, #d0a828 55%, #967014); }
-    #dice-cube .f5 { background: linear-gradient(160deg, #fff6c8, #f0d060 45%, #c9a227); }
-    #dice-cube .f6 { background: linear-gradient(160deg, #d8b840, #a87e18 55%, #6e5010); }
-    /* 光晕用 filter，不用 inset 描边（inset 容易在上沿画出一条线） */
+    /* 六面明暗差加大，旋转时体积更明显 */
+    #dice-cube .f1 { background: linear-gradient(145deg, #fff9d8 0%, #f0d050 40%, #c9a020 78%, #8a6810 100%); }
+    #dice-cube .f2 { background: linear-gradient(145deg, #f0dc88 0%, #d4a828 45%, #a07818 80%, #6e5010 100%); }
+    #dice-cube .f3 { background: linear-gradient(145deg, #e0c868 0%, #b89020 50%, #8a6410 85%, #5a4008 100%); }
+    #dice-cube .f4 { background: linear-gradient(145deg, #ecd878 0%, #c9a024 48%, #967014 82%, #6a5010 100%); }
+    #dice-cube .f5 { background: linear-gradient(160deg, #fff8d0 0%, #f5d858 42%, #d4b028 75%, #a07818 100%); }
+    #dice-cube .f6 { background: linear-gradient(160deg, #c9a028 0%, #9a7018 50%, #6e5010 85%, #3a2a08 100%); }
     #dice-cube.settled {
-        filter: drop-shadow(0 0 8px rgba(255, 215, 80, 0.45));
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45)) drop-shadow(0 0 10px rgba(255, 210, 80, 0.55));
     }
     #dice-cube.settled .f1 {
         background:
-            radial-gradient(circle at 30% 28%, rgba(255,255,255,0.4) 0%, transparent 24%),
-            linear-gradient(145deg, #fff8d0, #e8c44a 55%, #b8921e);
+            radial-gradient(circle at 28% 26%, rgba(255,255,255,0.55) 0%, transparent 28%),
+            linear-gradient(145deg, #fff9d8 0%, #f0d050 40%, #c9a020 78%, #8a6810 100%);
     }
     #dice-cube .face::after {
         content: '✦';
-        position: absolute; font-size: 3.6px; color: rgba(255,255,255,0.9);
-        top: 2px; right: 3px;
-        text-shadow: none;
+        position: absolute; font-size: 3.1px; color: rgba(255,255,255,0.88);
+        top: 1.5px; right: 2.2px;
+        text-shadow: 0 0 2px rgba(255, 220, 100, 0.5);
+        opacity: 0.85;
     }
-    #dice-cube.settled .face::after {
-        text-shadow: 0 0 3px #fff, 0 0 5px #7dd3fc;
-    }
+    #dice-cube.settled .face::after { opacity: 1; }
     #dice-cube .face .pips {
-        display: grid; width: 70%; height: 70%;
-        grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr;
+        width: 78%; height: 78%;
+        display: grid; grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
         place-items: center;
     }
     #dice-cube .face .pip {
-        width: 3px; height: 3px; border-radius: 50%;
+        width: 2.55px; height: 2.55px; border-radius: 50%;
         background: #2a1206;
+        box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.15);
     }
     #dice-cube.settled .face .pip {
         background: radial-gradient(circle at 35% 35%, #5a2a0a, #1a0a02 70%);
-        box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), 0 1px 1px rgba(0,0,0,0.35);
+        box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.28), 0 0.5px 1px rgba(0,0,0,0.4);
     }
-    /* 六面组成封闭立方体；Z 略大于半边长，减少棱上缝线 */
-    #dice-cube .f1 { transform: rotateY(0deg) translateZ(10.5px); }
-    #dice-cube .f2 { transform: rotateY(90deg) translateZ(10.5px); }
-    #dice-cube .f3 { transform: rotateY(180deg) translateZ(10.5px); }
-    #dice-cube .f4 { transform: rotateY(-90deg) translateZ(10.5px); }
-    #dice-cube .f5 { transform: rotateX(90deg) translateZ(10.5px); }
-    #dice-cube .f6 { transform: rotateX(-90deg) translateZ(10.5px); }
-    /* 落地阴影（挂在 scene 下，不跟着立方体翻面） */
+    /* 半边长 18.36/2 ≈ 9.18 */
+    #dice-cube .f1 { transform: rotateY(0deg) translateZ(9.18px); }
+    #dice-cube .f2 { transform: rotateY(90deg) translateZ(9.18px); }
+    #dice-cube .f3 { transform: rotateY(180deg) translateZ(9.18px); }
+    #dice-cube .f4 { transform: rotateY(-90deg) translateZ(9.18px); }
+    #dice-cube .f5 { transform: rotateX(90deg) translateZ(9.18px); }
+    #dice-cube .f6 { transform: rotateX(-90deg) translateZ(9.18px); }
     #dice-shadow {
         position: absolute; left: 50%; top: 50%;
-        width: 24px; height: 7.2px;
-        margin-left: -12px; margin-top: 13.2px;
+        width: 20.4px; height: 6.1px;
+        margin-left: -10.2px; margin-top: 11.2px;
         border-radius: 50%;
-        background: radial-gradient(ellipse, rgba(0,0,0,0.45) 0%, transparent 70%);
-        transform: translateZ(-30px);
-        opacity: 0.6;
+        background: radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 72%);
+        transform: translateZ(-28px);
+        opacity: 0.55;
         pointer-events: none;
     }
     /* 清零菜单：金色长框 + 透明底 */
