@@ -1,16 +1,20 @@
 /* ========== 横屏界面元素自适应放大（须在其它 CSS 之后加载） ==========
  * --ui-k 由 js/04-view-scale.js 的 autoUiScale() 按牌桌里的可用空间算出（≥1），
- * 用来统一放大：四家头像+分数、你的手牌（在 12-render.js 里）、手牌上方提示文字、AI 副露牌、废牌池的牌。
+ * 用来统一放大：四家头像+分数、你的手牌（在 12-render.js 里）、手牌上方提示文字、AI 副露牌、废牌池的牌、
+ * 状态栏四家文字（庄/听/牌墙张数）。
  * 系数为 1（默认、竖屏、或 AUTO_UI_SCALE=false）时，下面所有值与原来的写法完全相同。
  * 这里只覆盖「横屏」：选择器都带 body:not(.portrait-layout)，竖屏用它自己的固定尺寸，不受影响。
  * 基准值照抄 02/03/06 里的横屏原值：头像 48（矮屏 36、更矮 30、宽平板 48）、分数 13.2（矮屏 10）、
- * 提示文字 12/最小高 30（矮屏 10/24）、你的手牌行高 41（更矮 34）。 */
+ * 提示文字 12/最小高 30（矮屏 10/24）、你的手牌行高 41（更矮 34）、状态栏文字 13（宽平板 12）、
+ * 牌墙张数文字 10（窄宽度 9；is-android 矮屏另有专门收紧，不参与这里的放大）。 */
 
 body:not(.portrait-layout) {
     --avatar-base: 48px;
     --score-base: 13.2px;
     --log-fs-base: 14px;
     --log-minh-base: 34px;
+    --statline-fs-base: 13px;
+    --wallcount-fs-base: 10px;
 }
 @media screen and (orientation: landscape) and (max-height: 420px) {
     body:not(.portrait-layout) {
@@ -24,7 +28,10 @@ body:not(.portrait-layout) {
     body:not(.portrait-layout) { --avatar-base: 30px; }
 }
 @media screen and (orientation: landscape) and (min-width: 900px) and (min-height: 500px) {
-    body:not(.portrait-layout) { --avatar-base: 48px; }
+    body:not(.portrait-layout) { --avatar-base: 48px; --statline-fs-base: 12px; }
+}
+@media screen and (max-width: 520px) {
+    body:not(.portrait-layout) { --wallcount-fs-base: 9px; }
 }
 
 /* 头像 + 分数 */
@@ -34,6 +41,16 @@ body:not(.portrait-layout) .avatar img {
 }
 body:not(.portrait-layout) .player-score {
     font-size: calc(var(--score-base) * var(--ui-k, 1));
+}
+/* 状态栏四家文字（庄/听/牌墙张数）：和废牌池一样，容器 #wall-count 是屏幕百分比宽度、
+   文字原来是断点写死的固定字号，桌面大窗口下会显得比放大后的头像/手牌小一截 */
+body:not(.portrait-layout) .stat-line {
+    font-size: calc(var(--statline-fs-base) * var(--ui-k, 1));
+}
+/* is-android 排除在外：05-landscape-max.css 里矮屏(max-height:420px)专门把这个元素字号收紧到9px防挡牌，
+   是刻意收缩、不是"忘了接ui-k"，直接排除避免盖掉那条规则 */
+body:not(.portrait-layout):not(.is-android) #wall-count-text {
+    font-size: calc(var(--wallcount-fs-base) * var(--ui-k, 1));
 }
 /* 听牌开关：跟头像一起放大；仍绝对贴在头像左侧，不改变猫占位 */
 body:not(.portrait-layout) .tenpai-hint-toggle {
