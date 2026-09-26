@@ -81,40 +81,40 @@
         box-shadow: inset 0 0 60px rgba(0,0,0,0.68);
         overflow: hidden;
     }
-    /* 吃碰杠时：桌面正中放大显示当前被叫的牌 */
+    /* 吃碰杠：桌面正中显示当前被叫的牌（与手牌同尺寸 29×39，立体阴影，无大底板以免挡内容） */
     #claim-focus-tile {
         display: none;
         position: absolute;
         left: 50%;
         top: 48%;
         transform: translate(-50%, -50%);
-        z-index: 18;
+        z-index: 12;
         pointer-events: none;
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: rgba(6, 12, 18, 0.55);
-        box-shadow:
-            0 0 0 1px rgba(212, 175, 55, 0.35),
-            0 8px 28px rgba(0, 0, 0, 0.45),
-            inset 0 1px 0 rgba(255, 255, 255, 0.06);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
     }
     #claim-focus-tile.show { display: flex; align-items: center; justify-content: center; }
     #claim-focus-tile .tile {
-        width: 52px;
-        height: 70px;
-        font-size: 48px;
-        border-radius: 6px;
+        width: 29px;
+        height: 39px;
+        font-size: 29px;
+        border-radius: 5px;
+        border: 1px solid rgba(180, 165, 120, 0.65);
         box-shadow:
-            0 0 12px 2px rgba(212, 175, 55, 0.45),
-            0 4px 10px rgba(0, 0, 0, 0.4),
-            inset 0 1px 1px rgba(255, 255, 255, 0.85);
-        border: 1.5px solid var(--gold);
+            inset 0 1px 1px rgba(255, 255, 255, 0.9),
+            inset 0 -1px 1px rgba(0, 0, 0, 0.12),
+            0 1px 0 #e8dfc8,
+            0 2px 0 #d4c9a8,
+            0 3px 0 #b8a888,
+            0 4px 0 #9a8a68,
+            0 6px 12px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(212, 175, 55, 0.5);
+        transform: translateY(-3px);
     }
     #claim-focus-tile .tile-marker { height: 0; font-size: 0; }
     body.portrait-layout #claim-focus-tile .tile {
-        width: 44px;
-        height: 60px;
-        font-size: 40px;
+        width: 29px;
+        height: 39px;
+        font-size: 29px;
     }

@@ -184,6 +184,7 @@
         color: #c5d4e0;
     }
     body.portrait-layout .stat-row.avatar-row .stat-cell {
+        width: 22px; /* 小头像放大 20% 后避免裁切 */
         font-size: 13px;
     }
     body.portrait-layout #wall-count-gap {
