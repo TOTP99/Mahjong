@@ -222,7 +222,7 @@ function closeResultModal() {
 const ICON_CLAIM_YES = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#2f9e5f"/><path d="M6.6 12.6l3.7 3.7 7.1-7.6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_CLAIM_NO = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#c8453b"/><path d="M8.2 8.2l7.6 7.6M15.8 8.2l-7.6 7.6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>';
 
-/** 吃碰杠时在桌面正中放大显示当前被叫的牌；无牌或非 claim/selfGang 时隐藏 */
+/** 吃碰杠时在桌面正中显示当前被叫的牌；无牌或非 claim/selfGang 时隐藏 */
 function updateClaimFocusTile() {
     let el = $('claim-focus-tile');
     if (!el) {
@@ -258,12 +258,10 @@ function showIndicator(text, interactive) {
     }
     el.classList.add('show');
     try { updateClaimFocusTile(); } catch (e) {}
-    // 竖屏：提示与副露浮层同坐标，提示出现时只藏浮层视觉，不改 exposedInfoShownFor
     if (document.body && document.body.classList.contains('portrait-layout')) {
         const tip = $('tile-tooltip');
         if (tip) tip.classList.remove('show');
     }
-    // 横屏：提示在左侧列表下方，滚入可视区；竖屏固定在牌桌空地，不滚动
     if (!(document.body && document.body.classList.contains('portrait-layout'))) {
         try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
     }
@@ -274,7 +272,6 @@ function hideIndicator() {
     el.classList.remove('show');
     el.innerHTML = '';
     try { updateClaimFocusTile(); } catch (e) {}
-    // 竖屏：提示关掉后，若仍在查看某家副露，重新打开浮层
     if (document.body && document.body.classList.contains('portrait-layout')
         && typeof exposedInfoShownFor !== 'undefined' && exposedInfoShownFor) {
         try { showExposedInfo(exposedInfoShownFor); } catch (e) {}
