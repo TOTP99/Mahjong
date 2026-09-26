@@ -45,12 +45,12 @@
 }
 
 /* 状态栏小头像长按反馈（调庄 hidden gem 等） */
-.stat-cell.stat-avatar-pressing .stat-avatar-img,
 .stat-avatar-img.stat-avatar-pressing {
     filter: brightness(1.15) drop-shadow(0 0 4px rgba(212, 175, 55, 0.65));
     transform: scale(1.08);
 }
-.stat-cell .stat-avatar-img {
+/* 长按保护：竖屏包在 .stat-cell 里、横屏包在 .stat-line 里，选择器不认容器、直接认图本身，横竖屏都生效 */
+.stat-avatar-img {
     transition: filter 0.15s ease, transform 0.15s ease;
     -webkit-user-select: none;
     user-select: none;
