@@ -1,6 +1,6 @@
 /* ========== 横屏界面元素自适应放大（须在其它 CSS 之后加载） ==========
  * --ui-k 由 js/04-view-scale.js 的 autoUiScale() 按牌桌里的可用空间算出（≥1），
- * 用来统一放大：四家头像+分数、你的手牌（在 12-render.js 里）、手牌上方提示文字、AI 副露牌。
+ * 用来统一放大：四家头像+分数、你的手牌（在 12-render.js 里）、手牌上方提示文字、AI 副露牌、废牌池的牌。
  * 系数为 1（默认、竖屏、或 AUTO_UI_SCALE=false）时，下面所有值与原来的写法完全相同。
  * 这里只覆盖「横屏」：选择器都带 body:not(.portrait-layout)，竖屏用它自己的固定尺寸，不受影响。
  * 基准值照抄 02/03/06 里的横屏原值：头像 48（矮屏 36、更矮 30、宽平板 48）、分数 13.2（矮屏 10）、
@@ -92,6 +92,13 @@ body:not(.portrait-layout) .ai-exposed .tileback {
     width: calc(var(--side-tileback-w) * 0.814 * var(--ui-k, 1));
     height: calc(var(--side-tileback-h) * 0.814 * var(--ui-k, 1));
     font-size: calc(var(--side-tileback-fs) * 0.814 * var(--ui-k, 1));
+}
+/* 废牌池：牌本身原来是写死的 --side-tile-*（手机像素），容器 #discardWall 却是屏幕百分比宽度——
+   桌面大窗口下容器变宽、牌不变，中间空当越来越大。这里补上 --ui-k，跟上面 AI 副露牌用同一套系数 */
+body:not(.portrait-layout) .discardTile {
+    width: calc(var(--side-tile-w) * var(--ui-k, 1));
+    height: calc(var(--side-tile-h) * var(--ui-k, 1));
+    font-size: calc(var(--side-tile-fs) * var(--ui-k, 1));
 }
 
 /* ========== 牌桌平滑过渡 ==========
