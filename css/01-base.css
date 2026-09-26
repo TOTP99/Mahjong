@@ -71,11 +71,58 @@
     #game-table {
         width: 100%; height: 100%; position: relative;
         background:
-            radial-gradient(circle at 50% 38%, rgba(255,255,255,0.06), transparent 52%),
-            repeating-linear-gradient(45deg, rgba(212,175,55,0.04) 0, rgba(212,175,55,0.04) 1px, transparent 1px, transparent 26px),
-            repeating-linear-gradient(-45deg, rgba(212,175,55,0.04) 0, rgba(212,175,55,0.04) 1px, transparent 1px, transparent 26px),
-            linear-gradient(160deg, #1a4d38 0%, #153d2c 40%, #0f2e22 100%);
+            /* 中央微光（压暗后仍留一点体积感） */
+            radial-gradient(circle at 50% 38%, rgba(255,255,255,0.035), transparent 50%),
+            /* 菱格纹：透明度提高、格距略收，横竖更清晰 */
+            repeating-linear-gradient(45deg, rgba(212,175,55,0.11) 0, rgba(212,175,55,0.11) 1.2px, transparent 1.2px, transparent 22px),
+            repeating-linear-gradient(-45deg, rgba(212,175,55,0.11) 0, rgba(212,175,55,0.11) 1.2px, transparent 1.2px, transparent 22px),
+            /* 更深绿毡 */
+            linear-gradient(160deg, #123628 0%, #0e2a1f 38%, #0a1f17 72%, #071510 100%);
         border-radius: 20px;
-        box-shadow: inset 0 0 48px rgba(0,0,0,0.55);
+        box-shadow: inset 0 0 56px rgba(0,0,0,0.62);
         overflow: hidden;
+    }
+    /* 四角深色木质花边：纯装饰，不挡点击；z-index 压在背景上、控件下 */
+    #game-table::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 0;
+        /* 每角一块 L 形木色 + 细金线描边 */
+        background:
+            /* 左上 */
+            linear-gradient(135deg, #3d2a18 0%, #2a1c10 55%, transparent 56%) top left / 52px 52px no-repeat,
+            linear-gradient(135deg, rgba(212,175,55,0.45) 0 1.5px, transparent 1.5px) top left / 52px 52px no-repeat,
+            /* 右上 */
+            linear-gradient(225deg, #3d2a18 0%, #2a1c10 55%, transparent 56%) top right / 52px 52px no-repeat,
+            linear-gradient(225deg, rgba(212,175,55,0.45) 0 1.5px, transparent 1.5px) top right / 52px 52px no-repeat,
+            /* 左下 */
+            linear-gradient(45deg, #3d2a18 0%, #2a1c10 55%, transparent 56%) bottom left / 52px 52px no-repeat,
+            linear-gradient(45deg, rgba(212,175,55,0.45) 0 1.5px, transparent 1.5px) bottom left / 52px 52px no-repeat,
+            /* 右下 */
+            linear-gradient(315deg, #3d2a18 0%, #2a1c10 55%, transparent 56%) bottom right / 52px 52px no-repeat,
+            linear-gradient(315deg, rgba(212,175,55,0.45) 0 1.5px, transparent 1.5px) bottom right / 52px 52px no-repeat;
+        box-shadow:
+            inset 0 0 0 1px rgba(42, 28, 16, 0.35);
+    }
+    /* 四角内侧再压一层短木条，让花边更厚实一点（仍不挡交互） */
+    #game-table::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 0;
+        background:
+            linear-gradient(#2f2014, #2f2014) top left / 28px 5px no-repeat,
+            linear-gradient(#2f2014, #2f2014) top left / 5px 28px no-repeat,
+            linear-gradient(#2f2014, #2f2014) top right / 28px 5px no-repeat,
+            linear-gradient(#2f2014, #2f2014) top right / 5px 28px no-repeat,
+            linear-gradient(#2f2014, #2f2014) bottom left / 28px 5px no-repeat,
+            linear-gradient(#2f2014, #2f2014) bottom left / 5px 28px no-repeat,
+            linear-gradient(#2f2014, #2f2014) bottom right / 28px 5px no-repeat,
+            linear-gradient(#2f2014, #2f2014) bottom right / 5px 28px no-repeat;
+        opacity: 0.92;
     }
