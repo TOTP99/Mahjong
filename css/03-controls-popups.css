@@ -121,7 +121,9 @@
         display: flex; justify-content: center; align-items: center; font-size: 11px;
     }
     #flow-log {
-        margin-top: 14px; min-height: 30px; padding: 3px 10px;
+        /* margin-top 不在这定：#flow-log 固定嵌在 .bottom 容器里，02里 .bottom #flow-log
+           选择器权重更高、永远覆盖这里，写在这只会误导，实际值去 02 改 */
+        min-height: 30px; padding: 3px 10px;
         font-size: 12px; color: var(--text-muted); text-align: center;
         letter-spacing: 0.03em; line-height: 1.4;
     }
@@ -672,10 +674,6 @@
     body.portrait-layout #flow-log {
         font-size: 13px;
     }
-    /* 黄金镶钻 3D 立方体骰子 */
-
-
-
 /* ===== 结算弹窗：横屏限制高度，内容滚动，底部确定 sticky ===== */
 @media (orientation: landscape) {
     #result-modal {
