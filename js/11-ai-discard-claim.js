@@ -75,14 +75,17 @@ function shouldAiChi(player, tile, combo) {
     if (exposed.length >= 3) return false;
     const score = scoreChiCombo(hands[player], tile, combo, exposed, player);
     const style = aiPersonality[player] || 'shrewd';
-    const conf = aiLearn.confidence[style] || 0;
+    const conf = (aiLearn.confidence[style] && aiLearn.confidence[style].callAggr) || 0;
     const open = isKaimen(exposed);
     // 开门：要有明显收益；未开门：新规则下没开门自摸/点炮都要多罚一倍，门槛降到 1，更愿意开门
     const baseThreshold = open ? 4 : 1;
-    return score >= baseThreshold - conf * 0.6;
+    const actual = score >= baseThreshold - conf * 0.6;
+    // 轴1归因：跟"没学过(conf=0)"时会不会选得不一样比一比，选得不一样说明这条轴真的起作用了
+    if (actual !== (score >= baseThreshold)) markAxisUsed(player, 'callAggr');
+    return actual;
 }
 
-function tileKeepTier(hand, tile, style) {
+function tileKeepTier(hand, tile, style, neutralHonor) {
     const suit = tileSuit(tile);
     const rank = tileRank(tile);
     const sameCount = hand.filter(t => t === tile).length;
@@ -91,10 +94,13 @@ function tileKeepTier(hand, tile, style) {
     if (sameCount >= 3) tier = 4; // 刻子
     else if (sameCount === 2) tier = 6; // 对子：不要轻易拆
     else if (suit === '字') {
-        // 轴5 字牌保留倾向：孤立字牌原本一律tier 0（最先丢），按性格加一点保留倾向
+        // 轴5 字牌保留倾向：孤立字牌原本一律tier 0（最先丢），按性格+学习加一点保留倾向
         // （aggressive更愿意赌字牌刻子，conservative维持原来的0，不倒扣成负数）
-        const bias = (AI_TRAITS[style] || AI_TRAITS.shrewd).honorHoldBias;
-        tier = Math.max(0, bias);
+        // neutralHonor=true 时强制当作没有这条轴（bias=0），给归因用的"没学过会怎么选"对照
+        const learn = aiLearn.confidence[style] || {};
+        const learnedBias = neutralHonor ? 0 : (learn.honorHold >= 1.5 ? 1 : (learn.honorHold <= -1.5 ? -1 : 0));
+        const bias = neutralHonor ? 0 : (AI_TRAITS[style] || AI_TRAITS.shrewd).honorHoldBias;
+        tier = Math.max(0, bias + learnedBias);
     }
     else {
         // 同花色±1/±2内是否还有别的牌，用来判断是不是“完全孤立”
@@ -188,9 +194,12 @@ function isTileDangerousFor(player, tile) {
 // 在保留等级最低（最优先舍弃）的档位里，优先选不会点炮的牌；避炮的松紧度按性格调整：
 // 保守=不惜多跳档也要找安全牌；激进=只在最该舍弃那档找，找不到就照打求效率；精明=折中，最多跳3档
 // 牌墙剩余量的紧迫感：越接近荒牌墙，大家都更求稳（多跳几档也要找安全牌）
-function wallUrgencyBonus(style) {
+function wallUrgencyBonus(style, wcConfOverride) {
     const remaining = deck.length - DEAD_WALL;
-    const at = (AI_TRAITS[style] || AI_TRAITS.shrewd).wallCautionAt;
+    const learn = aiLearn.confidence[style] || {};
+    const wcConf = wcConfOverride !== undefined ? wcConfOverride : (learn.wallCaution || 0);
+    const wcDelta = wcConf >= 1.5 ? 2 : (wcConf <= -1.5 ? -2 : 0); // 学习部分：在静态阈值上再多/少2张
+    const at = Math.max(2, (AI_TRAITS[style] || AI_TRAITS.shrewd).wallCautionAt + wcDelta);
     if (remaining <= Math.round(at / 2)) return 3;
     if (remaining <= at) return 1;
     return 0;
@@ -294,47 +303,63 @@ function chooseAiDiscardTile(hand, player) {
     const bestShan = candidates[0].shan;
     // 性格：可在最佳向听的邻近档里找安全牌
     const shanSlack = style === 'conservative' ? 1 : (style === 'aggressive' ? 0 : 1);
+    const learn = aiLearn.confidence[style] || {};
     const urgency = wallUrgencyBonus(style);
     let pool = candidates.filter(c => c.shan <= bestShan + shanSlack);
-    // 学习偏好：这个性格最近战绩差（常点炮/常没听牌）就强制找安全牌；战绩好则可以少受"求稳"的约束
-    const conf = aiLearn.confidence[style] || 0;
+    // 轴2(防守让牌)的学习值
+    const defenseConf = learn.defense || 0;
     // 轴7b/7c 位置感：读一眼对家/上家是什么性格，微调自己求稳的门槛
     // 对家凶（激进）→ 收紧（更容易触发cautious）；上家稳（保守）→ 松一点（威胁小，不用太紧张）
     let posSlack = 0;
     if (aiPersonality[acrossPlayerOf(player)] === 'aggressive') posSlack -= 1;
     if (aiPersonality[prevPlayerOf(player)] === 'conservative') posSlack += 1;
-    const cautious = conf <= -1.5 - posSlack;
-    const confident = conf >= 1.5;
+    const cautious = defenseConf <= -1.5 - posSlack;
+    const confident = defenseConf >= 1.5;
     // 没开门点炮×2：自己还没开门时点炮要多付一倍，安全牌优先级必须更硬，
     // 不受性格/战绩自信影响——哪怕是激进/战绩好的AI，没开门也不能对危险牌掉以轻心
     const notOpen = !isKaimen(exposed);
-    if (urgency >= 1 || cautious || notOpen) {
-        const safePool = pool.filter(c => c.safe);
-        if (safePool.length) pool = safePool;
-    } else if (style !== 'aggressive' && !confident) {
-        const safePool = pool.filter(c => c.safe);
-        if (safePool.length) pool = safePool;
+    const safeFilterActive = (u, c, cf) => (u >= 1 || c || notOpen) || (style !== 'aggressive' && !cf);
+    const actualFilterOn = safeFilterActive(urgency, cautious, confident);
+    const safePoolNow = pool.filter(c => c.safe);
+    // 只有"求稳"这一开关真的能改变候选范围（池子里本来就有安全/危险两种牌混着）时，
+    // 归因才有意义——否则开不开都一样，不能算某条轴"起了作用"
+    const filterWouldNarrow = safePoolNow.length > 0 && safePoolNow.length < pool.length;
+    if (actualFilterOn && filterWouldNarrow) pool = safePoolNow;
+    if (filterWouldNarrow) {
+        // 归因：defense / wallCaution / 位置感 分别单独归零（只改这一个、其它保持实际值），
+        // 看开关会不会翻——翻了说明这条轴自己就能决定这一把的选择
+        if (safeFilterActive(urgency, 0 <= -1.5 - posSlack, false) !== actualFilterOn) {
+            markAxisUsed(player, 'defense');
+        }
+        if (safeFilterActive(wallUrgencyBonus(style, 0), cautious, confident) !== actualFilterOn) {
+            markAxisUsed(player, 'wallCaution');
+        }
+        if (safeFilterActive(urgency, defenseConf <= -1.5, confident) !== actualFilterOn) {
+            markAxisUsed(player, 'position');
+        }
     }
-    // 轴6 炮牌截留：上面几种"必须求稳"的情形已经把pool收紧到安全牌了；这里补的是剩下那种
-    // 情形——不在那几种触发条件里，但当前最优tier里其实没有安全牌——性格允许的话，
+    // 轴6 炮牌截留：上面"求稳"已经把pool收紧到安全牌了；这里补的是剩下那种情形——
+    // 不在求稳范围内，但当前最优tier里其实没有安全牌——性格+学习允许的话，
     // 宁可退让几档tier也要换一张安全牌（不允许就是cannonHoldTier=0，跟以前行为一样）
-    const cannonHoldTier = (AI_TRAITS[style] || AI_TRAITS.shrewd).cannonHoldTier;
+    const cannonHoldTier = Math.max(0, (AI_TRAITS[style] || AI_TRAITS.shrewd).cannonHoldTier
+        + (learn.cannonHold >= 1.5 ? 1 : (learn.cannonHold <= -1.5 ? -1 : 0)));
     if (cannonHoldTier > 0) {
         const curBestTier = Math.min(...pool.map(c => c.tier));
         const bestTierHasSafe = pool.some(c => c.tier === curBestTier && c.safe);
         if (!bestTierHasSafe) {
             const widened = pool.filter(c => c.tier <= curBestTier + cannonHoldTier && c.safe);
-            if (widened.length) pool = widened;
+            if (widened.length) { pool = widened; markAxisUsed(player, 'cannonHold'); }
         }
     }
     // 轴7a 不喂下家：跟轴6同样的"退让几档tier"思路，只不过换成躲"会喂下家"的牌而不是"危险牌"
-    const blockXiajiaTier = (AI_TRAITS[style] || AI_TRAITS.shrewd).blockXiajiaTier;
+    const blockXiajiaTier = Math.max(0, (AI_TRAITS[style] || AI_TRAITS.shrewd).blockXiajiaTier
+        + (learn.position >= 1.5 ? 1 : (learn.position <= -1.5 ? -1 : 0)));
     if (blockXiajiaTier > 0) {
         const curBestTier = Math.min(...pool.map(c => c.tier));
         const bestTierFeedsNext = pool.filter(c => c.tier === curBestTier).every(c => c.feedsNext);
         if (bestTierFeedsNext) {
             const widened = pool.filter(c => c.tier <= curBestTier + blockXiajiaTier && !c.feedsNext);
-            if (widened.length) pool = widened;
+            if (widened.length) { pool = widened; markAxisUsed(player, 'position'); }
         }
     }
     // 在池内按 tier 升序（先丢不保的）
@@ -358,7 +383,15 @@ function chooseAiDiscardTile(hand, player) {
         const bestUkeire = finalPool[0].ukeire;
         finalPool = finalPool.filter(c => c.ukeire === bestUkeire);
     }
-    return finalPool[Math.floor(Math.random() * finalPool.length)].tile;
+    const chosen = finalPool[Math.floor(Math.random() * finalPool.length)].tile;
+    // 轴5归因（事后判定）：如果最终选中的这张恰好是一张"因为性格+学习倾向而被抬过tier"的孤立字牌，
+    // 且没有这条倾向时tier会不一样，就算这条轴真的影响了这次的选择
+    if (tileSuit(chosen) === '字' && hand.filter(x => x === chosen).length === 1) {
+        const withBias = tileKeepTier(hand, chosen, style, false);
+        const withoutBias = tileKeepTier(hand, chosen, style, true);
+        if (withBias !== withoutBias) markAxisUsed(player, 'honorHold');
+    }
+    return chosen;
 }
 
 function aiDiscard(player) {
@@ -388,7 +421,7 @@ function aiDiscard(player) {
                     clearKongFlags();
                     logFlow(nameOf(robber) + ' 抢杠胡了 ' + nameOf(player) + '！' + result.detail);
                     speak('胡了，' + voiceName(player) + '点炮');
-                    learnFromWin(robber, player);
+                    learnFromWin(robber, player, { fan: bonus.mult, turns: handTurnCount });
                     render();
                     showResultModal(robber, 'dianpao', player, bonus, result, gTile);
                     return;
@@ -455,7 +488,7 @@ function aiDiscard(player) {
         clearKongFlags();
         logFlow(nameOf(player) + ' 点炮，' + nameOf(ronPlayer) + ' 胡了！' + result.detail);
         speak('胡了，' + voiceName(player) + '点炮');
-        learnFromWin(ronPlayer, player);
+        learnFromWin(ronPlayer, player, { fan: bonus.mult, turns: handTurnCount });
         render();
         showResultModal(ronPlayer, 'dianpao', player, bonus, result, tile);
         return;
@@ -482,10 +515,14 @@ function isGoingForTriplets(hand) {
     return true;
 }
 
-function shouldAiPeng(p, tile) {
+function shouldAiPeng(p, tile, overrides) {
+    overrides = overrides || {};
     if (isTenpai(p)) return false; // 已上听不碰，避免拆听
     const style = aiPersonality[p] || 'shrewd';
-    const conf = aiLearn.confidence[style] || 0; // 学习偏好：战绩好更敢碰，战绩差更谨慎
+    const learn = aiLearn.confidence[style] || {};
+    // conf=轴1(吃碰激进度)的学习值；chaseConf=轴3(特殊牌型追逐)的学习值；两条轴分开学，互不影响
+    const conf = overrides.callAggr !== undefined ? overrides.callAggr : (learn.callAggr || 0);
+    const chaseConf = overrides.chaseSpecial !== undefined ? overrides.chaseSpecial : (learn.chaseSpecial || 0);
     const exposed = exposedMelds[p];
     const openCount = exposed.length;
     if (openCount >= 3) return false; // 穷胡：不能手把一
@@ -513,9 +550,10 @@ function shouldAiPeng(p, tile) {
         || (!qhBefore.kezi && qhAfter.kezi);
 
     // 副露数量上限
-    // 激进可略多；冲碰碰胡再按性格给不同额度；学习战绩很好再多给1个名额，很差则少给1个
+    // 激进可略多；冲碰碰胡再按性格+学习给不同额度；学习战绩很好再多给1个名额，很差则少给1个
     // 中发白刻子本身带番，即使已接近上限也允许碰（下面用 isHonorValue 放行）
-    const chaseSlack = (AI_TRAITS[style] || AI_TRAITS.shrewd).chaseSpecialSlack;
+    const chaseSlack = (AI_TRAITS[style] || AI_TRAITS.shrewd).chaseSpecialSlack
+        + (chaseConf >= 1.5 ? 1 : (chaseConf <= -1.5 ? -1 : 0));
     const cap = (style === 'conservative' ? 2 : (style === 'aggressive' ? 3 : 2))
         + (chasingPengPeng ? chaseSlack : 0)
         + (conf >= 1.5 ? 1 : 0) - (conf <= -1.5 ? 1 : 0);
@@ -555,7 +593,13 @@ function findAiPeng(discarder, tile) {
     for (const p of ['top', 'left', 'right']) {
         if (p === discarder) continue;
         if (exposedMelds[p].length >= 3) continue; // 穷胡规则：不能手把一，最多3组面子在外
-        if (canPeng(hands[p], tile) && shouldAiPeng(p, tile)) return p;
+        if (!canPeng(hands[p], tile)) continue;
+        const actual = shouldAiPeng(p, tile);
+        // 归因：把轴1/轴3的学习值分别归零，看这个决定是不是因为学到的东西才变了
+        // （分别只归零一条、另一条保持实际值，这样才是这条轴自己的影响，不会互相混)
+        if (shouldAiPeng(p, tile, { callAggr: 0 }) !== actual) markAxisUsed(p, 'callAggr');
+        if (shouldAiPeng(p, tile, { chaseSpecial: 0 }) !== actual) markAxisUsed(p, 'chaseSpecial');
+        if (actual) return p;
     }
     return null;
 }
@@ -658,7 +702,7 @@ function aiDrawReplacement(p) {
         clearKongFlags();
         logFlow(nameOf(p) + ' 杠上开花！自摸胡牌！' + result.detail);
         speak('胡了，自摸');
-        learnFromWin(p, null);
+        learnFromWin(p, null, { fan: bonus.mult, turns: handTurnCount });
         render();
         showResultModal(p, 'selfdraw', null, bonus, result, drawn);
         return;

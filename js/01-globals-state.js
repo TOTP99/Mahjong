@@ -36,23 +36,46 @@ let afterKongDiscardPlayer = null; // 刚杠后打出的那一张，点炮时×2
 
 
 // ---------- AI 学习：跨局记忆三种性格(保守/激进/精明)的历史战绩，微调决策倾向 ----------
+// 7轴各自独立学习（不再是笼统一个数）：callAggr=吃碰激进度 defense=防守让牌
+// chaseSpecial=特殊牌型追逐 wallCaution=残局求稳 honorHold=字牌保留 cannonHold=炮牌截留 position=位置感
+const AI_AXES = ['callAggr', 'defense', 'chaseSpecial', 'wallCaution', 'honorHold', 'cannonHold', 'position'];
 const AI_LEARN_KEY = 'qionghu_mahjong_ai_learn_v1';
-let aiLearn = { games: 0, confidence: { conservative: 0, aggressive: 0, shrewd: 0 } };
+function freshAxisConfidence() {
+    const o = {};
+    for (const ax of AI_AXES) o[ax] = 0;
+    return o;
+}
+let aiLearn = {
+    games: 0,
+    confidence: { conservative: freshAxisConfidence(), aggressive: freshAxisConfidence(), shrewd: freshAxisConfidence() }
+};
+// 每局临时记录三个AI各自"这局真的用上了哪几条轴"（牌局结束记完账就清空，不落盘）
+let aiAxisUsed = { top: new Set(), left: new Set(), right: new Set() };
+function resetAiAxisUsed() { aiAxisUsed = { top: new Set(), left: new Set(), right: new Set() }; }
+function markAxisUsed(player, axis) {
+    if (aiAxisUsed[player]) aiAxisUsed[player].add(axis);
+}
+// 这一局走了多少轮摸牌，给"激进——胡得快不快"当参考
+let handTurnCount = 0;
+
 function loadAiLearn() {
     try {
         const raw = localStorage.getItem(AI_LEARN_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.confidence) {
-            aiLearn = {
-                games: parsed.games || 0,
-                confidence: {
-                    conservative: parsed.confidence.conservative || 0,
-                    aggressive: parsed.confidence.aggressive || 0,
-                    shrewd: parsed.confidence.shrewd || 0
-                }
-            };
+        if (!parsed || !parsed.confidence) return;
+        const out = { games: parsed.games || 0, confidence: {} };
+        for (const style of ['conservative', 'aggressive', 'shrewd']) {
+            const saved = parsed.confidence[style];
+            const fresh = freshAxisConfidence();
+            // 旧版本(改7轴之前)是一个性格一个数字，直接读到的是number；这种情况没法对应到某条轴，
+            // 清零重新开始学，不强行套用（新老结构对不上，硬套没有意义）
+            if (saved && typeof saved === 'object') {
+                for (const ax of AI_AXES) fresh[ax] = typeof saved[ax] === 'number' ? saved[ax] : 0;
+            }
+            out.confidence[style] = fresh;
         }
+        aiLearn = out;
     } catch (e) { /* 本地存储不可用则用默认值 */ }
 }
 function saveAiLearn() {
@@ -72,24 +95,67 @@ function scheduleSaveAiLearn() {
     }, 600);
 }
 
-// 一局定输赢后调用：赢家所属性格信心上升，点炮方所属性格信心下降（越玩战绩越好，AI下次就更敢按这个性格的路子来）
-function learnFromWin(winnerPlayer, payerPlayer) {
+// 三种性格对"这局打得好不好"的定义完全不同——不是谁都以"胡了"为唯一目标：
+// 保守只在乎有没有点炮；激进只在乎胡得快不快；精明只在乎胡得大不大/有没有挡住别人
+// ctx: { role: 'winner'|'payer'|'bystander'|'draw', fan, turns, tenpai }
+function scoreHandForStyle(style, ctx) {
+    if (ctx.role === 'draw') {
+        if (style === 'conservative') return ctx.tenpai ? 0.3 : 0;
+        if (style === 'aggressive') return ctx.tenpai ? 0.2 : -0.3;
+        return ctx.tenpai ? 0.6 : 0.2; // shrewd：流局听牌=局面在掌控中，是精明最想要的结果
+    }
+    if (ctx.role === 'winner') {
+        if (style === 'conservative') return 1;
+        if (style === 'aggressive') {
+            const turns = ctx.turns || 99;
+            return 1 + Math.max(0, 0.5 - Math.max(0, turns - 20) * 0.02); // 20轮内胡封顶+0.5，越慢加成越少
+        }
+        return 0.5 + Math.min(1, (ctx.fan || 0) * 0.15); // shrewd：按番数加成，封顶+1(叠加基础0.5=+1.5)
+    }
+    if (ctx.role === 'payer') {
+        if (style === 'conservative') return -1.5; // 保守最大的失败
+        if (style === 'aggressive') return -1;
+        return (ctx.fan || 0) >= 5 ? -1.5 : -0.6; // shrewd：该挡的挡没挡住，看放的这把多大
+    }
+    // bystander：这局既没赢也没点炮
+    if (style === 'conservative') return 0.5; // 没惹上危险，松一口气
+    if (style === 'aggressive') return -0.1; // 被人抢先，小扣
+    return 0; // shrewd：不算成也不算败
+}
+
+// 这局结束，把 score 记到这个AI这局真正用上的那几条轴上（没用上的轴不动）
+function applyAxisScore(player, style, score) {
+    const used = aiAxisUsed[player];
+    if (!used || used.size === 0) return;
+    for (const axis of used) {
+        aiLearn.confidence[style][axis] = clampConfidence(aiLearn.confidence[style][axis] + score);
+    }
+}
+
+// 一局定输赢后调用。meta: { fan, turns }（自摸/点炮都算胡，不再区分对"这局的分"的影响——
+// 三种性格各自在乎的东西已经在 scoreHandForStyle 里体现了）
+function learnFromWin(winnerPlayer, payerPlayer, meta) {
+    meta = meta || {};
     for (const p of ['top', 'left', 'right']) {
         const style = aiPersonality[p];
         if (!style) continue;
-        if (p === winnerPlayer) aiLearn.confidence[style] = clampConfidence(aiLearn.confidence[style] + 0.3);
-        else if (p === payerPlayer) aiLearn.confidence[style] = clampConfidence(aiLearn.confidence[style] - 0.5);
+        const role = p === winnerPlayer ? 'winner' : (p === payerPlayer ? 'payer' : 'bystander');
+        const score = scoreHandForStyle(style, { role, fan: meta.fan, turns: meta.turns });
+        applyAxisScore(p, style, score);
     }
+    resetAiAxisUsed();
     aiLearn.games += 1;
     scheduleSaveAiLearn();
 }
-// 流局时调用：听牌的性格小幅加分，没听牌的小幅减分
+// 流局时调用：听牌的性格按自己的表加分，没听牌的按自己的表扣分/加分
 function learnFromDraw(tenpaiPlayers) {
     for (const p of ['top', 'left', 'right']) {
         const style = aiPersonality[p];
         if (!style) continue;
-        aiLearn.confidence[style] = clampConfidence(aiLearn.confidence[style] + (tenpaiPlayers.includes(p) ? 0.05 : -0.1));
+        const score = scoreHandForStyle(style, { role: 'draw', tenpai: tenpaiPlayers.includes(p) });
+        applyAxisScore(p, style, score);
     }
+    resetAiAxisUsed();
     aiLearn.games += 1;
     scheduleSaveAiLearn();
 }
