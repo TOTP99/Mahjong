@@ -408,7 +408,7 @@ function aiDiscard(player) {
                     const ix = hands[player].indexOf(gTile);
                     if (ix > -1) hands[player].splice(ix, 1);
                     if (robber === 'bottom') {
-                        offerHu({ mode: 'dianpao', tile: gTile, fromPlayer: player, robGang: true, concealed: [...hands.bottom, gTile] });
+                        offerHu({ mode: 'dianpao', tile: gTile, fromPlayer: player, robGang: true });
                         return;
                     }
                     hands[robber].push(gTile);
@@ -471,8 +471,7 @@ function aiDiscard(player) {
     // 多家可以胡的话，按下家方向离出牌人最近的先胡
     const ronPlayer = findRonPriority(player, tile);
     if (ronPlayer === 'bottom') {
-        const testHand = [...hands.bottom, tile];
-        offerHu({ mode: 'dianpao', tile, fromPlayer: player, concealed: testHand });
+        offerHu({ mode: 'dianpao', tile, fromPlayer: player });
         return;
     }
     if (ronPlayer) {

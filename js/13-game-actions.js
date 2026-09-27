@@ -60,7 +60,7 @@ function offerHu(ctx) {
     clearKongFlags();
     logFlow('你胡牌了！' + result.detail);
     speak(isSelfDraw ? '胡了，自摸' : '胡了，' + voiceName(payer) + '点炮');
-    learnFromWin('bottom', payer);
+    learnFromWin('bottom', payer, { fan: bonus.mult, turns: handTurnCount });
     render();
     showResultModal('bottom', isSelfDraw ? 'selfdraw' : 'dianpao', payer, bonus, result, winTile);
 }
@@ -184,7 +184,7 @@ function drawReplacementAndContinue() {
     validateHandCounts('drawReplacement');
     render();
     if (checkHu(hands.bottom, exposedMelds.bottom, 'bottom')) {
-        offerHu({ mode: 'selfdraw', concealed: hands.bottom }); // 杠上开花×2 在 offerHu/applyKongBonuses
+        offerHu({ mode: 'selfdraw' }); // 杠上开花×2 在 offerHu/applyKongBonuses
         return;
     }
     offerSelfGangIfAny();
@@ -239,7 +239,7 @@ function handleDiscard(event) {
         clearKongFlags();
         logFlow(nameOf(ronPlayer) + ' 点炮胡了你打出的牌！' + result.detail);
         speak('胡了，' + voiceName('bottom') + '点炮');
-        learnFromWin(ronPlayer, 'bottom');
+        learnFromWin(ronPlayer, 'bottom', { fan: bonus.mult, turns: handTurnCount });
         render();
         showResultModal(ronPlayer, 'dianpao', 'bottom', bonus, result, card);
         return;

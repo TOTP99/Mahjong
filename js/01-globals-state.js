@@ -204,7 +204,7 @@ function checkTileConservation(reason) {
     return false;
 }
 
-// 全部 JS 按 01→14 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
+// 全部 JS 按 01→15 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
 
 // 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像图标 风位 奖杯 庄家 听牌提示（例如 [头像] 西 ★ 庄 听）
 function renderStatRow(elId, cellFor) {

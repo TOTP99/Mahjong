@@ -20,6 +20,8 @@ function initGame() {
     pendingClaim = null;
     lastSettlement = null;
     clearKongFlags();
+    resetAiAxisUsed();
+    handTurnCount = 0;
     currentIndex = turnOrder.indexOf(dealer);
     for (const p of PLAYERS) hands[p] = deck.splice(0, 13).sort(tileCompare);
     markDealer();
@@ -176,7 +178,7 @@ function continueAfterFirstTurnCheck(player) {
     if (gameOver) return;
     if (checkHu(hands[player], exposedMelds[player], player)) {
         if (player === 'bottom') {
-            offerHu({ mode: 'selfdraw', concealed: hands.bottom });
+            offerHu({ mode: 'selfdraw' });
         } else {
             gameOver = true;
             winner = player;
@@ -189,7 +191,7 @@ function continueAfterFirstTurnCheck(player) {
             clearKongFlags();
             logFlow(nameOf(player) + ' 自摸胡牌！' + result.detail);
             speak('胡了，自摸');
-            learnFromWin(player, null);
+            learnFromWin(player, null, { fan: bonus.mult, turns: handTurnCount });
             showResultModal(player, 'selfdraw', null, bonus, result, winTile);
         }
         return;
@@ -253,7 +255,7 @@ function executeSelfGang() {
             clearKongFlags();
             logFlow(nameOf(robber) + ' 抢杠胡了你加杠的 ' + tileGlyph(tile) + '！' + result.detail);
             speak('胡了，' + voiceName('bottom') + '点炮');
-            learnFromWin(robber, 'bottom');
+            learnFromWin(robber, 'bottom', { fan: bonus.mult, turns: handTurnCount });
             render();
             showResultModal(robber, 'dianpao', 'bottom', bonus, result, tile);
             return;
@@ -289,6 +291,7 @@ function executeSelfGang() {
 function nextTurn() {
     if (gameOver) return;
     if (deck.length <= DEAD_WALL) { declareDraw(); return; }
+    handTurnCount++;
     const player = turnOrder[currentIndex];
     const drawn = deck.pop();
     hands[player].push(drawn);
