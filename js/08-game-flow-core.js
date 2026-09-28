@@ -21,6 +21,7 @@ function initGame() {
     lastSettlement = null;
     clearKongFlags();
     resetAiAxisUsed();
+    resetLastCallTurn();
     handTurnCount = 0;
     currentIndex = turnOrder.indexOf(dealer);
     for (const p of PLAYERS) hands[p] = deck.splice(0, 13).sort(tileCompare);

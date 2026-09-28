@@ -55,6 +55,10 @@ function resetAiAxisUsed() { aiAxisUsed = { top: new Set(), left: new Set(), rig
 function markAxisUsed(player, axis) {
     if (aiAxisUsed[player]) aiAxisUsed[player].add(axis);
 }
+// 归因细化用：记这个AI最近一次吃/碰发生在第几轮（handTurnCount），
+// 如果点炮的这一巡刚好等于这个数，说明这张点炮的牌大概率是被那次吃碰逼出来的
+let lastCallTurn = { top: -1, left: -1, right: -1 };
+function resetLastCallTurn() { lastCallTurn = { top: -1, left: -1, right: -1 }; }
 // 这一局走了多少轮摸牌，给"激进——胡得快不快"当参考
 let handTurnCount = 0;
 
@@ -124,11 +128,16 @@ function scoreHandForStyle(style, ctx) {
 }
 
 // 这局结束，把 score 记到这个AI这局真正用上的那几条轴上（没用上的轴不动）
-function applyAxisScore(player, style, score) {
+// justCalled=true 时说明这次点炮是"这一巡刚吃/碰完就打出去"逼出来的——归因细化：
+// 吃碰相关的轴(callAggr/chaseSpecial)多担责任，其余轴（防守/残局/字牌/位置感等）少担，
+// 因为这张牌很可能是被那次吃碰打乱了手牌节奏才被迫打出的，不是这些轴自己选错了
+function applyAxisScore(player, style, score, justCalled) {
     const used = aiAxisUsed[player];
     if (!used || used.size === 0) return;
+    const CALL_AXES = new Set(['callAggr', 'chaseSpecial']);
     for (const axis of used) {
-        aiLearn.confidence[style][axis] = clampConfidence(aiLearn.confidence[style][axis] + score);
+        const weight = justCalled ? (CALL_AXES.has(axis) ? 1.4 : 0.4) : 1;
+        aiLearn.confidence[style][axis] = clampConfidence(aiLearn.confidence[style][axis] + score * weight);
     }
 }
 
@@ -141,9 +150,11 @@ function learnFromWin(winnerPlayer, payerPlayer, meta) {
         if (!style) continue;
         const role = p === winnerPlayer ? 'winner' : (p === payerPlayer ? 'payer' : 'bystander');
         const score = scoreHandForStyle(style, { role, fan: meta.fan, turns: meta.turns });
-        applyAxisScore(p, style, score);
+        const justCalled = role === 'payer' && lastCallTurn[p] === handTurnCount;
+        applyAxisScore(p, style, score, justCalled);
     }
     resetAiAxisUsed();
+    resetLastCallTurn();
     aiLearn.games += 1;
     scheduleSaveAiLearn();
 }
@@ -156,6 +167,7 @@ function learnFromDraw(tenpaiPlayers) {
         applyAxisScore(p, style, score);
     }
     resetAiAxisUsed();
+    resetLastCallTurn();
     aiLearn.games += 1;
     scheduleSaveAiLearn();
 }

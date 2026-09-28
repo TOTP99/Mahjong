@@ -146,21 +146,24 @@ const AI_TRAITS = {
         wallCautionAt: 16,     // 轴4 残局求稳：牌墙剩这么多张开始求稳（越大越早转守）
         honorHoldBias: -1,     // 轴5 字牌保留：孤立字牌保留档加成（越低越想早丢）
         cannonHoldTier: 2,     // 轴6 炮牌截留：为压住炮牌，愿意多容忍几档tier变差
-        blockXiajiaTier: 2     // 轴7a 不喂下家：为不喂下家，愿意多容忍几档tier变差
+        blockXiajiaTier: 2,    // 轴7a 不喂下家：为不喂下家，愿意多容忍几档tier变差
+        riskDefenseAt: 0.5     // 轴2扩展：对手"看起来要听牌"的风险分到多少就转防守，越低越神经质
     },
     aggressive: {
         chaseSpecialSlack: 2,
         wallCautionAt: 6,
         honorHoldBias: 1,
         cannonHoldTier: 0,
-        blockXiajiaTier: 0
+        blockXiajiaTier: 0,
+        riskDefenseAt: 1.15    // 只有极端信号（比如对家已经3组副露）才会让激进型也收一收
     },
     shrewd: {
         chaseSpecialSlack: 1,
         wallCautionAt: 10,
         honorHoldBias: 0,
         cannonHoldTier: 1,
-        blockXiajiaTier: 1
+        blockXiajiaTier: 1,
+        riskDefenseAt: 0.85
     }
 };
 
@@ -189,6 +192,40 @@ function feedsXiajia(player, tile) {
 // 检查某玩家打出这张牌，是否会点炮给别的玩家（用于AI出牌时的危险牌回避）
 function isTileDangerousFor(player, tile) {
     return turnOrder.some(p => p !== player && checkHu([...hands[p], tile], exposedMelds[p], p));
+}
+
+// 轴2扩展：对手"看起来要听牌了"的启发式风险分（不是读心，纯看得见的信号）——
+// 跟 isTileDangerousFor 互补：那个查的是"这一刻打出去必死"，这个查的是"这家开始有听牌相"，
+// 用来提前收一收，而不是等对方真听了才后知后觉
+function estimateTenpaiRisk(opponent) {
+    let risk = 0;
+    const melds = exposedMelds[opponent] ? exposedMelds[opponent].length : 0;
+    risk += melds * 0.35;
+    if (melds >= 3) risk += 0.4; // 穷胡规则最多3组副露，到顶了基本就是在等最后一口
+    const recent = discardPile.filter(d => d.player === opponent).slice(-4);
+    if (recent.length >= 3) {
+        const midCount = recent.filter(d => {
+            const s = tileSuit(d.tile), r = tileRank(d.tile);
+            return s !== '字' && r >= 4 && r <= 6;
+        }).length;
+        if (midCount === recent.length) risk += 0.3; // 连续切中张：该扔的边张/字牌早扔完了，牌型收紧
+    }
+    return Math.min(risk, 1.2);
+}
+
+// 轴：速度 vs 牌值——粗略估一下这手牌大概能算多大，不追求精确，只用来在"求快"和"求大"间做取舍
+function estimateHandValue(hand, exposed) {
+    let mult = 1;
+    const allTiles = [...hand, ...exposed.flatMap(m => m.tiles)];
+    const suits = new Set(allTiles.map(tileSuit));
+    if (isGoingForTriplets(hand)) mult += 1; // 碰碰胡苗头
+    const numSuits = [...suits].filter(s => s !== '字');
+    if (numSuits.length === 1 && !suits.has('字')) mult += 2; // 清一色苗头
+    else if (numSuits.length === 1) mult += 1; // 混一色苗头
+    mult += exposed.filter(m => m.type === 'gang').length; // 已经杠过的，牌越来越大
+    const yaojiuCount = allTiles.filter(t => { const r = tileRank(t), s = tileSuit(t); return s === '字' || r === 1 || r === 9; }).length;
+    if (allTiles.length && yaojiuCount / allTiles.length >= 0.5) mult += 0.5; // 幺九多，字牌/幺九加成有戏
+    return mult;
 }
 
 // 在保留等级最低（最优先舍弃）的档位里，优先选不会点炮的牌；避炮的松紧度按性格调整：
@@ -302,7 +339,12 @@ function chooseAiDiscardTile(hand, player) {
     });
     const bestShan = candidates[0].shan;
     // 性格：可在最佳向听的邻近档里找安全牌
-    const shanSlack = style === 'conservative' ? 1 : (style === 'aggressive' ? 0 : 1);
+    let shanSlack = style === 'conservative' ? 1 : (style === 'aggressive' ? 0 : 1);
+    // 轴：速度vs牌值——保守永远只看上面这套、不受牌值影响；激进平时求快，但牌值真的大了愿意多等一巡；
+    // 精明本来就想要大牌，牌值越高越愿意等（跟激进那条一样封顶多等1巡，别真等成流局）
+    const handValue = estimateHandValue(hand, exposed);
+    if (style === 'aggressive' && handValue >= 2) shanSlack += 1;
+    if (style === 'shrewd' && handValue >= 1.5) shanSlack += 1;
     const learn = aiLearn.confidence[style] || {};
     const urgency = wallUrgencyBonus(style);
     let pool = candidates.filter(c => c.shan <= bestShan + shanSlack);
@@ -318,24 +360,31 @@ function chooseAiDiscardTile(hand, player) {
     // 没开门点炮×2：自己还没开门时点炮要多付一倍，安全牌优先级必须更硬，
     // 不受性格/战绩自信影响——哪怕是激进/战绩好的AI，没开门也不能对危险牌掉以轻心
     const notOpen = !isKaimen(exposed);
-    const safeFilterActive = (u, c, cf) => (u >= 1 || c || notOpen) || (style !== 'aggressive' && !cf);
-    const actualFilterOn = safeFilterActive(urgency, cautious, confident);
+    // 轴2扩展：对手有没有"看起来要听牌"的信号（副露数/连续切中张），门槛按性格+学习值调
+    // （战绩差的更神经质、更容易转防守；战绩好的更迟钝一点）
+    const riskAt = Math.max(0.3, (AI_TRAITS[style] || AI_TRAITS.shrewd).riskDefenseAt - Math.round(defenseConf) * 0.15);
+    const highRiskNow = turnOrder.some(p => p !== player && estimateTenpaiRisk(p) >= riskAt);
+    const safeFilterActive = (u, c, cf, hr) => (u >= 1 || c || notOpen || hr) || (style !== 'aggressive' && !cf);
+    const actualFilterOn = safeFilterActive(urgency, cautious, confident, highRiskNow);
     const safePoolNow = pool.filter(c => c.safe);
     // 只有"求稳"这一开关真的能改变候选范围（池子里本来就有安全/危险两种牌混着）时，
     // 归因才有意义——否则开不开都一样，不能算某条轴"起了作用"
     const filterWouldNarrow = safePoolNow.length > 0 && safePoolNow.length < pool.length;
     if (actualFilterOn && filterWouldNarrow) pool = safePoolNow;
     if (filterWouldNarrow) {
-        // 归因：defense / wallCaution / 位置感 分别单独归零（只改这一个、其它保持实际值），
+        // 归因：defense / wallCaution / 位置感 / 对手风险信号 分别单独归零（只改这一个、其它保持实际值），
         // 看开关会不会翻——翻了说明这条轴自己就能决定这一把的选择
-        if (safeFilterActive(urgency, 0 <= -1.5 - posSlack, false) !== actualFilterOn) {
+        if (safeFilterActive(urgency, 0 <= -1.5 - posSlack, false, highRiskNow) !== actualFilterOn) {
             markAxisUsed(player, 'defense');
         }
-        if (safeFilterActive(wallUrgencyBonus(style, 0), cautious, confident) !== actualFilterOn) {
+        if (safeFilterActive(wallUrgencyBonus(style, 0), cautious, confident, highRiskNow) !== actualFilterOn) {
             markAxisUsed(player, 'wallCaution');
         }
-        if (safeFilterActive(urgency, defenseConf <= -1.5, confident) !== actualFilterOn) {
+        if (safeFilterActive(urgency, defenseConf <= -1.5, confident, highRiskNow) !== actualFilterOn) {
             markAxisUsed(player, 'position');
+        }
+        if (safeFilterActive(urgency, cautious, confident, false) !== actualFilterOn) {
+            markAxisUsed(player, 'defense'); // 对手风险信号算在防守这条轴上
         }
     }
     // 轴6 炮牌截留：上面"求稳"已经把pool收紧到安全牌了；这里补的是剩下那种情形——
@@ -643,6 +692,7 @@ function findAiChi(discarder, tile) {
 
 function aiPengClaim(p, tile) {
     discardPile.pop();
+    lastCallTurn[p] = handTurnCount; // 归因细化：记这次碰/杠发生在第几巡
     const cnt = hands[p].filter(x => x === tile).length;
     const useGang = cnt >= 3; // 凑齐3张暗的+这张，直接杠比碰更优
     const takeCount = useGang ? 3 : 2;
@@ -665,6 +715,7 @@ function aiPengClaim(p, tile) {
 
 function aiChiClaim(p, tile, combo) {
     discardPile.pop();
+    lastCallTurn[p] = handTurnCount; // 归因细化：记这次吃发生在第几巡
     combo.forEach(t => {
         const idx = hands[p].indexOf(t);
         if (idx > -1) hands[p].splice(idx, 1);
