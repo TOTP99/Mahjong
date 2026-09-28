@@ -193,6 +193,10 @@ function drawReplacementAndContinue() {
 
 function handleDiscard(event) {
     if (gameOver) return;
+    // 手里必须是"待出牌"的张数（暗牌数 %3==2）才能选牌/出牌：
+    // 新局刚发完牌时，庄家（你）手里是13张、第一张牌要600ms后才自动摸——这个空档里连点两下同一张牌，
+    // 会把13张打成12张，摸牌步骤又已经错过，这一局就永久少一张牌（暗牌12张/副露0）
+    if (hands.bottom.length % 3 !== 2) return;
     // 别人打牌的吃碰杠必须先处理；自己的可选杠不挡出牌
     if (pendingClaim && pendingClaim.mode !== 'selfGang') return;
     if (pendingClaim && pendingClaim.mode === 'selfGang') {
