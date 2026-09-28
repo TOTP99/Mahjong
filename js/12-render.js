@@ -76,10 +76,27 @@ function render() {
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
     $('wall-count-text').innerText = '牌墙: ' + deck.length + '张-' + aiLearn.games + '局';
-    $('wall-count-text').title = aiLearn.games > 0
-        ? 'AI已学习' + aiLearn.games + '局：保守' + aiLearn.confidence.conservative.toFixed(1)
-            + ' 激进' + aiLearn.confidence.aggressive.toFixed(1) + ' 精明' + aiLearn.confidence.shrewd.toFixed(1)
-        : '';
+    // 诊断：牌总数守恒 + 回合状态，有问题直接标红，卡住时一眼可见
+    try {
+        const tot = totalTilesOf({ deck, discardPile, hands, exposedMelds });
+        const wc = $('wall-count-text');
+        if (tot !== FULL_DECK_SIZE) {
+            wc.innerText += '【牌' + tot + '/136!】';
+            wc.style.color = '#ff4444';
+            wc.style.fontWeight = 'bold';
+        } else {
+            wc.style.color = '';
+            wc.style.fontWeight = '';
+        }
+        // 回合状态：轮到谁、是否结束、有没有卡住的 claim
+        const turnInfo = '轮到' + nameOf(turnOrder[currentIndex])
+            + (gameOver ? '(已结束)' : '')
+            + (pendingClaim ? '[等' + pendingClaim.mode + ']' : '');
+        wc.title = turnInfo + ' 总数' + tot + '/136';
+    } catch (e) {}
+    $('wall-count-text').title = ($('wall-count-text').title || '') + (aiLearn.games > 0
+        ? ' AI已学习' + aiLearn.games + '局'
+        : '');
     const poolModal = $('pool-modal');
     if (poolModal && poolModal.classList.contains('show')) renderPoolGrid();
     markDealer();
