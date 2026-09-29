@@ -228,7 +228,7 @@ function startDiceRitualWithMode(mode) {
             const shX = driftX * lag;
             const shScale = Math.max(0.32, 1 - lift * 0.52 + hop * 0.03);
             shadow.style.transform =
-                `translateX(${shX}px) translateZ(-28px) scale(${shScale}, ${0.85 + lift * 0.15})`;
+                `translateX(${shX}px) translateZ(-36px) scale(${shScale}, ${0.85 + lift * 0.15})`;
             shadow.style.opacity = String(0.18 + 0.42 * (1 - lift * 0.85));
         }
 
@@ -242,7 +242,7 @@ function startDiceRitualWithMode(mode) {
         cube.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(0deg)`;
         cube.classList.add('settled');
         if (shadow) {
-            shadow.style.transform = 'translateZ(-28px) scale(1)';
+            shadow.style.transform = 'translateZ(-36px) scale(1)';
             shadow.style.opacity = '0.55';
         }
         // 强制重绘一帧再加 vanish，确保 transition 生效
