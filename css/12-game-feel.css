@@ -44,3 +44,32 @@
     .discardTile.feel-land,
     .tile-wrap.feel-drawn .tile { animation: none !important; }
 }
+
+
+/* ---------- 中央短横幅：吃/碰/杠/胡（从新版移植） ---------- */
+.feel-banner {
+    position: fixed;
+    left: 50%;
+    top: 36%;
+    transform: translate(-50%, -50%);
+    z-index: 300;
+    pointer-events: none;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.35em;
+    text-indent: 0.35em;
+    color: var(--gold, #d4a94e);
+    text-shadow: 0 2px 14px rgba(0,0,0,0.55), 0 0 2px rgba(212,169,78,0.8);
+    white-space: nowrap;
+    animation: feelBanner 0.95s ease forwards;
+}
+@keyframes feelBanner {
+    0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.72); }
+    16%  { opacity: 1; transform: translate(-50%,-50%) scale(1.1); }
+    32%  { transform: translate(-50%,-50%) scale(1); }
+    72%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .feel-banner { animation-duration: 0.3s; }
+}
