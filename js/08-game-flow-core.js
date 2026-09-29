@@ -194,6 +194,7 @@ function continueAfterFirstTurnCheck(player) {
             speak('胡了，自摸');
             learnFromWin(player, null, { fan: bonus.mult, turns: handTurnCount });
             try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
             showResultModal(player, 'selfdraw', null, bonus, result, winTile);
         }
         return;
@@ -260,6 +261,7 @@ function executeSelfGang() {
             learnFromWin(robber, 'bottom', { fan: bonus.mult, turns: handTurnCount });
             render();
             try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
             showResultModal(robber, 'dianpao', 'bottom', bonus, result, tile);
             return;
         }
@@ -276,6 +278,7 @@ function executeSelfGang() {
         speak('杠' + tileName(tile));
         render();
         try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
         drawReplacementAndContinue();
         return;
     }
@@ -290,6 +293,7 @@ function executeSelfGang() {
     speak('杠' + tileName(tile));
     render();
     try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
     drawReplacementAndContinue();
 }
 

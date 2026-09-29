@@ -63,6 +63,7 @@ function offerHu(ctx) {
     learnFromWin('bottom', payer, { fan: bonus.mult, turns: handTurnCount });
     render();
     try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
     showResultModal('bottom', isSelfDraw ? 'selfdraw' : 'dianpao', payer, bonus, result, winTile);
 }
 
@@ -81,6 +82,7 @@ function callPeng() {
     speak('碰' + tileName(tile));
     render();
     try { if (typeof sfxPeng === 'function') sfxPeng(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('碰'); } catch (e) {}
 }
 
 function callChi() {
@@ -131,6 +133,7 @@ function executeChi(combo) {
     speak('吃' + tileName(tile));
     render();
     try { if (typeof sfxChi === 'function') sfxChi(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('吃'); } catch (e) {}
 }
 
 
@@ -171,6 +174,7 @@ function callGang() {
     speak('杠' + tileName(tile));
     render();
     try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
     drawReplacementAndContinue();
 }
 
@@ -260,6 +264,7 @@ function handleDiscard(event) {
         learnFromWin(ronPlayer, 'bottom', { fan: bonus.mult, turns: handTurnCount });
         render();
         try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
         showResultModal(ronPlayer, 'dianpao', 'bottom', bonus, result, card);
         return;
     }

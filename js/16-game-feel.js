@@ -196,6 +196,23 @@
         } catch (e) { /* ignore */ }
     }
 
+
+    /** 中央短横幅：吃/碰/杠/胡，约 0.9s 自动消失（从新版移植） */
+    function feelBanner(text) {
+        try {
+            if (!realDom() || !text) return;
+            var old = document.querySelector('.feel-banner');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            var el = document.createElement('div');
+            el.className = 'feel-banner';
+            el.textContent = text;
+            document.body.appendChild(el);
+            setTimeout(function () {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 950);
+        } catch (e) { /* ignore */ }
+    }
+
     window.sfxDraw = sfxDraw;
     window.sfxDiscard = sfxDiscard;
     window.sfxChi = sfxChi;
@@ -204,4 +221,5 @@
     window.sfxWin = sfxWin;
     window.feelFlyDiscard = feelFlyDiscard;
     window.feelFlyAiDiscard = feelFlyAiDiscard;
+    window.feelBanner = feelBanner;
 })();
