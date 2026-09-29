@@ -1,0 +1,46 @@
+/* ============================================================
+ * css/12-game-feel.css — 手感层：出牌飞行 / 落定 / 摸牌滑入
+ * 本项目专用。只用 transform/opacity，不触发布局重排。
+ * 与横竖屏 --view-scale / --ui-k 无关（飞牌用 fixed 屏幕坐标）。
+ * prefers-reduced-motion 下跳过动画。
+ * ============================================================ */
+
+/* 出牌飞行克隆（JS 临时挂到 body） */
+.feel-fly {
+    position: fixed;
+    z-index: 200;
+    pointer-events: none;
+    margin: 0;
+    transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.22s ease;
+    will-change: transform, opacity;
+}
+.feel-fly .tile {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* 弃牌落定小 bounce（仅 JS 主动加 class 时播一次） */
+@keyframes feelLand {
+    0%   { transform: scale(1.18); }
+    55%  { transform: scale(0.97); }
+    100% { transform: scale(1); }
+}
+.discardTile.feel-land {
+    animation: feelLand 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* 摸牌：刚入手的那张从右侧轻滑入（renderTile 一次性加 .feel-drawn） */
+@keyframes feelDrawIn {
+    from { transform: translateX(40%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+.tile-wrap.feel-drawn .tile {
+    animation: feelDrawIn 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .feel-fly { display: none !important; }
+    .discardTile.feel-land,
+    .tile-wrap.feel-drawn .tile { animation: none !important; }
+}
