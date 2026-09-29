@@ -239,13 +239,14 @@ function ensurePortraitStatRows() {
 
 function markDealer() {
     const maxScore = Math.max(...Object.values(scores));
+    const hasLead = Object.values(scores).some(v => v !== maxScore); // 四家同分（如开场初始筹码）不挂奖杯
     const isPortrait = document.body && document.body.classList.contains('portrait-layout');
     if (isPortrait) {
         // 竖屏：原版牌墙下五行列表（头像/风位/奖杯/庄/听）
         ensurePortraitStatRows();
         renderStatRow('stat-avatar', p => statAvatar[p]);
         renderStatRow('stat-wind', p => baseNames[p]);
-        renderStatRow('stat-medal', p => (maxScore > 0 && scores[p] === maxScore) ? '<span class="ico-star">★</span>' : '');
+        renderStatRow('stat-medal', p => (hasLead && maxScore > 0 && scores[p] === maxScore) ? '<span class="ico-star">★</span>' : '');
         renderStatRow('stat-dealer', p => p === dealer ? '<span class="ico-badge ico-dealer">庄</span>' : '');
         renderStatRow('stat-tenpai', p => isTenpai(p) ? '<span class="ico-badge ico-tenpai">听</span>' : '');
     } else {
@@ -253,7 +254,7 @@ function markDealer() {
         const ps = $('player-stats');
         if (ps) {
             ps.innerHTML = statOrder.map(p => {
-                const medal = (maxScore > 0 && scores[p] === maxScore) ? ' <span class="ico-star">★</span>' : '';
+                const medal = (hasLead && maxScore > 0 && scores[p] === maxScore) ? ' <span class="ico-star">★</span>' : '';
                 const dealerMark = p === dealer ? ' <span class="ico-badge ico-dealer">庄</span>' : '';
                 const tenpaiMark = isTenpai(p) ? ' <span class="ico-badge ico-tenpai">听</span>' : '';
                 return `<div class="stat-line" data-player="${p}">${statAvatar[p]} ${baseNames[p]}${medal}${dealerMark}${tenpaiMark}</div>`;

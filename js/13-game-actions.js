@@ -404,8 +404,23 @@ setTimeout(() => {
     }
 }, 0);
 // 启动：有完整存档则原样恢复，否则只带积分/庄家开新局
+// 全新开局（浏览器里没有任何对局存档）：四家从初始筹码开始（qj_mahjong_init_chips，没设过默认 50）。
+// 注意：此处在 13 加载时同步执行，早于 17-toolbar.js，所以这段逻辑不能放到 17 里。
+let _freshStart = false;
+try {
+    _freshStart = localStorage.getItem(MAHJONG_STORAGE_KEY) === null &&
+                  localStorage.getItem('qionghu_mahjong_progress_v1') === null;
+} catch (e) {}
 if (loadGameProgress()) {
     resumeFromSave();
 } else {
+    if (_freshStart) {
+        let _n = 50;
+        try {
+            const _v = Math.floor(Number(localStorage.getItem('qj_mahjong_init_chips')));
+            if (isFinite(_v) && _v >= 1) _n = _v;
+        } catch (e) {}
+        scores = { top: _n, left: _n, right: _n, bottom: _n };
+    }
     initGame();
 }

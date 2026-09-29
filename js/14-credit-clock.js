@@ -73,7 +73,10 @@
         // 用 innerHTML 是因为要给在线时间单独上色；内容全部由本脚本生成，没有外部输入
         var html2 = clock + ' <span style="' + PLAYED_STYLE + '">在线 ' +
                     playedText(mins) + '</span>';
-        if (el1.textContent !== LINE1) el1.textContent = LINE1;
+        // 只维护第一个文字节点：署名后面追加的按钮（17-toolbar.js）不会被清掉
+        var n1 = el1.firstChild;
+        if (!n1 || n1.nodeType !== 3) el1.insertBefore(document.createTextNode(LINE1), el1.firstChild);
+        else if (n1.nodeValue !== LINE1) n1.nodeValue = LINE1;
         if (html2 !== lastHtml2) { el2.innerHTML = html2; lastHtml2 = html2; }
 
         if (badge) {
