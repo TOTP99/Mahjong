@@ -193,6 +193,7 @@ function continueAfterFirstTurnCheck(player) {
             logFlow(nameOf(player) + ' 自摸胡牌！' + result.detail);
             speak('胡了，自摸');
             learnFromWin(player, null, { fan: bonus.mult, turns: handTurnCount });
+            try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
             showResultModal(player, 'selfdraw', null, bonus, result, winTile);
         }
         return;
@@ -258,6 +259,7 @@ function executeSelfGang() {
             speak('胡了，' + voiceName('bottom') + '点炮');
             learnFromWin(robber, 'bottom', { fan: bonus.mult, turns: handTurnCount });
             render();
+            try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
             showResultModal(robber, 'dianpao', 'bottom', bonus, result, tile);
             return;
         }
@@ -273,6 +275,7 @@ function executeSelfGang() {
         logFlow('你加杠了 ' + tileGlyph(tile) + '，补牌中...');
         speak('杠' + tileName(tile));
         render();
+        try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
         drawReplacementAndContinue();
         return;
     }
@@ -286,6 +289,7 @@ function executeSelfGang() {
     logFlow('你暗杠了 ' + tileGlyph(tile) + '，补牌中...');
     speak('杠' + tileName(tile));
     render();
+    try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
     drawReplacementAndContinue();
 }
 
@@ -304,6 +308,7 @@ function nextTurn() {
     if (afterKongDrawPlayer === player) { /* 保留：仅杠补牌路径会 mark */ }
     validateHandCounts('nextTurn');
     render();
+    try { if (typeof sfxDraw === 'function') sfxDraw(); } catch (e) {}
     highlightActive(player);
 
     if (firstTurnPending[player]) {

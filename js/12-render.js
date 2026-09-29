@@ -4,7 +4,9 @@ function renderTile(t, idx, clickable) {
     if (idx === selectedIndex) marker = '<span class="mk-sel">▼</span>';
     else if (idx === lastDrawnIndex) marker = '<span class="mk-new">●</span>';
     const danger = isDangerousTile(t) ? 'danger' : '';
-    return `<div class="tile-wrap"><div class="tile-marker">${marker}</div><div class="tile ${clickable ? '' : 'disabled'} ${danger}" data-index="${idx}">${tileImg(t)}</div></div>`;
+    // 刚摸入的牌：一次性滑入动画（css/12-game-feel.css）；无该样式时 class 无害
+    const drawnCls = (idx === lastDrawnIndex) ? ' feel-drawn' : '';
+    return `<div class="tile-wrap${drawnCls}"><div class="tile-marker">${marker}</div><div class="tile ${clickable ? '' : 'disabled'} ${danger}" data-index="${idx}">${tileImg(t)}</div></div>`;
 }
 
 function renderExposedFace(t) {

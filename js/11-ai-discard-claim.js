@@ -472,6 +472,7 @@ function aiDiscard(player) {
                     speak('胡了，' + voiceName(player) + '点炮');
                     learnFromWin(robber, player, { fan: bonus.mult, turns: handTurnCount });
                     render();
+                    try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
                     showResultModal(robber, 'dianpao', player, bonus, result, gTile);
                     return;
                 }
@@ -483,6 +484,7 @@ function aiDiscard(player) {
                 logFlow(nameOf(player) + ' 加杠 ' + tileGlyph(gTile));
                 speak('杠' + tileName(gTile));
                 render();
+                try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
                 aiDrawReplacement(player);
                 return;
             }
@@ -503,6 +505,7 @@ function aiDiscard(player) {
                 logFlow(nameOf(player) + ' 暗杠 ' + tileGlyph(gangTile));
                 speak('杠' + tileName(gangTile));
                 render();
+                try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
                 aiDrawReplacement(player);
                 return;
             }
@@ -516,6 +519,12 @@ function aiDiscard(player) {
     validateHandCounts('aiDiscard');
     render();
     speak(tileName(tile));
+    try { if (typeof sfxDiscard === 'function') sfxDiscard(); } catch (e) {}
+    try {
+        if (typeof feelFlyAiDiscard === 'function' && typeof tileImg === 'function') {
+            feelFlyAiDiscard(player, tileImg(tile));
+        }
+    } catch (e) {}
 
     // 多家可以胡的话，按下家方向离出牌人最近的先胡
     const ronPlayer = findRonPriority(player, tile);
@@ -538,6 +547,7 @@ function aiDiscard(player) {
         speak('胡了，' + voiceName(player) + '点炮');
         learnFromWin(ronPlayer, player, { fan: bonus.mult, turns: handTurnCount });
         render();
+        try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
         showResultModal(ronPlayer, 'dianpao', player, bonus, result, tile);
         return;
     }
@@ -703,12 +713,14 @@ function aiPengClaim(p, tile) {
         logFlow(nameOf(p) + ' 杠了 ' + tileGlyph(tile));
         speak('杠' + tileName(tile));
         render();
+        try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
         aiDrawReplacement(p);
     } else {
         exposedMelds[p].push({ type: 'peng', tiles: [tile, tile, tile] });
         logFlow(nameOf(p) + ' 碰了 ' + tileGlyph(tile));
         speak('碰' + tileName(tile));
         render();
+        try { if (typeof sfxPeng === 'function') sfxPeng(); } catch (e) {}
         gameTimeout(() => aiDiscard(p), 700);
     }
 }
@@ -726,6 +738,7 @@ function aiChiClaim(p, tile, combo) {
     logFlow(nameOf(p) + ' 吃了 ' + tileGlyph(tile));
     speak('吃' + tileName(tile));
     render();
+    try { if (typeof sfxChi === 'function') sfxChi(); } catch (e) {}
     gameTimeout(() => aiDiscard(p), 700);
 }
 
@@ -741,6 +754,7 @@ function aiDrawReplacement(p) {
     markKongDraw(p);
     validateHandCounts('aiDrawReplacement');
     render();
+    try { if (typeof sfxDraw === 'function') sfxDraw(); } catch (e) {}
     if (checkHu(hands[p], exposedMelds[p], p)) {
         gameOver = true;
         winner = p;
@@ -754,6 +768,7 @@ function aiDrawReplacement(p) {
         speak('胡了，自摸');
         learnFromWin(p, null, { fan: bonus.mult, turns: handTurnCount });
         render();
+        try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
         showResultModal(p, 'selfdraw', null, bonus, result, drawn);
         return;
     }

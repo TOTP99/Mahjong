@@ -62,6 +62,7 @@ function offerHu(ctx) {
     speak(isSelfDraw ? '胡了，自摸' : '胡了，' + voiceName(payer) + '点炮');
     learnFromWin('bottom', payer, { fan: bonus.mult, turns: handTurnCount });
     render();
+    try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
     showResultModal('bottom', isSelfDraw ? 'selfdraw' : 'dianpao', payer, bonus, result, winTile);
 }
 
@@ -79,6 +80,7 @@ function callPeng() {
     logFlow('你碰了 ' + tileGlyph(tile) + '（' + nameOf(fromPlayer) + '打出），请出牌');
     speak('碰' + tileName(tile));
     render();
+    try { if (typeof sfxPeng === 'function') sfxPeng(); } catch (e) {}
 }
 
 function callChi() {
@@ -128,6 +130,7 @@ function executeChi(combo) {
     logFlow('你吃了 ' + tileGlyph(tile) + '，请出牌');
     speak('吃' + tileName(tile));
     render();
+    try { if (typeof sfxChi === 'function') sfxChi(); } catch (e) {}
 }
 
 
@@ -167,6 +170,7 @@ function callGang() {
     logFlow('你杠了 ' + tileGlyph(tile) + '（' + nameOf(fromPlayer) + '打出），补牌中...');
     speak('杠' + tileName(tile));
     render();
+    try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
     drawReplacementAndContinue();
 }
 
@@ -183,6 +187,7 @@ function drawReplacementAndContinue() {
     markKongDraw('bottom');
     validateHandCounts('drawReplacement');
     render();
+    try { if (typeof sfxDraw === 'function') sfxDraw(); } catch (e) {}
     if (checkHu(hands.bottom, exposedMelds.bottom, 'bottom')) {
         offerHu({ mode: 'selfdraw' }); // 杠上开花×2 在 offerHu/applyKongBonuses
         return;
@@ -218,6 +223,9 @@ function handleDiscard(event) {
 
     // 再次点同一张：真正打出
     const card = hands.bottom[idx];
+    // 飞牌起点：改 DOM 前记下矩形（手感层可选，不影响规则）
+    let _feelFromRect = null;
+    try { if (target && target.getBoundingClientRect) _feelFromRect = target.getBoundingClientRect(); } catch (e) {}
     hands.bottom.splice(idx, 1);
     markKongDiscardIfNeeded('bottom');
     discardPile.push({ player: 'bottom', tile: card });
@@ -227,6 +235,12 @@ function handleDiscard(event) {
     logFlow('你打出了 ' + tileGlyph(card));
     validateHandCounts('handleDiscard');
     render();
+    try { if (typeof sfxDiscard === 'function') sfxDiscard(); } catch (e) {}
+    try {
+        if (_feelFromRect && typeof feelFlyDiscard === 'function' && typeof tileImg === 'function') {
+            feelFlyDiscard(_feelFromRect, tileImg(card));
+        }
+    } catch (e) {}
 
     // 检查是否有AI能胡你打出的这张牌
     const ronPlayer = findRonPriority('bottom', card);
@@ -245,6 +259,7 @@ function handleDiscard(event) {
         speak('胡了，' + voiceName('bottom') + '点炮');
         learnFromWin(ronPlayer, 'bottom', { fan: bonus.mult, turns: handTurnCount });
         render();
+        try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
         showResultModal(ronPlayer, 'dianpao', 'bottom', bonus, result, card);
         return;
     }
