@@ -31,6 +31,10 @@
         display: block;
         position: absolute;
         left: max(6px, var(--sal));
+        right: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         color: var(--gold);
         font-size: 11px;
         font-weight: 600;
@@ -125,8 +129,8 @@
         height: 12px;
     }
     body.portrait-layout .bottom .avatar img {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
     }
     /* 竖屏：所有位置（含底部自家）玩家数字统一字号，用一条全局规则代替原先重复的 .bottom 专属声明 */
     body.portrait-layout .player-score {
@@ -258,16 +262,9 @@
         border-radius: 2px;
     }
     /* 吃碰提示：原版位置与尺寸 */
-    /* 署名：原版牌桌上方 */
+    /* 署名徽标：竖屏由 #credit-label 承担署名，此徽标 top:-28px 会被 #game-table 的 overflow:hidden 裁掉，直接隐藏 */
     body.portrait-layout #img-display-badge {
-        position: absolute;
-        top: -28px;
-        left: 16px;
-        z-index: 40;
-        padding: 0 2px;
-        font-size: 13px;
-        font-weight: 500;
-        letter-spacing: 0.04em;
+        display: none;
     }
 
 
@@ -308,10 +305,10 @@
         letter-spacing: 0.2em;
         padding: 2px 10px;
     }
-    /* 竖屏副露浮层：同一空地，金边框、分三排、无背景 */
+    /* 竖屏副露浮层：与 #claim-indicator(top:3%) 上下错开，避免并发时重叠；金边框、分三排、无背景 */
     body.portrait-layout #tile-tooltip {
         position: absolute;
-        top: 3%;
+        top: 12%;
         left: 86%;
         transform: translate(-50%, 0);
         display: none;

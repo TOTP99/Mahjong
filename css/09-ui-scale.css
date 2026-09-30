@@ -182,7 +182,7 @@ body:not(.portrait-layout) #tenpai-hint {
     margin-left: calc(6px * var(--ui-k, 1));
 }
 body.portrait-layout #tenpai-hint {
-    max-width: min(55vw, 200px);
+    max-width: min(38vw, 150px);
 }
 /* 减少动效偏好：不做淡入淡出 */
 @media (prefers-reduced-motion: reduce) {

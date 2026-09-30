@@ -2,7 +2,7 @@
     #dice-stage {
         position: absolute;
         inset: 0;
-        z-index: 25;
+        z-index: 26; /* 高于竖屏提示条(25)/副露浮层(24)，骰子仪式不受遮挡 */
         display: none;
         align-items: center;
         justify-content: center;
@@ -104,7 +104,7 @@
     #claim-indicator .reset-btn {
         position: relative;
         display: inline-flex; align-items: center; justify-content: center;
-        min-width: 88px; min-height: 28px; padding: 5px 14px;
+        min-width: 88px; min-height: 36px; padding: 5px 14px;
         border: 1px solid var(--gold);
         border-radius: 5px;
         background: transparent;
@@ -114,11 +114,11 @@
         box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
         transition: background 0.15s, box-shadow 0.15s;
     }
-    /* 热区略微扩大：上下方向留少许，避免与相邻按钮重叠 */
+    /* 隐形热区补到 44px（上下各 4px 视觉 + 4px 隐形，不与相邻按钮重叠） */
     #claim-indicator .reset-btn::after {
         content: '';
         position: absolute;
-        inset: -2px -4px;
+        inset: -4px -6px;
     }
     #claim-indicator .reset-btn:active {
         background: rgba(212, 175, 55, 0.12);
@@ -177,7 +177,7 @@
     .hu-opt .tile-marker { height: 0; font-size: 0; }
     .hu-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
     .hu-actions button {
-        margin: 0; padding: 6px 14px; min-height: 32px; border-radius: 5px; cursor: pointer;
+        margin: 0; padding: 6px 14px; min-height: 44px; border-radius: 5px; cursor: pointer;
         border: 1px solid var(--gold);
         background: transparent;
         color: var(--text); font-size: 12px; font-family: inherit;

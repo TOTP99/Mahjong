@@ -8,9 +8,9 @@
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    background: rgba(6, 11, 19, 0.74);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: var(--modal-scrim);
+    backdrop-filter: var(--modal-scrim-blur);
+    -webkit-backdrop-filter: var(--modal-scrim-blur);
 }
 #bust-modal.show { display: flex; }
 
@@ -51,7 +51,7 @@
 #bust-modal .bust-chip,
 #bust-modal #bust-custom {
     box-sizing: border-box;
-    height: 30px; min-width: 48px;
+    height: 40px; min-width: 48px;
     padding: 0 10px;
     border-radius: 15px;
     border: 1px solid var(--gold-dim);
@@ -68,6 +68,7 @@
 #bust-modal #bust-custom {
     flex: 1 1 78px; min-width: 78px; width: 78px;
     text-align: center; outline: none;
+    font-size: 16px; /* ≥16px：iOS 聚焦不自动缩放页面 */
     -moz-appearance: textfield; appearance: textfield;
 }
 #bust-modal #bust-custom::-webkit-outer-spin-button,
@@ -87,7 +88,7 @@
 }
 #bust-modal .bust-btn {
     flex: 1 1 0; box-sizing: border-box;
-    height: 34px; border-radius: 8px;
+    height: 44px; border-radius: 8px;
     font-size: 13px; font-family: inherit; font-weight: 600; letter-spacing: 0.04em;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -111,8 +112,9 @@
     #bust-modal .bust-title { font-size: 14px; }
     #bust-modal .bust-field { margin-top: 8px; padding-top: 7px; }
     #bust-modal .bust-chips { margin-top: 5px; gap: 5px; }
-    #bust-modal .bust-chip, #bust-modal #bust-custom { height: 26px; font-size: 12px; }
+    #bust-modal .bust-chip, #bust-modal #bust-custom { height: 36px; }
+    #bust-modal #bust-custom { font-size: 16px; }
     #bust-modal .bust-hint { margin-top: 5px; }
     #bust-modal .bust-actions { margin-top: 9px; }
-    #bust-modal .bust-btn { height: 30px; font-size: 12px; }
+    #bust-modal .bust-btn { height: 40px; font-size: 12px; }
 }

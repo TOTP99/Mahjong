@@ -5,6 +5,7 @@
  */
 .qj-tb { display: inline; }
 .qj-tb .qj-btn {
+    position: relative;
     pointer-events: auto;           /* #credit-label 是 pointer-events:none，按钮需单独可点 */
     background: transparent; border: none; border-radius: 0;
     color: var(--gold);
@@ -15,6 +16,10 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     -webkit-user-select: none; user-select: none;
+}
+/* 视觉保持小字，隐形热区补到约 44px 高 */
+.qj-tb .qj-btn::after {
+    content: ''; position: absolute; inset: -14px -8px;
 }
 .qj-tb .qj-btn:active { opacity: 0.6; }
 

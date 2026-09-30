@@ -52,7 +52,7 @@
     left: 50%;
     top: 36%;
     transform: translate(-50%, -50%);
-    z-index: 300;
+    z-index: 45; /* 低于全部弹窗（50+），不压结算/破产弹窗 */
     pointer-events: none;
     font-size: 28px;
     font-weight: 800;

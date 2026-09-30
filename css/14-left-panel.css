@@ -9,12 +9,17 @@
 body:not(.portrait-layout) {
     --panel-fs: calc(var(--wallcount-fs-base, 10px) * var(--ui-k, 1));
 }
+/* 横屏按钮字号变了，按钮高度变量跟着走（废牌池顶部自动对齐） */
+body:not(.portrait-layout) #game-table {
+    --qbtn-h: calc(var(--panel-fs) * 1.3 + 4px);
+}
 @media screen and (orientation: landscape) and (max-height: 420px) {
     body.is-android:not(.portrait-layout) { --panel-fs: 9px; }
 }
 body:not(.portrait-layout) #img-display-badge,
 body:not(.portrait-layout) #wall-count-text,
 body:not(.portrait-layout) #landscape-ctrl,
+body:not(.portrait-layout) #discard-query-btn,
 body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
     font-size: var(--panel-fs) !important;
     font-weight: 600 !important;
@@ -78,22 +83,10 @@ body:not(.portrait-layout) #claim-indicator .reset-btn {
     box-shadow: 0 0 5px rgba(212, 175, 55, 0.2);
 }
 
-/* ---------- ④ 竖屏：吃碰杠胡提示下移到废牌池内 ----------
- * 竖屏时 #claim-indicator 会被 05-device-orientation.js 挪到 #game-table 下，所以百分比按牌桌算。
- * 中心点与 07-portrait-layout.css 里的 #discardWall 完全一致（top:50% + margin-top:-12px，水平居中）。
- * 清零菜单（三击桌面）用的是同一个元素，也会出现在废牌池中央。
- * 特异度与 07 里的 html body.portrait-layout #claim-indicator 相同，靠后加载覆盖。
- * 提示压在废牌上，所以垫了一层半透明深色底，避免和牌面混在一起看不清。 */
-html body.portrait-layout #claim-indicator {
-    top: calc(50% - 12px);
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 50%;
-    padding: 4px 12px;
-    border-radius: 10px;
-    background: rgba(8, 14, 24, 0.6);
-    z-index: 25;
-}
+/* ---------- ④（已删除 2026-09-30）----------
+ * 原先这里有一段竖屏 #claim-indicator 下移到废牌池的规则，与用户要求相悖
+ *（人类提示条/三击清零菜单应回右上角无底；只有 AI 的 .feel-banner 才下移+深色底），
+ * 且靠后加载覆盖了 07-portrait-layout.css 的右上角定位，已整段删除。 */
 
 /* ---------- ⑤ 横屏：「清零重启 / 继续加油」两个按钮整体下移半张手牌 ----------
  * 半张手牌 = 09-ui-scale.css 里 --hand-tile-h（41px×--ui-k，矮屏 34px）的一半。

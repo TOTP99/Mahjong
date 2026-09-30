@@ -5,9 +5,13 @@
             height: min(calc(86vh - var(--sat) - var(--sab)), 128vw);
             border-radius: 16px;
         }
+        body.portrait-layout .avatar img {
+            width: 40px;
+            height: 40px;
+        }
         body.portrait-layout .bottom .avatar img {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
         }
         body.portrait-layout .bottom #flow-log {
             margin-top: 6px;
@@ -46,6 +50,10 @@
             width: 34px;
             height: 34px;
         }
+        body.portrait-layout .bottom .avatar img {
+            width: 36px;
+            height: 36px;
+        }
         body.portrait-layout #claim-indicator .claim-btn { font-size: 22px; }
         body.portrait-layout #claim-indicator .claim-label { font-size: 11px; padding: 1px 8px; }
     }
@@ -63,7 +71,8 @@
             font-size: 10px;
         }
         body.portrait-layout .stat-cell {
-            width: 16px;
+            width: calc(16px * var(--ui-k, 1));
+            min-width: 16px;
             font-size: 10px;
         }
     }
