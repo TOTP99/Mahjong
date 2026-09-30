@@ -9,7 +9,6 @@ const AUTO_FIT_USE_SAFE_AREA = true; /* true：让开刘海/Home 条等安全区
 const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
 const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
-const VIEW_SCALE_STEP = 0.05;
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
 const VIEW_ORIGINAL_STORAGE_KEY = 'qionghu_mahjong_view_original_v1';
 
@@ -61,7 +60,7 @@ function applyViewScale() {
     try {
         localStorage.setItem(VIEW_SCALE_STORAGE_KEY, String(viewScale));
     } catch (e) { /* ignore */ }
-    syncViewScaleButtons();
+    syncViewScaleSlider();
     // 兜底：部分安卓 WebView 在缩放瞬间会出现"金边框已更新、内部圆角裁剪内容未同步重绘"
     // 的错位现象，这里强制触发一次重排+重绘，确保边框与桌面内容一起刷新
     const frameEl = document.getElementById('table-frame');
@@ -75,35 +74,6 @@ function applyViewScale() {
         if (frameEl) void frameEl.offsetHeight;
     });
     setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 120);
-}
-
-/** delta: +0.05 扩大 / -0.05 缩小；相对「原始正常大小」等比缩放 */
-function adjustViewScale(delta) {
-    if (!originalViewRecord) captureOriginalViewSize();
-    // 已达原始最大尺寸时，扩大无效
-    if (delta > 0 && viewScale >= viewScaleUpper() - 1e-9) {
-        logFlow(_autoFitMax != null && AUTO_FIT_LANDSCAPE
-            ? '已是自动适配的最大尺寸（刚好放满可视区域），无法再扩大'
-            : (viewScale > ORIGINAL_VIEW_SCALE + 1e-9 ? '已放大到上限，无法再扩大' : '已是原始正常大小，无法再扩大'));
-        applyViewScale();
-        return;
-    }
-    if (delta < 0 && viewScale <= VIEW_SCALE_MIN + 1e-9) {
-        logFlow('已缩小到原始大小的 ' + Math.round(VIEW_SCALE_MIN * 100) + '%，无法再缩');
-        applyViewScale();
-        return;
-    }
-    viewScale = viewScale + delta;
-    if (delta > 0) viewScale = Math.min(viewScale, viewScaleUpper()); // 不超过自动适配的最大值
-    applyViewScale();
-    const pct = Math.round(viewScale * 100);
-    if (Math.abs(viewScale - ORIGINAL_VIEW_SCALE) < 1e-9) {
-        logFlow('已恢复原始正常大小（100%）');
-    } else if (delta < 0) {
-        logFlow('整体（含头像）缩小至 ' + pct + '%（原始=100%）');
-    } else {
-        logFlow('整体（含头像）扩大至 ' + pct + '%（原始=100%）');
-    }
 }
 
 /* ==================== 横屏自动适配 ====================
@@ -124,11 +94,7 @@ function viewScaleUpper() {
     return (AUTO_FIT_LANDSCAPE && _autoFitMax != null) ? Math.min(VIEW_SCALE_MAX, _autoFitMax) : VIEW_SCALE_MAX;
 }
 
-function syncViewScaleButtons() {
-    const btnIn = document.getElementById('btn-view-zoom-in');
-    const btnOut = document.getElementById('btn-view-zoom-out');
-    if (btnIn) btnIn.disabled = viewScale >= viewScaleUpper() - 1e-9;
-    if (btnOut) btnOut.disabled = viewScale <= VIEW_SCALE_MIN + 1e-9;
+function syncViewScaleSlider() {
     // 大小滑杆：范围 = [最小, 当前可视区域下的最大]，拖到头就是"刚好放满"
     const sl = document.getElementById('view-scale-slider');
     if (sl) {
@@ -161,7 +127,7 @@ function initViewScaleSlider() {
     sl.addEventListener('change', () => {
         logFlow('整体大小 ' + Math.round(viewScale * 100) + '%（原始=100%）');
     });
-    syncViewScaleButtons();
+    syncViewScaleSlider();
 }
 
 function autoFitLandscapeView() {
@@ -231,7 +197,7 @@ function autoFitLandscapeView() {
         } else {
             requestAnimationFrame(() => wrap.classList.remove('panning'));
         }
-        syncViewScaleButtons();
+        syncViewScaleSlider();
         setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);
         return true;
     } catch (e) {
