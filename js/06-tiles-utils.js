@@ -4,6 +4,17 @@ function isDangerousTile(tile) {
     return ['top', 'left', 'right'].some(p => getWinningTilesOf(hands[p], exposedMelds[p], p).includes(tile));
 }
 
+// 危险原因（一句话）：这张牌是哪些 AI 的真炮牌。
+// 与 isDangerousTile 同一套真牌计算——直接读三家 AI 的真实暗牌+副露，用 checkHu 算出各自听牌列表，
+// 标出来的牌打出去当下就会被胡，不是估计。注意：只有这个提示读暗牌，AI 自己的决策不用它，不受影响。
+function dangerReason(tile) {
+    const winners = ['top', 'left', 'right'].filter(p =>
+        getWinningTilesOf(hands[p], exposedMelds[p], p).includes(tile));
+    if (!winners.length) return '';
+    const oppName = { top: '对家', left: '上家', right: '下家' };
+    return winners.map(p => oppName[p]).join('、') + '听这张牌，打出去会点炮';
+}
+
 function buildDeck() {
     deck = [];
     for (let s of suits) {

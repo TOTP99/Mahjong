@@ -33,6 +33,7 @@ function initGame() {
     handTurnCount = 0;
     currentIndex = turnOrder.indexOf(dealer);
     for (const p of PLAYERS) hands[p] = deck.splice(0, 13).sort(tileCompare);
+    snapshotRankAtDeal(); // AI 3.0 名次感：开局记四家名次快照，结算时看名次变化归因
     markDealer();
     render();
     logFlow('发牌完成，游戏开始');

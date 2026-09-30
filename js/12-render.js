@@ -55,6 +55,14 @@ function renderPoolGrid() {
 }
 
 function render() {
+    renderHands();
+    renderDiscardWall();
+    renderWallCount();
+    renderPostPass();
+}
+
+// 四家手牌与副露：自家显示暗牌+副露，AI 只显示副露（暗牌不显示）
+function renderHands() {
     for (let p in hands) {
         const isBottom = p === 'bottom';
         const isMyTurn = isBottom && turnOrder[currentIndex] === 'bottom' && !gameOver && (!pendingClaim || pendingClaim.mode === 'selfGang');
@@ -72,11 +80,18 @@ function render() {
             }
         }
     }
+}
+
+// 废牌池：横竖屏都显示最近 20 张（横屏 4 列 = 5 行）
+function renderDiscardWall() {
     const wall = $('discardWall');
-    // 横竖屏都显示最近 20 张（横屏 4 列 = 5 行）
     const discardView = discardPile.slice(-20);
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
+}
+
+// 牌墙计数 + 牌总数守恒诊断（有问题直接标红）+ title 提示
+function renderWallCount() {
     $('wall-count-text').innerText = '牌墙: ' + deck.length + '张-' + aiLearn.games + '局';
     // 诊断：牌总数守恒 + 回合状态，有问题直接标红，卡住时一眼可见
     try {
@@ -99,6 +114,10 @@ function render() {
     $('wall-count-text').title = ($('wall-count-text').title || '') + (aiLearn.games > 0
         ? ' AI已学习' + aiLearn.games + '局'
         : '');
+}
+
+// 渲染收尾：废牌池弹窗刷新、庄家标记、竖屏副露信息、自适应、听牌提示、手牌校验
+function renderPostPass() {
     const poolModal = $('pool-modal');
     if (poolModal && poolModal.classList.contains('show')) renderPoolGrid();
     markDealer();
@@ -258,9 +277,28 @@ function formatWaitsHtml(concealed, exposed, extraSeen) {
     return null;
 }
 
+/** 选中的牌若是真炮牌，返回危险警告 HTML；否则返回 ''。
+ *  只在你的出牌回合、且选中了一张牌时生效；开关关（17 工具栏）时 isDangerousTile 恒 false，不显示。 */
+function dangerHintForSelected() {
+    const myTurn = turnOrder[currentIndex] === 'bottom' && (!pendingClaim || pendingClaim.mode === 'selfGang');
+    if (!myTurn) return '';
+    if (selectedIndex === null || selectedIndex === undefined || selectedIndex < 0
+        || selectedIndex >= hands.bottom.length) return '';
+    const t = hands.bottom[selectedIndex];
+    if (!t || !isDangerousTile(t)) return '';
+    const reason = dangerReason(t);
+    if (!reason) return '';
+    return `<span class="th-lab th-danger">危险</span><span class="th-miss">${reason}</span>`;
+}
+
 /** 当前应该显示的提示 HTML（不显示返回 ''） */
 function computeTenpaiHint() {
-    if (!TENPAI_HINT_ENABLED || !tenpaiHintUiOn || gameOver || !hands || !hands.bottom || !hands.bottom.length) return '';
+    if (gameOver || !hands || !hands.bottom || !hands.bottom.length) return '';
+    // 真炮牌警告：优先级最高；不受听牌胶囊开关控制，只受 17 危险提示开关控制
+    // （isDangerousTile 被 17 套住，开关关时恒为 false，这里自然不显示）
+    const dangerHtml = dangerHintForSelected();
+    if (dangerHtml) return dangerHtml;
+    if (!TENPAI_HINT_ENABLED || !tenpaiHintUiOn) return '';
     if (typeof diceBusy !== 'undefined' && diceBusy) return '';
     const hand = hands.bottom, ex = exposedMelds.bottom || [];
     const need = (4 - ex.length) * 3 + 2;

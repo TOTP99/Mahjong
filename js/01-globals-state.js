@@ -34,6 +34,42 @@ let lastSettlement = null;
 let afterKongDrawPlayer = null;   // 刚杠完并已补牌、尚未出牌的玩家
 let afterKongDiscardPlayer = null; // 刚杠后打出的那一张，点炮时×2
 
+// ---------- 通用工具/定时器 ----------
+// DOM 查询、函数防抖、游戏流程定时器（gameEpoch 隔离旧局回调）
+
+// DOM 查询简写：全文本用 $(id) 代替 document.getElementById(id)
+const $ = (id) => document.getElementById(id);
+
+/**
+ * 防抖工具：返回 schedule 函数；调用后 ms 毫秒内无新调用才执行 fn。
+ * schedule.cancel() 可取消未执行的调用（返回是否真的取消了一个待执行的）。
+ * AI 学习存档（600ms）与对局进度存档（400ms）共用，行为与原来逐字一致。
+ */
+function debounce(fn, ms) {
+    let timer = 0;
+    const schedule = function () {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { timer = 0; fn(); }, ms);
+    };
+    schedule.cancel = function () {
+        if (timer) { clearTimeout(timer); timer = 0; return true; }
+        return false;
+    };
+    return schedule;
+}
+
+// ---------- 局号 + 游戏流程定时器 ----------
+// 延时回调经 gameEpoch 隔离：开新局/清零后旧回调自动作废；骰子仪式期间顺延 200ms
+let gameEpoch = 0;
+function gameTimeout(fn, ms) {
+    const epoch = gameEpoch;
+    const run = () => {
+        if (epoch !== gameEpoch) return; // 已经不是这一局了
+        if (typeof diceBusy !== 'undefined' && diceBusy) { setTimeout(run, 200); return; } // 骰子仪式期间暂停
+        fn();
+    };
+    return setTimeout(run, ms);
+}
 
 // ---------- AI 学习：跨局记忆三种性格(保守/激进/精明)的历史战绩，微调决策倾向 ----------
 // 7轴各自独立学习（不再是笼统一个数）：callAggr=吃碰激进度 defense=防守让牌
@@ -47,7 +83,8 @@ function freshAxisConfidence() {
 }
 let aiLearn = {
     games: 0,
-    confidence: { conservative: freshAxisConfidence(), aggressive: freshAxisConfidence(), shrewd: freshAxisConfidence() }
+    confidence: { conservative: freshAxisConfidence(), aggressive: freshAxisConfidence(), shrewd: freshAxisConfidence() },
+    samples: { conservative: freshAxisConfidence(), aggressive: freshAxisConfidence(), shrewd: freshAxisConfidence() }
 };
 // 每局临时记录三个AI各自"这局真的用上了哪几条轴"（牌局结束记完账就清空，不落盘）
 let aiAxisUsed = { top: new Set(), left: new Set(), right: new Set() };
@@ -68,7 +105,7 @@ function loadAiLearn() {
         if (!raw) return;
         const parsed = JSON.parse(raw);
         if (!parsed || !parsed.confidence) return;
-        const out = { games: parsed.games || 0, confidence: {} };
+        const out = { games: parsed.games || 0, confidence: {}, samples: {} };
         for (const style of ['conservative', 'aggressive', 'shrewd']) {
             const saved = parsed.confidence[style];
             const fresh = freshAxisConfidence();
@@ -77,6 +114,13 @@ function loadAiLearn() {
                 for (const ax of AI_AXES) fresh[ax] = typeof saved[ax] === 'number' ? saved[ax] : 0;
             }
             out.confidence[style] = fresh;
+            // 样本数存档：没有就按全0重数（AI 3.0 性格学习率/稳定性用）
+            const savedS = parsed.samples && parsed.samples[style];
+            const freshS = freshAxisConfidence();
+            if (savedS && typeof savedS === 'object') {
+                for (const ax of AI_AXES) freshS[ax] = typeof savedS[ax] === 'number' ? Math.max(0, savedS[ax]) : 0;
+            }
+            out.samples[style] = freshS;
         }
         aiLearn = out;
     } catch (e) { /* 本地存储不可用则用默认值 */ }
@@ -87,24 +131,6 @@ function saveAiLearn() {
 loadAiLearn();
 
 function clampConfidence(v) { return Math.max(-3, Math.min(3, v)); }
-
-/**
- * 防抖工具：返回 schedule 函数；调用后 ms 毫秒内无新调用才执行 fn。
- * schedule.cancel() 可取消未执行的调用（返回是否真的取消了一个待执行的）。
- * AI 学习存档（600ms）与对局进度存档（400ms）共用，行为与原来逐字一致。
- */
-function debounce(fn, ms) {
-    let timer = 0;
-    const schedule = function () {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => { timer = 0; fn(); }, ms);
-    };
-    schedule.cancel = function () {
-        if (timer) { clearTimeout(timer); timer = 0; return true; }
-        return false;
-    };
-    return schedule;
-}
 
 // AI 学习防抖保存（减少频繁写盘）
 const scheduleSaveAiLearn = debounce(saveAiLearn, 600);
@@ -137,18 +163,49 @@ function scoreHandForStyle(style, ctx) {
     return 0; // shrewd：不算成也不算败
 }
 
+// 性格学习率（AI 3.0）：激进反应快、保守求稳、精明居中——发展性格，不磨平性格
+const LEARN_RATE = { conservative: 0.8, aggressive: 1.2, shrewd: 1.0 };
+
+// 遗忘曲线：学习值每局衰减一点点（0.97/局），防止某条轴被早期几局锁死
+function decayAiLearn() {
+    for (const style of ['conservative', 'aggressive', 'shrewd']) {
+        const c = aiLearn.confidence[style];
+        if (!c) continue;
+        for (const axis of AI_AXES) c[axis] = clampConfidence(c[axis] * 0.97);
+    }
+}
+
+// 单轴记分（position 名次轴等需要单独归因时用）
+function applySingleAxisScore(player, style, axis, score) {
+    if (!aiLearn.confidence[style]) return; // 未知性格字符串：防御，不抛错
+    if (Math.abs(score) < 0.25) return; // 噪声过滤：不痛不痒的局不调整
+    const n = (aiLearn.samples[style] && aiLearn.samples[style][axis]) || 0;
+    const stability = Math.min(1, 12 / (12 + n)); // 样本越多学得越慢，防抖
+    let delta = score * stability * (LEARN_RATE[style] || 1);
+    delta = Math.max(-0.6, Math.min(0.6, delta)); // 单局封顶：单局最多动0.6
+    aiLearn.confidence[style][axis] = clampConfidence(aiLearn.confidence[style][axis] + delta);
+    if (aiLearn.samples[style]) aiLearn.samples[style][axis] = n + 1;
+}
+
 // 这局结束，把 score 记到这个AI这局真正用上的那几条轴上（没用上的轴不动）
 // justCalled=true 时说明这次点炮是"这一巡刚吃/碰完就打出去"逼出来的——归因细化：
-// 吃碰相关的轴(callAggr/chaseSpecial)多担责任，其余轴（防守/残局/字牌/位置感等）少担，
+// 吃碰相关的轴(callAggr/chaseSpecial)多担责任，其余轴（防守/残局/字牌等）少担，
 // 因为这张牌很可能是被那次吃碰打乱了手牌节奏才被迫打出的，不是这些轴自己选错了
 function applyAxisScore(player, style, score, justCalled) {
     const used = aiAxisUsed[player];
     if (!used || used.size === 0) return;
     if (!aiLearn.confidence[style]) return; // 未知性格字符串：防御，不抛错
+    if (Math.abs(score) < 0.25) return; // 噪声过滤：不痛不痒的局不调整
     const CALL_AXES = new Set(['callAggr', 'chaseSpecial']);
     for (const axis of used) {
+        if (axis === 'position') continue; // 名次轴单独归因（看名次变化），不走通用分
         const weight = justCalled ? (CALL_AXES.has(axis) ? 1.4 : 0.4) : 1;
-        aiLearn.confidence[style][axis] = clampConfidence(aiLearn.confidence[style][axis] + score * weight);
+        const n = (aiLearn.samples[style] && aiLearn.samples[style][axis]) || 0;
+        const stability = Math.min(1, 12 / (12 + n)); // 样本越多学得越慢，防抖
+        let delta = score * weight * stability * (LEARN_RATE[style] || 1);
+        delta = Math.max(-0.6, Math.min(0.6, delta)); // 单局封顶：单局最多动0.6
+        aiLearn.confidence[style][axis] = clampConfidence(aiLearn.confidence[style][axis] + delta);
+        if (aiLearn.samples[style]) aiLearn.samples[style][axis] = n + 1;
     }
 }
 
@@ -156,6 +213,7 @@ function applyAxisScore(player, style, score, justCalled) {
 // 三种性格各自在乎的东西已经在 scoreHandForStyle 里体现了）
 function learnFromWin(winnerPlayer, payerPlayer, meta) {
     meta = meta || {};
+    decayAiLearn(); // 遗忘曲线：防早期几局锁死
     for (const p of ['top', 'left', 'right']) {
         const style = aiPersonality[p];
         if (!style) continue;
@@ -163,6 +221,18 @@ function learnFromWin(winnerPlayer, payerPlayer, meta) {
         const score = scoreHandForStyle(style, { role, fan: meta.fan, turns: meta.turns });
         const justCalled = role === 'payer' && lastCallTurn[p] === handTurnCount;
         applyAxisScore(p, style, score, justCalled);
+        // 名次轴单独归因：这局名次上升=名次感用对了，下降=用错了（只在用过 position 轴时记）
+        if (aiAxisUsed[p] && aiAxisUsed[p].has('position') && rankAtDeal) {
+            const was = rankAtDeal[p], now = rankNow(p);
+            if (was !== undefined && now >= 0) applySingleAxisScore(p, style, 'position', (was - now) * 0.4);
+        }
+        // AI 3.0 分化度：记这局
+        const st = aiStyleStats[style];
+        if (st) {
+            st.games += 1;
+            if (role === 'winner') { st.wins += 1; st.winTurns += (meta.turns || 0); st.winFan += (meta.fan || 0); }
+            if (role === 'payer') st.dealIns += 1;
+        }
     }
     resetAiAxisUsed();
     resetLastCallTurn();
@@ -171,11 +241,15 @@ function learnFromWin(winnerPlayer, payerPlayer, meta) {
 }
 // 流局时调用：听牌的性格按自己的表加分，没听牌的按自己的表扣分/加分
 function learnFromDraw(tenpaiPlayers) {
+    decayAiLearn(); // 遗忘曲线：防早期几局锁死
     for (const p of ['top', 'left', 'right']) {
         const style = aiPersonality[p];
         if (!style) continue;
         const score = scoreHandForStyle(style, { role: 'draw', tenpai: tenpaiPlayers.includes(p) });
         applyAxisScore(p, style, score);
+        // AI 3.0 分化度：记这局
+        const st = aiStyleStats[style];
+        if (st) st.games += 1;
     }
     resetAiAxisUsed();
     resetLastCallTurn();
@@ -183,33 +257,59 @@ function learnFromDraw(tenpaiPlayers) {
     scheduleSaveAiLearn();
 }
 
-// DOM 查询简写：全文本用 $(id) 代替 document.getElementById(id)
-const $ = (id) => document.getElementById(id);
+// ---------- AI 3.0 名次感（position 轴） ----------
+// 每局开局记四家名次快照（按筹码/分数排序，0=第1名），结算时看名次变化：
+// 名次上升=名次感用对了，下降=用错了。只在该 AI 本局真用过 position 轴时记（见 learnFromWin）
+let rankAtDeal = null;
+function snapshotRankAtDeal() {
+    const ss = turnOrder.map(p => ({ p, s: (scores && scores[p]) || 0 }));
+    ss.sort((a, b) => b.s - a.s);
+    const out = {};
+    ss.forEach((x, i) => { out[x.p] = i; });
+    rankAtDeal = out;
+}
+function rankNow(player) {
+    const ss = turnOrder.map(p => ({ p, s: (scores && scores[p]) || 0 }));
+    ss.sort((a, b) => b.s - a.s);
+    return ss.findIndex(x => x.p === player);
+}
 
-// ---------- 局号 + 游戏流程定时器 ----------
-// 延时回调经 gameEpoch 隔离：开新局/清零后旧回调自动作废；骰子仪式期间顺延 200ms
-let gameEpoch = 0;
-function gameTimeout(fn, ms) {
-    const epoch = gameEpoch;
-    const run = () => {
-        if (epoch !== gameEpoch) return; // 已经不是这一局了
-        if (typeof diceBusy !== 'undefined' && diceBusy) { setTimeout(run, 200); return; } // 骰子仪式期间暂停
-        fn();
+// ---------- AI 3.0 性格分化度追踪 ----------
+// 每局按性格记关键行为（吃碰/点炮/胡牌/轮数/番数），算三性格的标准差，
+// 看学习有没有把三家磨成一个模子（只追踪不落盘，验证/调参用）
+function freshStyleStats() {
+    const o = {};
+    for (const s of ['conservative', 'aggressive', 'shrewd'])
+        o[s] = { games: 0, calls: 0, dealIns: 0, wins: 0, winTurns: 0, winFan: 0 };
+    return o;
+}
+let aiStyleStats = freshStyleStats();
+// 吃/碰/杠一次（分化度用）
+function trackAiCall(player) {
+    const style = (typeof aiPersonality !== 'undefined' && aiPersonality[player]) || null;
+    if (style && aiStyleStats[style]) aiStyleStats[style].calls += 1;
+}
+// 三个性格在关键指标上的分化度：每项返回 { conservative, aggressive, shrewd, std }
+// （std 越大说明三个 AI 性格分化越明显，std→0 说明学成了同一个模子）
+function aiDivergence() {
+    const std = arr => {
+        const m = arr.reduce((a, b) => a + b, 0) / arr.length;
+        return Math.sqrt(arr.reduce((a, b) => a + (b - m) * (b - m), 0) / arr.length);
     };
-    return setTimeout(run, ms);
+    const per = fn => {
+        const o = {};
+        for (const s of ['conservative', 'aggressive', 'shrewd']) o[s] = fn(aiStyleStats[s]);
+        o.std = std([o.conservative, o.aggressive, o.shrewd]);
+        return o;
+    };
+    const rate = x => x.games ? x.calls / x.games : 0;      // 场均吃碰
+    const dealRate = x => x.games ? x.dealIns / x.games : 0; // 场均点炮
+    const winRate = x => x.games ? x.wins / x.games : 0;     // 胜率
+    const avgTurns = x => x.wins ? x.winTurns / x.wins : 0;   // 平均胡牌轮数
+    const avgFan = x => x.wins ? x.winFan / x.wins : 0;       // 平均番数
+    return { callRate: per(rate), dealInRate: per(dealRate), winRate: per(winRate), avgWinTurns: per(avgTurns), avgWinFan: per(avgFan) };
 }
 
-// ---------- 牌总数守恒检查 ----------
-// 一副牌固定 136 张：牌墙 + 四家暗牌 + 四家副露 + 弃牌堆，任何时刻都应等于这个数
-// （局已结束时不检查：抢杠等结算路径会把牌挪来挪去）
-function totalTilesOf(s) {
-    let n = ((s.deck || []).length) + ((s.discardPile || []).length);
-    for (const p of PLAYERS) {
-        n += ((s.hands && s.hands[p]) || []).length;
-        for (const m of ((s.exposedMelds && s.exposedMelds[p]) || [])) n += ((m && m.tiles) || []).length;
-    }
-    return n;
-}
 const FULL_DECK_SIZE = suits.length * 9 * 4 + honors.length * 4; // 136
 let _lastTileWarnKey = '';
 function checkTileConservation(reason) {
@@ -227,6 +327,7 @@ function checkTileConservation(reason) {
 
 // 全部 JS 按 01→18 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
 
+// ---------- 状态面板 ----------
 // 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像图标 风位 奖杯 庄家 听牌提示（例如 [头像] 西 ★ 庄 听）
 function renderStatRow(elId, cellFor) {
     const el = $(elId);
@@ -455,4 +556,16 @@ function resumeFromSave() {
             else nextTurn();
         }, 600);
     }
+}
+
+// ---------- 完整性检查：牌总数守恒 ----------
+// 一副牌固定 136 张：牌墙 + 四家暗牌 + 四家副露 + 弃牌堆，任何时刻都应等于这个数
+// （局已结束时不检查：抢杠等结算路径会把牌挪来挪去）
+function totalTilesOf(s) {
+    let n = ((s.deck || []).length) + ((s.discardPile || []).length);
+    for (const p of PLAYERS) {
+        n += ((s.hands && s.hands[p]) || []).length;
+        for (const m of ((s.exposedMelds && s.exposedMelds[p]) || [])) n += ((m && m.tiles) || []).length;
+    }
+    return n;
 }

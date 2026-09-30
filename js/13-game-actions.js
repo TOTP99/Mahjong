@@ -388,11 +388,10 @@ document.addEventListener('contextmenu', (e) => {
     }
 }, true);
 initDicePips();
-// 先按原始比例量一次桌面，记下「正常大小」，再应用（可能已保存的）缩放
+// 先按原始比例（--view-scale=1）复位，再启动横屏自动适配（04 自行实时测量牌桌自然尺寸）
 viewScale = ORIGINAL_VIEW_SCALE;
 document.documentElement.style.setProperty('--view-scale', '1');
 setTimeout(() => {
-    captureOriginalViewSize();
     if (AUTO_FIT_LANDSCAPE) {
         // 横屏自动适配接管：不再读取以前手动保存的缩放/平移，按当前可视区域自动算（竖屏不处理）
         _autoFitReady = true;
