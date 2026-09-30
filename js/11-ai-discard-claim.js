@@ -73,13 +73,31 @@ function shouldAiChi(player, tile, combo) {
     if (isTenpai(player)) return false;
     const exposed = exposedMelds[player];
     if (exposed.length >= 3) return false;
+    // AI 4.0 提强4 纪律3：吃别把龙对子拆了（中发白对子未来×2的潜力，拆了血亏）
+    if (typeof dragonTilesArr !== 'undefined') {
+        const cntB = {};
+        for (const t of hands[player]) cntB[t] = (cntB[t] || 0) + 1;
+        const cntA = {};
+        const handAfter = removeTilesFromHand(hands[player], combo);
+        for (const t of handAfter) cntA[t] = (cntA[t] || 0) + 1;
+        for (const d of dragonTilesArr) {
+            if ((cntB[d] || 0) >= 2 && (cntA[d] || 0) < 2) return false;
+        }
+    }
     const score = scoreChiCombo(hands[player], tile, combo, exposed, player);
     const style = aiPersonality[player] || 'shrewd';
     const conf = (aiLearn.confidence[style] && aiLearn.confidence[style].callAggr) || 0;
     const open = isKaimen(exposed);
     // 开门：要有明显收益；未开门：新规则下没开门自摸/点炮都要多罚一倍，门槛降到 1，更愿意开门
     const baseThreshold = open ? 4 : 1;
-    const actual = score >= baseThreshold - conf * 0.6;
+    let threshold = baseThreshold - conf * 0.6;
+    // AI 4.0 提强4 纪律2：门清贵重手不破——门清且这手牌价值高时，吃要付出代价（阈值+6，不硬拦）
+    if (exposed.length === 0) {
+        try {
+            if (winValue(hands[player], exposed, player) > 2500) threshold += 6;
+        } catch (e) {}
+    }
+    const actual = score >= threshold;
     // 轴1归因：跟"没学过(conf=0)"时会不会选得不一样比一比，选得不一样说明这条轴真的起作用了
     if (actual !== (score >= baseThreshold)) markAxisUsed(player, 'callAggr');
     return actual;
@@ -211,6 +229,121 @@ function estimateTenpaiRisk(opponent) {
         if (midCount === recent.length) risk += 0.3; // 连续切中张：该扔的边张/字牌早扔完了，牌型收紧
     }
     return Math.min(risk, 1.2);
+}
+
+// ========== AI 4.0 移植（新版提强点，v18 适配版） ==========
+// 以下三个函数 + 下面各处的"AI 4.0"标记修改，构成从新版 AI 4.0 到旧版 v18 的完整移植。
+// 适配原则：只用 v18 已有全局变量/函数（不引入 EV 引擎），所有新逻辑失败时回退到原行为。
+
+// ---------- 对手听牌概率（AI 4.0 提强2：读人系统化，v18 适配） ----------
+// 综合公开信号估计某对手已听牌的概率 0~1：
+//   副露数（最强信号）+ 舍牌趋势（连续切边张/字牌=牌型收紧）+ 巡数（越晚越可能听）
+// 只用公开信息，不读暗牌。v18 版用裸全局变量（exposedMelds/discardPile/handTurnCount）。
+function estimateOppTenpai(opp) {
+    let p = 0.05; // 基础先验
+    try {
+        const melds = (exposedMelds[opp] || []).length;
+        // 副露：1组 +0.15，2组 +0.35，3组 +0.6（穷胡最多3组，到顶基本在等）
+        p += [0, 0.15, 0.35, 0.6][Math.min(3, melds)] || 0;
+        // 舍牌趋势：最近 4 张若全是边张/字牌，+0.2（该扔的早扔完了）
+        const recent = discardPile.filter(d => d.player === opp).slice(-4);
+        if (recent.length >= 3) {
+            const edgeCount = recent.filter(d => {
+                const s = tileSuit(d.tile), r = tileRank(d.tile);
+                return s === '字' || r === 1 || r === 9;
+            }).length;
+            if (edgeCount === recent.length) p += 0.2;
+            else if (edgeCount >= recent.length - 1) p += 0.1;
+        }
+        // 巡数：每 10 巡 +0.08，上限 +0.3（别人也在往听牌走）
+        p += Math.min(0.3, (handTurnCount || 0) / 10 * 0.08);
+    } catch (e) {}
+    return Math.min(0.95, Math.max(0.02, p));
+}
+
+// ---------- 和牌价值（AI 4.0 提强3：分值意识，v18 适配） ----------
+// 估计这手牌"如果胡了"能值多少（1000×番数启发式）。AI 用它权衡"快胡便宜的" vs "慢做贵的"。
+// 只看自己的手牌+副露，不读对手。
+function winValue(hand, exposed, player) {
+    let mult = 1;
+    const cnt = {};
+    try {
+        for (const t of hand) cnt[t] = (cnt[t] || 0) + 1;
+        for (const m of (exposed || [])) for (const t of m.tiles) cnt[t] = (cnt[t] || 0) + 1;
+    } catch (e) {}
+    // 中发白：刻子 ×2；对子有潜力 ×1.4
+    try {
+        if (typeof dragonTilesArr !== 'undefined') {
+            const hasTrip = dragonTilesArr.some(d => (cnt[d] || 0) >= 3);
+            const hasPair = dragonTilesArr.some(d => (cnt[d] || 0) === 2);
+            if (hasTrip) mult *= 2;
+            else if (hasPair) mult *= 1.4;
+        }
+    } catch (e) {}
+    // 碰碰胡潜力：刻子/对子结构
+    const vals = Object.values(cnt);
+    const triplets = vals.filter(n => n >= 3).length;
+    const pairs = vals.filter(n => n >= 2).length;
+    if (triplets >= 3) mult *= 5;       // 很像碰碰胡（×8 的潜力）
+    else if (triplets >= 2 && pairs >= 4) mult *= 2.5;
+    else if (pairs >= 5) mult *= 1.6;   // 七小对/多对子潜力
+    // 门清：没副露，对手难读，有隐藏价值
+    if (!exposed || exposed.length === 0) mult *= 1.25;
+    // 杠：每个杠都是实打实的番
+    try {
+        const gangs = (exposed || []).filter(m => m.type === 'gang').length;
+        if (gangs) mult *= Math.pow(1.8, gangs);
+    } catch (e) {}
+    // 七小对进行中（规则允许时）
+    try {
+        if (typeof ruleAllowsSevenPairs === 'function' && ruleAllowsSevenPairs() && pairs >= 5 && hand.length >= 10) {
+            mult = Math.max(mult, 4); // 七小对 ×8，至少给 4
+        }
+    } catch (e) {}
+    return 1000 * mult;
+}
+
+// ---------- 2步期望搜索（AI 4.0 提强1，v18 适配） ----------
+// 打出 D 后，摸到各种进张 T 后的向听期望。比只看 immediate ukeire 更准：
+// 有些牌进张多但都是"死胡同"（摸到后还是难受），2步能看出来。
+// 只对 ukeire 打平的前 5 名调用，单次约几十毫秒，走 estimateShantenCached 缓存。
+function twoStepExp(hand, exposed, discard) {
+    const hand1 = hand.slice();
+    const di = hand1.indexOf(discard);
+    if (di < 0) return { exp: 8, totalRem: 0 };
+    hand1.splice(di, 1);
+    let s1;
+    try { s1 = estimateShantenCached(hand1, exposed); }
+    catch (e) { return { exp: 8, totalRem: 0 }; }
+    // hand1 的进张（带剩余张数）：4 - 已见 - 自己手里
+    const ukeire = [];
+    try {
+        for (const t of allTileTypes()) {
+            let seen = 0;
+            try { seen = tileSeenCount(t); } catch (e2) { seen = 0; }
+            const inHand = hand1.filter(x => x === t).length;
+            const rem = Math.max(0, 4 - seen - inHand);
+            if (!rem) continue;
+            if (estimateShantenCached(hand1.concat([t]), exposed) < s1) {
+                ukeire.push({ tile: t, rem: rem });
+            }
+        }
+    } catch (e) { return { exp: s1, totalRem: 0 }; }
+    if (!ukeire.length) return { exp: s1, totalRem: 0 };
+    ukeire.sort((a, b) => b.rem - a.rem);
+    const top = ukeire.slice(0, 8); // 只看最可能摸到的 8 种
+    let wSum = 0, wTot = 0, totalRem = 0;
+    for (const u of ukeire) totalRem += u.rem;
+    try {
+        for (const u of top) {
+            const s2 = estimateShantenCached(hand1.concat([u.tile]), exposed);
+            // 上听 (s2==0) 给 -0.5 奖励：能上听的打法优先
+            const score = s2 === 0 ? -0.5 : s2;
+            wSum += u.rem * score;
+            wTot += u.rem;
+        }
+    } catch (e) { return { exp: s1, totalRem: totalRem }; }
+    return { exp: wTot ? wSum / wTot : s1, totalRem: totalRem };
 }
 
 // 轴：速度 vs 牌值——粗略估一下这手牌大概能算多大，不追求精确，只用来在"求快"和"求大"间做取舍
@@ -363,7 +496,17 @@ function chooseAiDiscardTile(hand, player) {
     // 轴2扩展：对手有没有"看起来要听牌"的信号（副露数/连续切中张），门槛按性格+学习值调
     // （战绩差的更神经质、更容易转防守；战绩好的更迟钝一点）
     const riskAt = Math.max(0.3, (AI_TRAITS[style] || AI_TRAITS.shrewd).riskDefenseAt - Math.round(defenseConf) * 0.15);
-    const highRiskNow = turnOrder.some(p => p !== player && estimateTenpaiRisk(p) >= riskAt);
+    // AI 4.0 提强2：读人系统化——用听牌概率(0~1)做"对手已听"判断，跟原来的启发式风险分互补。
+    // 有人听牌概率过半(≥0.55)，直接视为高风险（竞速折扣：对手很可能已听，就不该再按"没人听"打）。
+    let oppTenpaiMax = 0;
+    try {
+        for (const p of turnOrder) {
+            if (p === player) continue;
+            oppTenpaiMax = Math.max(oppTenpaiMax, estimateOppTenpai(p));
+        }
+    } catch (e) {}
+    const highRiskNow = turnOrder.some(p => p !== player && estimateTenpaiRisk(p) >= riskAt)
+        || oppTenpaiMax >= 0.55;
     const safeFilterActive = (u, c, cf, hr) => (u >= 1 || c || notOpen || hr) || (style !== 'aggressive' && !cf);
     const actualFilterOn = safeFilterActive(urgency, cautious, confident, highRiskNow);
     const safePoolNow = pool.filter(c => c.safe);
@@ -432,15 +575,45 @@ function chooseAiDiscardTile(hand, player) {
         const bestUkeire = finalPool[0].ukeire;
         finalPool = finalPool.filter(c => c.ukeire === bestUkeire);
     }
-    const chosen = finalPool[Math.floor(Math.random() * finalPool.length)].tile;
+    // AI 4.0 提强1：2步期望——ukeire 打平后，对前 5 名看"打出→摸进张→向听期望"，
+    // 选"摸到后更舒服"的（差距>0.15才分胜负，否则保持并列随机，避免过度拟合）。
+    if (finalPool.length > 1) {
+        const tsN = Math.min(5, finalPool.length);
+        for (let i = 0; i < tsN; i++) {
+            try { finalPool[i].twoStep = twoStepExp(hand, exposed, finalPool[i].tile).exp; }
+            catch (e) { finalPool[i].twoStep = finalPool[i].shan; }
+        }
+        for (let i = tsN; i < finalPool.length; i++) finalPool[i].twoStep = finalPool[i].shan;
+        finalPool.sort((a, b) => a.twoStep - b.twoStep);
+        const bestTs = finalPool[0].twoStep;
+        if (finalPool.some(c => c.twoStep - bestTs > 0.15)) {
+            finalPool = finalPool.filter(c => c.twoStep - bestTs <= 0.15);
+        }
+    }
+    let chosenTile = finalPool[Math.floor(Math.random() * finalPool.length)].tile;
+    // AI 4.0 提强2：攻击时也不往枪口撞。即使不在求稳模式，若首选是炮牌（有人能胡）
+    // 且危险度超过性格阈值，而 pool 里有向听不差太多（≤最优+1）的安全牌，换打安全的。
+    // 性格差异：保守更早换（阈值0），激进更头铁（阈值2），精明折中（阈值1）。
+    try {
+        const chosenDanger = dangerCount(player, chosenTile);
+        const dangerThresh = style === 'conservative' ? 0 : (style === 'aggressive' ? 2 : 1);
+        if (chosenDanger > dangerThresh) {
+            const safer = pool.filter(c => c.safe && c.shan <= bestShan + 1)
+                .sort((a, b) => a.shan - b.shan || a.tier - b.tier)[0];
+            if (safer) {
+                chosenTile = safer.tile;
+                markAxisUsed(player, 'defense');
+            }
+        }
+    } catch (e) {}
     // 轴5归因（事后判定）：如果最终选中的这张恰好是一张"因为性格+学习倾向而被抬过tier"的孤立字牌，
     // 且没有这条倾向时tier会不一样，就算这条轴真的影响了这次的选择
-    if (tileSuit(chosen) === '字' && hand.filter(x => x === chosen).length === 1) {
-        const withBias = tileKeepTier(hand, chosen, style, false);
-        const withoutBias = tileKeepTier(hand, chosen, style, true);
+    if (tileSuit(chosenTile) === '字' && hand.filter(x => x === chosenTile).length === 1) {
+        const withBias = tileKeepTier(hand, chosenTile, style, false);
+        const withoutBias = tileKeepTier(hand, chosenTile, style, true);
         if (withBias !== withoutBias) markAxisUsed(player, 'honorHold');
     }
-    return chosen;
+    return chosenTile;
 }
 
 function aiDiscard(player) {
@@ -630,6 +803,13 @@ function shouldAiPeng(p, tile, overrides) {
     // 没开门自摸×2 / 没开门点炮×2：不开门的代价比以前更高，三种性格都该多容忍1档向听去换开门，
     // 保守派也不例外（以前只有精明/激进有这个宽容）
     const openSlack = openCount === 0 ? 1 : 0;
+    // AI 4.0 提强4 纪律2：门清贵重手不破。门清且这手牌价值高（winValue>2500）时，
+    // 碰要付出代价：碰后向听必须严格改善才碰（中发白刻子本身带番×2是稳赚，不受此限）。
+    if (openCount === 0 && !isDragon) {
+        try {
+            if (winValue(hand, exposed, p) > 2500 && shanAfter >= shanBefore) return false;
+        } catch (e) {}
+    }
 
     if (style === 'conservative') {
         if (shanAfter > shanBefore + Math.max(0, openSlack + baseSlack)) return false;
