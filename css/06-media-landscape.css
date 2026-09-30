@@ -67,7 +67,6 @@
         #img-display-badge { font-size: 9px; }
         #wall-count-text { font-size: 9px; }
         #landscape-ctrl { font-size: 9px; }
-        #view-scale-btns button { font-size: 8px; padding: 2px 5px; min-width: 26px; }
         .result-box { width: min(88vw, 200px); }
         .hu-box { width: min(88vw, 240px); }
     }
