@@ -170,6 +170,7 @@ html.orient-changing #table-wrap {
 }
 #tenpai-hint .th-lab { color: var(--gold); font-weight: 700; margin-right: 6px; letter-spacing: 0.06em; }
 #tenpai-hint .th-lab.th-part { color: var(--ice); }
+#tenpai-hint .th-lab.th-danger { color: #e06a6a; } /* 真炮牌警告：与 .tile.danger 描边同色 */
 #tenpai-hint .th-w { display: inline-flex; align-items: baseline; margin-right: 6px; }
 #tenpai-hint .th-w b { font-weight: 400; font-size: 1.6em; line-height: 1; }
 #tenpai-hint .th-w i { font-style: normal; font-size: 0.85em; color: var(--gold); margin-left: 1px; }
