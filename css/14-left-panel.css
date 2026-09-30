@@ -1,0 +1,79 @@
+/* 14-left-panel.css — 横屏左侧信息栏微调（须在其它 CSS 之后加载；只影响横屏，竖屏不变）
+ * ① 左栏文字统一字号：TP制作+时间 / 牌墙 / 横屏最大 / 音效·危险·初始筹码 全部用同一个 --panel-fs
+ *    （= 原来牌墙那行的字号 10px × --ui-k，窄宽度 9px；安卓矮屏 9px）
+ * ② 「缩小/扩大」两个按钮换成一条金色细线滑杆，左右拖动改整体大小（逻辑在 js/04-view-scale.js 的 initViewScaleSlider）
+ * ③ 三击桌面出来的「清零重启 / 继续加油」两个框收窄收矮，并取消 30vh 的滚动裁切，横屏下不再被切掉底部
+ */
+
+/* ---------- ① 统一字号 ---------- */
+body:not(.portrait-layout) {
+    --panel-fs: calc(var(--wallcount-fs-base, 10px) * var(--ui-k, 1));
+}
+@media screen and (orientation: landscape) and (max-height: 420px) {
+    body.is-android:not(.portrait-layout) { --panel-fs: 9px; }
+}
+body:not(.portrait-layout) #img-display-badge,
+body:not(.portrait-layout) #wall-count-text,
+body:not(.portrait-layout) #landscape-ctrl,
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
+    font-size: var(--panel-fs) !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    letter-spacing: 0.06em !important;
+    line-height: 1.2;
+}
+
+/* ---------- ② 金线滑杆 ---------- */
+body:not(.portrait-layout) #view-scale-btns { width: 100%; }
+#view-scale-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 86%; max-width: 120px; height: 18px;      /* 高度只是热区，视觉上只有一条细线 */
+    margin: 0; padding: 0;
+    background: transparent;
+    cursor: pointer;
+    touch-action: none;                                /* 横向拖动时不触发页面滚动/手势 */
+    -webkit-tap-highlight-color: transparent;
+}
+#view-scale-slider:focus { outline: none; }
+#view-scale-slider::-webkit-slider-runnable-track {
+    height: 2px; border-radius: 1px;
+    background: var(--gold);
+    box-shadow: 0 0 4px rgba(212, 175, 55, 0.45);
+}
+#view-scale-slider::-moz-range-track {
+    height: 2px; border-radius: 1px;
+    background: var(--gold);
+    box-shadow: 0 0 4px rgba(212, 175, 55, 0.45);
+}
+#view-scale-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; margin-top: -5px;      /* 轨道 2px：(2-12)/2 = -5 居中 */
+    border-radius: 50%;
+    border: 1px solid var(--gold);
+    background: #0b1a14;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.6);
+}
+#view-scale-slider::-moz-range-thumb {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1px solid var(--gold);
+    background: #0b1a14;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.6);
+}
+#view-scale-slider:active::-webkit-slider-thumb { background: var(--gold); }
+#view-scale-slider:active::-moz-range-thumb { background: var(--gold); }
+
+/* ---------- ③ 清零菜单（横屏）收窄收矮 ---------- */
+body:not(.portrait-layout) #claim-indicator.show:has(.reset-menu) {
+    max-height: none;
+    overflow: visible;
+    margin-top: 4px;
+}
+body:not(.portrait-layout) #claim-indicator .reset-menu { gap: 3px; }
+body:not(.portrait-layout) #claim-indicator .reset-btn {
+    min-width: 64px; min-height: 20px;
+    padding: 2px 8px;
+    font-size: 10px; letter-spacing: 0.08em;
+    border-radius: 4px;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.2);
+}
