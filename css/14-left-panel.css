@@ -77,3 +77,31 @@ body:not(.portrait-layout) #claim-indicator .reset-btn {
     border-radius: 4px;
     box-shadow: 0 0 5px rgba(212, 175, 55, 0.2);
 }
+
+/* ---------- ④ 竖屏：吃碰杠胡提示下移到废牌池内 ----------
+ * 竖屏时 #claim-indicator 会被 05-device-orientation.js 挪到 #game-table 下，所以百分比按牌桌算。
+ * 中心点与 07-portrait-layout.css 里的 #discardWall 完全一致（top:50% + margin-top:-12px，水平居中）。
+ * 清零菜单（三击桌面）用的是同一个元素，也会出现在废牌池中央。
+ * 特异度与 07 里的 html body.portrait-layout #claim-indicator 相同，靠后加载覆盖。
+ * 提示压在废牌上，所以垫了一层半透明深色底，避免和牌面混在一起看不清。 */
+html body.portrait-layout #claim-indicator {
+    top: calc(50% - 12px);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 50%;
+    padding: 4px 12px;
+    border-radius: 10px;
+    background: rgba(8, 14, 24, 0.6);
+    z-index: 25;
+}
+
+/* ---------- ⑤ 横屏：「清零重启 / 继续加油」两个按钮整体下移半张手牌 ----------
+ * 半张手牌 = 09-ui-scale.css 里 --hand-tile-h（41px×--ui-k，矮屏 34px）的一半。
+ * 移动的是两个按钮的容器，所以两个按钮同步下移、间距不变。 */
+body:not(.portrait-layout) { --reset-shift: calc(41px * var(--ui-k, 1) * 0.5); }
+@media screen and (orientation: landscape) and (max-height: 360px) {
+    body:not(.portrait-layout) { --reset-shift: calc(34px * var(--ui-k, 1) * 0.5); }
+}
+body:not(.portrait-layout) #claim-indicator .reset-menu {
+    transform: translateY(var(--reset-shift));
+}

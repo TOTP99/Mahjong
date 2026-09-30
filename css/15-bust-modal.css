@@ -1,0 +1,118 @@
+/* 15-bust-modal.css — 筹码输光确认弹窗（#bust-modal，配合 js/18-bust-restart.js）
+ * 风格：紧凑、简洁的「商业软件」对话框——单张卡片，标题+一行说明，一排预设 + 自定义，主/次两个按钮。
+ * 遮罩与其它弹窗一致；点遮罩不会关闭（必须点按钮）。 */
+#bust-modal {
+    display: none; position: fixed; inset: 0; z-index: 60;
+    justify-content: center; align-items: safe center;
+    padding: 12px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background: rgba(6, 11, 19, 0.74);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+#bust-modal.show { display: flex; }
+
+#bust-modal .bust-card {
+    width: min(86vw, 296px);
+    box-sizing: border-box;
+    margin: auto;
+    padding: 14px 14px 12px;
+    border-radius: 12px;
+    color: var(--text);
+    background: var(--glass-strong);
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    text-align: left;
+    font-family: inherit;
+}
+#bust-modal .bust-title {
+    font-size: 15px; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--ice); line-height: 1.3;
+}
+#bust-modal .bust-sub {
+    margin-top: 3px;
+    font-size: 12px; line-height: 1.4;
+    color: #e6a59c;                       /* 说明里的负数用柔和的红，不刺眼 */
+}
+#bust-modal .bust-field {
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid rgba(212, 175, 55, 0.18);
+}
+#bust-modal .bust-label {
+    font-size: 11px; letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+#bust-modal .bust-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 7px;
+}
+#bust-modal .bust-chip,
+#bust-modal #bust-custom {
+    box-sizing: border-box;
+    height: 30px; min-width: 48px;
+    padding: 0 10px;
+    border-radius: 15px;
+    border: 1px solid var(--gold-dim);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px; font-family: inherit; line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+}
+#bust-modal .bust-chip { cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; }
+#bust-modal .bust-chip.on {
+    background: var(--gold); border-color: var(--gold);
+    color: #17120a; font-weight: 700;
+}
+#bust-modal #bust-custom {
+    flex: 1 1 78px; min-width: 78px; width: 78px;
+    text-align: center; outline: none;
+    -moz-appearance: textfield; appearance: textfield;
+}
+#bust-modal #bust-custom::-webkit-outer-spin-button,
+#bust-modal #bust-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+#bust-modal #bust-custom::placeholder { color: var(--text-muted); opacity: 0.7; }
+#bust-modal #bust-custom.on { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.35); }
+#bust-modal.err #bust-custom { border-color: #d9605a; box-shadow: 0 0 0 1px rgba(217, 96, 90, 0.4); }
+#bust-modal .bust-hint {
+    margin-top: 7px;
+    font-size: 11px; line-height: 1.4; color: var(--text-muted); opacity: 0.85;
+}
+#bust-modal.err .bust-hint { color: #e6a59c; opacity: 1; }
+
+#bust-modal .bust-actions {
+    display: flex; gap: 8px;
+    margin-top: 12px;
+}
+#bust-modal .bust-btn {
+    flex: 1 1 0; box-sizing: border-box;
+    height: 34px; border-radius: 8px;
+    font-size: 13px; font-family: inherit; font-weight: 600; letter-spacing: 0.04em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s, filter 0.12s, background 0.12s;
+}
+#bust-modal .bust-btn:active { transform: scale(0.97); }
+#bust-modal .bust-btn.ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--gold-dim);
+}
+#bust-modal .bust-btn.primary {
+    background: var(--gold); color: #17120a;
+    border: 1px solid var(--gold);
+}
+#bust-modal .bust-btn.primary:active { filter: brightness(0.92); }
+
+/* 横屏矮屏：卡片更紧凑 */
+@media screen and (orientation: landscape) and (max-height: 420px) {
+    #bust-modal { padding: 6px; }
+    #bust-modal .bust-card { width: min(70vw, 300px); padding: 10px 12px 10px; }
+    #bust-modal .bust-title { font-size: 14px; }
+    #bust-modal .bust-field { margin-top: 8px; padding-top: 7px; }
+    #bust-modal .bust-chips { margin-top: 5px; gap: 5px; }
+    #bust-modal .bust-chip, #bust-modal #bust-custom { height: 26px; font-size: 12px; }
+    #bust-modal .bust-hint { margin-top: 5px; }
+    #bust-modal .bust-actions { margin-top: 9px; }
+    #bust-modal .bust-btn { height: 30px; font-size: 12px; }
+}
