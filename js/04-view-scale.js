@@ -129,6 +129,39 @@ function syncViewScaleButtons() {
     const btnOut = document.getElementById('btn-view-zoom-out');
     if (btnIn) btnIn.disabled = viewScale >= viewScaleUpper() - 1e-9;
     if (btnOut) btnOut.disabled = viewScale <= VIEW_SCALE_MIN + 1e-9;
+    // 大小滑杆：范围 = [最小, 当前可视区域下的最大]，拖到头就是"刚好放满"
+    const sl = document.getElementById('view-scale-slider');
+    if (sl) {
+        const lo = Math.round(VIEW_SCALE_MIN * 100);
+        const hi = Math.max(lo + 1, Math.round(viewScaleUpper() * 100));
+        sl.min = String(lo);
+        sl.max = String(hi);
+        sl.value = String(Math.max(lo, Math.min(hi, Math.round(viewScale * 100))));
+    }
+}
+
+/** 左侧栏的大小滑杆：左右拖动改整体大小（代替原来的 缩小/扩大 两个按钮） */
+function initViewScaleSlider() {
+    const sl = document.getElementById('view-scale-slider');
+    const wrap = document.getElementById('table-wrap');
+    if (!sl) return;
+    const begin = () => { if (wrap) wrap.classList.add('panning'); };   // 拖动期间关掉过渡，牌桌跟手
+    const end = () => { if (wrap) wrap.classList.remove('panning'); };
+    ['pointerdown', 'touchstart', 'mousedown'].forEach(ev => sl.addEventListener(ev, e => { e.stopPropagation(); begin(); }, { passive: true }));
+    ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'mouseup', 'change', 'blur'].forEach(ev => sl.addEventListener(ev, end, { passive: true }));
+    sl.addEventListener('click', e => e.stopPropagation());
+    sl.addEventListener('input', () => {
+        if (!originalViewRecord) captureOriginalViewSize();
+        const upper = viewScaleUpper();
+        let v = (parseInt(sl.value, 10) || 100) / 100;
+        if (parseInt(sl.value, 10) >= parseInt(sl.max, 10)) v = upper;   // 拖到最右 = 精确的最大值
+        viewScale = Math.max(VIEW_SCALE_MIN, Math.min(upper, v));
+        applyViewScale();
+    });
+    sl.addEventListener('change', () => {
+        logFlow('整体大小 ' + Math.round(viewScale * 100) + '%（原始=100%）');
+    });
+    syncViewScaleButtons();
 }
 
 function autoFitLandscapeView() {
@@ -544,3 +577,5 @@ document.addEventListener('webkitfullscreenchange', () => {
     scheduleAutoFitBurst();
     schedulePortraitGuardChecks();
 });
+
+initViewScaleSlider();
