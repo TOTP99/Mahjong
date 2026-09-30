@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="css/12-game-feel.css">
 <link rel="stylesheet" href="css/13-toolbar.css">
 <link rel="stylesheet" href="css/14-left-panel.css">
+<link rel="stylesheet" href="css/15-bust-modal.css">
 </head>
 <body>
 
@@ -46,6 +47,28 @@
         <div class="hu-options" id="chi-choice-options"></div>
         <div class="hu-actions">
             <button type="button" onclick="closeChiChoice()">取消</button>
+        </div>
+    </div>
+</div>
+
+<div id="bust-modal" role="dialog" aria-modal="true" aria-labelledby="bust-title">
+    <div class="bust-card">
+        <div class="bust-title" id="bust-title">筹码不足</div>
+        <div class="bust-sub" id="bust-message"></div>
+        <div class="bust-field">
+            <div class="bust-label">重新开场 · 每家初始筹码</div>
+            <div class="bust-chips" role="radiogroup" aria-label="初始筹码">
+                <button type="button" class="bust-chip" role="radio" data-v="50" onclick="bustPickChip(50)">50</button>
+                <button type="button" class="bust-chip" role="radio" data-v="100" onclick="bustPickChip(100)">100</button>
+                <button type="button" class="bust-chip" role="radio" data-v="200" onclick="bustPickChip(200)">200</button>
+                <button type="button" class="bust-chip" role="radio" data-v="500" onclick="bustPickChip(500)">500</button>
+                <input type="number" id="bust-custom" inputmode="numeric" min="1" max="9999999" step="1" placeholder="自定义" oninput="bustCustomInput()" aria-label="自定义初始筹码">
+            </div>
+            <div class="bust-hint">重新开场：四家筹码重置，并重新掷骰调庄</div>
+        </div>
+        <div class="bust-actions">
+            <button type="button" class="bust-btn ghost" onclick="cancelBustRestart()">继续当前场</button>
+            <button type="button" class="bust-btn primary" onclick="confirmBustRestart()">重新开场</button>
         </div>
     </div>
 </div>
@@ -196,5 +219,6 @@
 <script src="js/15-stat-avatar-longpress.js"></script>
 <script src="js/16-game-feel.js"></script>
 <script src="js/17-toolbar.js"></script>
+<script src="js/18-bust-restart.js"></script>
 </body>
 </html>
