@@ -1,5 +1,6 @@
-// ========== 三击桌面：黄金骰子仪式（清零 / 继续） ==========
+// ========== 三击桌面：黄金骰子仪式（清零 / 继续）+ 单骰调庄 ==========
 // 流程：连点空白处 3 次 → 3D 旋转 2s → 缩小消失 → 弹出清零菜单
+// 调庄：startDiceDealerRitual / applyDealerFromDice，单骰掷 1–4 点定庄家
 const DICE = {
     ROLL_MS: 2400,       // 旋转时长（含惯性滑行段）
     VANISH_MS: 380,      // 缩小消失时长
@@ -296,8 +297,6 @@ function cancelDiceRitual() {
         showIndicator(options, true);
     }
 }
-
-/** 清零重启：积分/庄家/存档全部归零并开新局 */
 
 /**
  * 调庄：一颗骰只掷 1–4 点，从东（bottom/猫）起顺时针数，四家机会均等

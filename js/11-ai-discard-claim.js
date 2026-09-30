@@ -1,5 +1,4 @@
-/** 向听缓存：向听数只取决于「暗牌多重集 + 还缺几个面子」，同一手牌在一次 AI 决策里会被反复计算，
- *  这里按 排序后暗牌 + 副露数 缓存，结果与 estimateShanten 完全一致，只是不重复跑 DFS */
+/** 缓存 estimateShanten：键=排序后暗牌+副露数，一次 AI 决策内避免重复跑 DFS */
 const _shantenCache = new Map();
 function estimateShantenCached(concealed, exposed) {
     const key = concealed.slice().sort().join(',') + '|' + (exposed ? exposed.length : 0);
@@ -310,11 +309,11 @@ function winValue(hand, exposed, player) {
 function twoStepExp(hand, exposed, discard) {
     const hand1 = hand.slice();
     const di = hand1.indexOf(discard);
-    if (di < 0) return { exp: 8, totalRem: 0 };
+    if (di < 0) return 8;
     hand1.splice(di, 1);
     let s1;
     try { s1 = estimateShantenCached(hand1, exposed); }
-    catch (e) { return { exp: 8, totalRem: 0 }; }
+    catch (e) { return 8; }
     // hand1 的进张（带剩余张数）：4 - 已见 - 自己手里
     const ukeire = [];
     try {
@@ -328,12 +327,11 @@ function twoStepExp(hand, exposed, discard) {
                 ukeire.push({ tile: t, rem: rem });
             }
         }
-    } catch (e) { return { exp: s1, totalRem: 0 }; }
-    if (!ukeire.length) return { exp: s1, totalRem: 0 };
+    } catch (e) { return s1; }
+    if (!ukeire.length) return s1;
     ukeire.sort((a, b) => b.rem - a.rem);
     const top = ukeire.slice(0, 8); // 只看最可能摸到的 8 种
-    let wSum = 0, wTot = 0, totalRem = 0;
-    for (const u of ukeire) totalRem += u.rem;
+    let wSum = 0, wTot = 0;
     try {
         for (const u of top) {
             const s2 = estimateShantenCached(hand1.concat([u.tile]), exposed);
@@ -342,8 +340,8 @@ function twoStepExp(hand, exposed, discard) {
             wSum += u.rem * score;
             wTot += u.rem;
         }
-    } catch (e) { return { exp: s1, totalRem: totalRem }; }
-    return { exp: wTot ? wSum / wTot : s1, totalRem: totalRem };
+    } catch (e) { return s1; }
+    return wTot ? wSum / wTot : s1;
 }
 
 // 轴：速度 vs 牌值——粗略估一下这手牌大概能算多大，不追求精确，只用来在"求快"和"求大"间做取舍
@@ -510,13 +508,11 @@ function chooseAiDiscardTile(hand, player) {
     const safeFilterActive = (u, c, cf, hr) => (u >= 1 || c || notOpen || hr) || (style !== 'aggressive' && !cf);
     const actualFilterOn = safeFilterActive(urgency, cautious, confident, highRiskNow);
     const safePoolNow = pool.filter(c => c.safe);
-    // 只有"求稳"这一开关真的能改变候选范围（池子里本来就有安全/危险两种牌混着）时，
-    // 归因才有意义——否则开不开都一样，不能算某条轴"起了作用"
+    // 只有"求稳"开关真能改变候选范围时，归因才有意义
     const filterWouldNarrow = safePoolNow.length > 0 && safePoolNow.length < pool.length;
     if (actualFilterOn && filterWouldNarrow) pool = safePoolNow;
     if (filterWouldNarrow) {
-        // 归因：defense / wallCaution / 位置感 / 对手风险信号 分别单独归零（只改这一个、其它保持实际值），
-        // 看开关会不会翻——翻了说明这条轴自己就能决定这一把的选择
+        // 归因：各轴单独归零，看开关会不会翻——翻了说明这条轴能决定这一把的选择
         if (safeFilterActive(urgency, 0 <= -1.5 - posSlack, false, highRiskNow) !== actualFilterOn) {
             markAxisUsed(player, 'defense');
         }
@@ -580,7 +576,7 @@ function chooseAiDiscardTile(hand, player) {
     if (finalPool.length > 1) {
         const tsN = Math.min(5, finalPool.length);
         for (let i = 0; i < tsN; i++) {
-            try { finalPool[i].twoStep = twoStepExp(hand, exposed, finalPool[i].tile).exp; }
+            try { finalPool[i].twoStep = twoStepExp(hand, exposed, finalPool[i].tile); }
             catch (e) { finalPool[i].twoStep = finalPool[i].shan; }
         }
         for (let i = tsN; i < finalPool.length; i++) finalPool[i].twoStep = finalPool[i].shan;
@@ -634,20 +630,19 @@ function aiDiscard(player) {
                         return;
                     }
                     hands[robber].push(gTile);
-                    gameOver = true;
-                    winner = robber;
-                    const before = [...hands[robber]];
-                    before.splice(before.indexOf(gTile), 1);
-                    const bonus = scoreWinningHand(before, gTile, exposedMelds[robber], false, false);
-                    const result = settleScore(robber, 'dianpao', player, bonus);
-                    clearKongFlags();
-                    logFlow(nameOf(robber) + ' 抢杠胡了 ' + nameOf(player) + '！' + result.detail);
-                    speak('胡了，' + voiceName(player) + '点炮');
-                    learnFromWin(robber, player, { fan: bonus.mult, turns: handTurnCount });
-                    render();
-                    try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡', robber); } catch (e) {}
-                    showResultModal(robber, 'dianpao', player, bonus, result, gTile);
+                    settleWinNow({
+                        winner: robber,
+                        tile: gTile,
+                        selfDraw: false,
+                        finalTile: false,
+                        mode: 'dianpao',
+                        payer: player,
+                        applyKong: false, // 抢杠按点炮结算，不加杠后点炮
+                        logText: nameOf(robber) + ' 抢杠胡了 ' + nameOf(player) + '！',
+                        speakText: '胡了，' + voiceName(player) + '点炮',
+                        doRender: true,
+                        bannerPlayer: robber
+                    });
                     return;
                 }
                 const ix = hands[player].indexOf(gTile);
@@ -711,21 +706,19 @@ try { if (typeof feelBanner === 'function') feelBanner('杠', player); } catch (
     if (ronPlayer) {
         discardPile.pop();
         hands[ronPlayer].push(tile);
-        gameOver = true;
-        winner = ronPlayer;
-        const before = [...hands[ronPlayer]];
-        before.splice(before.indexOf(tile), 1);
-        const bonus = scoreWinningHand(before, tile, exposedMelds[ronPlayer], false, false);
-        applyKongBonuses(bonus, ronPlayer, 'dianpao', player);
-        const result = settleScore(ronPlayer, 'dianpao', player, bonus);
-        clearKongFlags();
-        logFlow(nameOf(player) + ' 点炮，' + nameOf(ronPlayer) + ' 胡了！' + result.detail);
-        speak('胡了，' + voiceName(player) + '点炮');
-        learnFromWin(ronPlayer, player, { fan: bonus.mult, turns: handTurnCount });
-        render();
-        try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡', ronPlayer); } catch (e) {}
-        showResultModal(ronPlayer, 'dianpao', player, bonus, result, tile);
+        settleWinNow({
+            winner: ronPlayer,
+            tile: tile,
+            selfDraw: false,
+            finalTile: false,
+            mode: 'dianpao',
+            payer: player,
+            applyKong: true,
+            logText: nameOf(player) + ' 点炮，' + nameOf(ronPlayer) + ' 胡了！',
+            speakText: '胡了，' + voiceName(player) + '点炮',
+            doRender: true,
+            bannerPlayer: ronPlayer
+        });
         return;
     }
 
@@ -734,12 +727,7 @@ try { if (typeof feelBanner === 'function') feelBanner('胡', ronPlayer); } catc
     checkClaimOrAdvance(player, tile);
 }
 
-// 局势判断：这张牌该不该碰（按性格调整松紧度）
-// 还没开门：都想尽快满足开门这个硬性条件，优先碰
-// 保守：最多碰2组就收手求稳，且必须碰完还留得住将
-// 激进：能碰就碰，追求快速开门或飘(碰碰胡)，上限放宽到快满4组前都碰
-// 精明：折中，3组以内且碰完留得住将才碰；中发白/风牌额外值得碰
-// 中发白刻子本身带番(×2)，价值高于普通风牌，单独多给一档向听容忍与决策优先级
+// 该不该碰：按性格松紧（保守≤2组/激进≤3组/精明折中）+ 向听容忍；中发白刻子带番单独加权
 // 手里还有没有连张(同花色相邻的牌)？没有的话说明这手牌天然在往碰碰胡(飘,8倍)方向走
 function isGoingForTriplets(hand) {
     for (const t of hand) {
@@ -943,21 +931,19 @@ function aiDrawReplacement(p) {
     render();
     try { if (typeof sfxDraw === 'function') sfxDraw(); } catch (e) {}
     if (checkHu(hands[p], exposedMelds[p], p)) {
-        gameOver = true;
-        winner = p;
-        const before = [...hands[p]];
-        before.splice(before.indexOf(drawn), 1);
-        const bonus = scoreWinningHand(before, drawn, exposedMelds[p], true, isLastTile);
-        applyKongBonuses(bonus, p, 'selfdraw', null);
-        const result = settleScore(p, 'selfdraw', null, bonus);
-        clearKongFlags();
-        logFlow(nameOf(p) + ' 杠上开花！自摸胡牌！' + result.detail);
-        speak('胡了，自摸');
-        learnFromWin(p, null, { fan: bonus.mult, turns: handTurnCount });
-        render();
-        try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡', p); } catch (e) {}
-        showResultModal(p, 'selfdraw', null, bonus, result, drawn);
+        settleWinNow({
+            winner: p,
+            tile: drawn,
+            selfDraw: true,
+            finalTile: isLastTile,
+            mode: 'selfdraw',
+            payer: null,
+            applyKong: true,
+            logText: nameOf(p) + ' 杠上开花！自摸胡牌！',
+            speakText: '胡了，自摸',
+            doRender: true,
+            bannerPlayer: p
+        });
         return;
     }
     gameTimeout(() => aiDiscard(p), 700);

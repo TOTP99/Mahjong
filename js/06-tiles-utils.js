@@ -1,7 +1,5 @@
 // 你的这张牌会不会点炮给某个 AI：等价于「该 AI 的听牌列表里有这张牌」。
-// 原先每张牌、每次渲染都要对三家各跑一次完整 checkHu；改用带缓存的 getWinningTilesOf，
-// 结果一致（getWinningTilesOf 要求暗牌张数=完整手牌-1，与 checkHu([...手牌, tile]) 的张数要求相同），
-// 同一副手牌命中缓存后不再重复计算。
+// 用带缓存的 getWinningTilesOf 判定（结果等价于逐家 checkHu，命中缓存不重复算）。
 function isDangerousTile(tile) {
     return ['top', 'left', 'right'].some(p => getWinningTilesOf(hands[p], exposedMelds[p], p).includes(tile));
 }
@@ -72,3 +70,18 @@ function tileBackImg() {
         const bk = new Image(); bk.src = TILE_IMG_DIR + 'back.webp';
     } catch (e) {}
 })();
+
+// ---------- 座位工具（从 09-turn-settlement.js 移入：纯映射，与结算是解耦的）----------
+/** 座位→方位：东=你（bottom），其余为 AI */
+function nameOf(p) {
+    return { top: '西', left: '北', right: '南', bottom: '东' }[p];
+}
+/** 座位对应动物（状态栏小头像：龙西/虎北/狮南/猫东） */
+function animalOf(p) {
+    return { top: '龙', left: '虎', right: '狮', bottom: '猫' }[p] || '';
+}
+/** 「东 猫」「南 狮」 */
+function seatLabel(p) {
+    const w = nameOf(p), a = animalOf(p);
+    return a ? (w + ' ' + a) : w;
+}

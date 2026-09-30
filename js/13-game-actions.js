@@ -104,7 +104,10 @@ function callChi() {
 }
 
 function chooseChiCombo(i) {
+    // 防御：异常双击或状态已变化时，pendingClaim/chiCombos 可能为空或索引越界
+    if (!pendingClaim || !Array.isArray(pendingClaim.chiCombos)) return;
     const combo = pendingClaim.chiCombos[i];
+    if (!combo) return;
     $('chi-choice-modal').classList.remove('show');
     executeChi(combo);
 }
@@ -251,21 +254,19 @@ function handleDiscard(event) {
     if (ronPlayer) {
         discardPile.pop();
         hands[ronPlayer].push(card);
-        gameOver = true;
-        winner = ronPlayer;
-        const before = [...hands[ronPlayer]];
-        before.splice(before.indexOf(card), 1);
-        const bonus = scoreWinningHand(before, card, exposedMelds[ronPlayer], false, false);
-        applyKongBonuses(bonus, ronPlayer, 'dianpao', 'bottom');
-        const result = settleScore(ronPlayer, 'dianpao', 'bottom', bonus);
-        clearKongFlags();
-        logFlow(nameOf(ronPlayer) + ' 点炮胡了你打出的牌！' + result.detail);
-        speak('胡了，' + voiceName('bottom') + '点炮');
-        learnFromWin(ronPlayer, 'bottom', { fan: bonus.mult, turns: handTurnCount });
-        render();
-        try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
-        showResultModal(ronPlayer, 'dianpao', 'bottom', bonus, result, card);
+        settleWinNow({
+            winner: ronPlayer,
+            tile: card,
+            selfDraw: false,
+            finalTile: false,
+            mode: 'dianpao',
+            payer: 'bottom',
+            applyKong: true,
+            logText: nameOf(ronPlayer) + ' 点炮胡了你打出的牌！',
+            speakText: '胡了，' + voiceName('bottom') + '点炮',
+            doRender: true
+            // bannerPlayer 原样没传：feelBanner('胡') 与 feelBanner('胡', undefined) 等价
+        });
         return;
     }
     if (afterKongDiscardPlayer === 'bottom') afterKongDiscardPlayer = null;
@@ -319,8 +320,7 @@ function loadSavedViewPan() {
         return isFinite(n) ? n : 0;
     } catch (e) { return 0; }
 }
-// persist=true 才写 localStorage：拖动过程中每次 pointermove 都同步写盘会造成卡顿，
-// 所以拖动时只更新 CSS 变量，松手（onEnd）时再存一次
+// persist=true 才写盘：拖动中只更新 CSS 变量，松手时存一次，避免 move 高频 I/O
 function applyViewPan(persist) {
     viewPanY = Math.max(-VIEW_PAN_MAX, Math.min(VIEW_PAN_MAX, viewPanY));
     document.documentElement.style.setProperty('--view-pan-y', viewPanY.toFixed(1) + 'px');

@@ -72,8 +72,7 @@ function loadAiLearn() {
         for (const style of ['conservative', 'aggressive', 'shrewd']) {
             const saved = parsed.confidence[style];
             const fresh = freshAxisConfidence();
-            // 旧版本(改7轴之前)是一个性格一个数字，直接读到的是number；这种情况没法对应到某条轴，
-            // 清零重新开始学，不强行套用（新老结构对不上，硬套没有意义）
+            // 旧版单数字存档无法映射到7轴，清零重学
             if (saved && typeof saved === 'object') {
                 for (const ax of AI_AXES) fresh[ax] = typeof saved[ax] === 'number' ? saved[ax] : 0;
             }
@@ -89,15 +88,26 @@ loadAiLearn();
 
 function clampConfidence(v) { return Math.max(-3, Math.min(3, v)); }
 
-// AI 学习防抖保存（减少频繁写盘）
-let aiLearnSaveTimer = 0;
-function scheduleSaveAiLearn() {
-    if (aiLearnSaveTimer) clearTimeout(aiLearnSaveTimer);
-    aiLearnSaveTimer = setTimeout(() => {
-        aiLearnSaveTimer = 0;
-        saveAiLearn();
-    }, 600);
+/**
+ * 防抖工具：返回 schedule 函数；调用后 ms 毫秒内无新调用才执行 fn。
+ * schedule.cancel() 可取消未执行的调用（返回是否真的取消了一个待执行的）。
+ * AI 学习存档（600ms）与对局进度存档（400ms）共用，行为与原来逐字一致。
+ */
+function debounce(fn, ms) {
+    let timer = 0;
+    const schedule = function () {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { timer = 0; fn(); }, ms);
+    };
+    schedule.cancel = function () {
+        if (timer) { clearTimeout(timer); timer = 0; return true; }
+        return false;
+    };
+    return schedule;
 }
+
+// AI 学习防抖保存（减少频繁写盘）
+const scheduleSaveAiLearn = debounce(saveAiLearn, 600);
 
 // 三种性格对"这局打得好不好"的定义完全不同——不是谁都以"胡了"为唯一目标：
 // 保守只在乎有没有点炮；激进只在乎胡得快不快；精明只在乎胡得大不大/有没有挡住别人
@@ -134,6 +144,7 @@ function scoreHandForStyle(style, ctx) {
 function applyAxisScore(player, style, score, justCalled) {
     const used = aiAxisUsed[player];
     if (!used || used.size === 0) return;
+    if (!aiLearn.confidence[style]) return; // 未知性格字符串：防御，不抛错
     const CALL_AXES = new Set(['callAggr', 'chaseSpecial']);
     for (const axis of used) {
         const weight = justCalled ? (CALL_AXES.has(axis) ? 1.4 : 0.4) : 1;
@@ -176,9 +187,7 @@ function learnFromDraw(tenpaiPlayers) {
 const $ = (id) => document.getElementById(id);
 
 // ---------- 局号 + 游戏流程定时器 ----------
-// gameEpoch：每开一局（initGame）+1。流程里的延时回调（AI 摸牌/出牌/吃碰后出牌等）
-// 都通过 gameTimeout 调度：局号变了（清零重启/开下一局）就直接作废，不会串到新局里多摸/多打一次；
-// 骰子仪式期间（diceBusy）自动顺延，不让 AI 在清零菜单弹出时继续推进牌局、覆盖你的吃碰杠提示。
+// 延时回调经 gameEpoch 隔离：开新局/清零后旧回调自动作废；骰子仪式期间顺延 200ms
 let gameEpoch = 0;
 function gameTimeout(fn, ms) {
     const epoch = gameEpoch;
@@ -216,7 +225,7 @@ function checkTileConservation(reason) {
     return false;
 }
 
-// 全部 JS 按 01→15 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
+// 全部 JS 按 01→18 顺序加载、共享全局作用域（无 module）；各文件职责见 README.md 的目录/改哪里表。
 
 // 渲染左侧空地里的状态面板：每位玩家一行，横着写 头像图标 风位 奖杯 庄家 听牌提示（例如 [头像] 西 ★ 庄 听）
 function renderStatRow(elId, cellFor) {
@@ -272,7 +281,6 @@ function markDealer() {
 // 完整对局记忆（积分/庄家/牌面/轮次）→ localStorage，刷新后原样恢复
 const MAHJONG_STORAGE_KEY = 'qionghu_mahjong_progress_v2';
 let restoringGame = false;
-let saveProgressTimer = 0;
 let savedPendingReveal = null; // 存档里记下的「等你选亮牌」类型，读档后由 resumeFromSave 使用
 
 function cloneState(obj) {
@@ -288,22 +296,16 @@ function cloneState(obj) {
 }
 
 /** 防抖写盘：避免每次 render 都同步 stringify 造成卡顿 */
+const _debouncedSaveProgress = debounce(saveGameProgress, 400);
 function scheduleSaveProgress() {
     if (restoringGame) return;
-    if (saveProgressTimer) clearTimeout(saveProgressTimer);
-    saveProgressTimer = setTimeout(() => {
-        saveProgressTimer = 0;
-        saveGameProgress();
-    }, 400);
+    _debouncedSaveProgress();
 }
 
 /** 立刻落盘（取消未执行的防抖），用于关键节点与页面关闭前 */
 function flushSaveProgress() {
     if (restoringGame) return;
-    if (saveProgressTimer) {
-        clearTimeout(saveProgressTimer);
-        saveProgressTimer = 0;
-    }
+    _debouncedSaveProgress.cancel();
     saveGameProgress();
 }
 
@@ -334,16 +336,11 @@ function saveGameProgress() {
 
 // 刷新/切后台前强制写入，避免防抖窗口内丢进度；同时强制落盘 AI 学习数据
 window.addEventListener('pagehide', () => {
-    if (aiLearnSaveTimer) {
-        clearTimeout(aiLearnSaveTimer);
-        aiLearnSaveTimer = 0;
-        saveAiLearn();
-    }
+    if (scheduleSaveAiLearn.cancel()) saveAiLearn();
     flushSaveProgress();
 });
-/* resize / orientationchange → bindOrientationListeners → handleOrientationEvent（内含 fitBottomHand） */
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushSaveProgress();
+    if (document.visibilityState === 'hidden') flushSaveProgress(); // 切后台时立刻落盘
 });
 
 function loadGameProgress() {
@@ -391,7 +388,9 @@ function loadGameProgress() {
         hands = saved.hands;
         exposedMelds = saved.exposedMelds || { top: [], left: [], right: [], bottom: [] };
         discardPile = saved.discardPile || [];
-        currentIndex = typeof saved.currentIndex === 'number' ? saved.currentIndex : turnOrder.indexOf(dealer);
+        currentIndex = (Number.isInteger(saved.currentIndex) && saved.currentIndex >= 0 && saved.currentIndex < turnOrder.length)
+            ? saved.currentIndex
+            : turnOrder.indexOf(dealer);
         gameOver = !!saved.gameOver;
         winner = saved.winner || null;
         windDragonBonus = saved.windDragonBonus || { top: false, left: false, right: false, bottom: false };
@@ -432,19 +431,14 @@ function resumeFromSave() {
             return;
         }
     }
-    // 情形二：AI 刚打出牌、正在等你吃碰杠时刷新——currentIndex 还停在打牌那家，
-    // 他手牌是 %3==1，但这一轮其实已经摸过并打完了。不能当成“还没摸牌”再摸一次
-    // （否则他会连摸两次、下家被跳过、你的吃碰杠机会也丢了），应重新走吃碰杠/换人流程
+    // 情形二：AI 刚出完牌、等你吃碰杠时刷新——重走吃碰杠/换人流程，不可再摸（防连摸两次）
     const lastDiscard = discardPile[discardPile.length - 1];
     if (player !== 'bottom' && hands[player].length % 3 === 1 && lastDiscard && lastDiscard.player === player) {
         logFlow('继续对局…');
         gameTimeout(() => checkClaimOrAdvance(player, lastDiscard.tile), 600);
         return;
     }
-    // 恢复时先判断“当前该轮到的这家”这一轮是否已经摸过牌：
-    // 手牌数 %3==2 说明已摸牌、正等着出牌；%3==1 说明这一轮还没摸牌，需要先补摸，
-    // 否则这一轮会被直接跳过出牌提示，导致这张牌永远留在牌堆里没人摸到（表现为手牌永久少一张）。
-    // 之前只有 AI 分支（else）做了这个判断，"你"（bottom）分支没做，是本 bug 的根因。
+    // 手牌数 %3==2 说明已摸牌、正等着出牌；%3==1 说明还没摸，需要先补摸（否则这张牌永远没人摸到）
     const needDiscard = hands[player].length % 3 === 2;
     if (player === 'bottom') {
         if (needDiscard) {

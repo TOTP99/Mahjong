@@ -12,6 +12,30 @@ function isKaimen(exposed) {
 }
 
 /**
+ * 枚举"对子作将"的每种分解：对每种可能的将牌，抠掉两张后把剩余暗牌拆成面子，
+ * 只保留面子数 === neededSets 的分解，逐个回调 cb(pairTile, decomp)。
+ * analyzeHu（结构判定）与 scoreWinningHand（02，番型计分）共用。
+ * sortedConcealed 须已按 tileCompare 排好序。
+ */
+function forEachPairDecomposition(sortedConcealed, neededSets, cb) {
+    const counts = {};
+    for (const t of sortedConcealed) counts[t] = (counts[t] || 0) + 1;
+    for (const pairTile of Object.keys(counts)) {
+        if (counts[pairTile] < 2) continue;
+        const rest = [];
+        let skipped = 0;
+        for (const t of sortedConcealed) {
+            if (t === pairTile && skipped < 2) { skipped++; continue; }
+            rest.push(t);
+        }
+        for (const decomp of decompose(rest)) {
+            if (decomp.length !== neededSets) continue;
+            cb(pairTile, decomp);
+        }
+    }
+}
+
+/**
  * 胡牌结构分析（穷胡）：
  * structuralOk 能拆成面子+将；kaimen 开过门；sanmenqi 三门齐；
  * yaojiu 有幺九/字；kezi 有刻子。
@@ -33,25 +57,12 @@ function analyzeHu(concealed, exposed = [], player = null) {
     let dragonPairAsJiang = false;
     if (concealed.length === requiredLen) {
         const sorted = [...concealed].sort(tileCompare);
-        // 用计数表找对子，避免反复 filter
-        const counts = {};
-        for (const t of sorted) counts[t] = (counts[t] || 0) + 1;
-        for (const pairTile of Object.keys(counts)) {
-            if (counts[pairTile] < 2) continue;
-            const rest = [];
-            let skipped = 0;
-            for (const t of sorted) {
-                if (t === pairTile && skipped < 2) { skipped++; continue; }
-                rest.push(t);
-            }
-            for (const decomp of decompose(rest)) {
-                if (decomp.length !== neededSets) continue;
-                structuralOk = true;
-                if (decomp.some(m => m.type === 'triplet')) kezi = true;
-                // 一对中/发/白做将：补刻子条件（不计分 ×2）
-                if (dragonTilesArr.includes(pairTile)) dragonPairAsJiang = true;
-            }
-        }
+        forEachPairDecomposition(sorted, neededSets, (pairTile, decomp) => {
+            structuralOk = true;
+            if (decomp.some(m => m.type === 'triplet')) kezi = true;
+            // 一对中/发/白做将：补刻子条件（不计分 ×2）
+            if (dragonTilesArr.includes(pairTile)) dragonPairAsJiang = true;
+        });
     }
     const allTiles = [...concealed, ...exposed.flatMap(m => m.tiles)];
     // 字牌（含中发白）或数牌 1/9 即满足幺九

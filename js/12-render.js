@@ -154,13 +154,7 @@ function fitBottomHand() {
 }
 
 // ---------- 听牌提示（只针对你自己的手牌） ----------
-// · 你出完牌、等别人时（暗牌张数 = 完整手牌 - 1）：显示「听 一万2 四万1 · 共3张」——听哪几张、每张场上还剩几张
-// · 轮到你、点选了一张牌（▼）：显示「打北 → 听 …」，告诉你打这张之后听什么；不听则显示「未听牌」
-// · 轮到你、还没点选：如果有能听牌的打法，列出来「可听牌：打 北 白」
-// · 结构上已经成型、但穷胡规则还缺条件（开门/三门齐/幺九/刻子）时：显示「成型 · 缺：开门」
-// 「余」= 4 − 你能看到的张数（你的手牌、所有弃牌、所有明面副露、你自己的暗杠）；别人手里的暗牌和暗杠你看不到，不计入。
-// 听哪几张直接用 getWinningTilesOf（与真正判胡的 checkHu 同一套规则、带缓存），不会和实际能不能胡不一致。
-// 总开关：改成 false 可彻底禁用听牌提示（连 UI 开关也不出现逻辑）。
+// 等牌中/已选牌/未选牌三种文案；「余」= 4 − 你能看到的张数；总开关 TENPAI_HINT_ENABLED（false 则彻底禁用）
 const TENPAI_HINT_ENABLED = true;
 const TENPAI_HINT_MAX_TYPES = 6;   // 最多列出几种听牌，多了显示「…」
 const TENPAI_HINT_UI_KEY = 'qionghu_mahjong_tenpai_hint_ui_v1';
@@ -307,11 +301,4 @@ function updateTenpaiHint() {
     _tenpaiHintHtml = html;
     el.innerHTML = html;
     if (html) el.classList.add('show'); else el.classList.remove('show');
-}
-
-function rotateDealer() {
-    // 有人胡牌：赢家是庄家就连庄，否则下庄
-    // 流局（winner为null）：无条件连庄
-    const dealerStays = winner === null ? true : (winner === dealer);
-    if (!dealerStays) dealer = nextPlayerOf(dealer);
 }

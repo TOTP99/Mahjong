@@ -1,7 +1,7 @@
 /* ============================================================
  * js/16-game-feel.js — 手感层：合成音效 + 出牌飞行
  * 本项目专用（全局函数，无 Game 命名空间、无开关 UI）。
- * 纯装饰：无 AudioContext / 无 DOM / prefers-reduced-motion 时静默 no-op，
+ * 纯装饰：当无 AudioContext / 无 DOM / 用户设了 prefers-reduced-motion 时静默 no-op，
  * 不影响规则、牌数、回合、存档。须在 13-game-actions.js 之后加载。
  * ============================================================ */
 (function () {

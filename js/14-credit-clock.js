@@ -1,13 +1,6 @@
 /* 14-credit-clock.js
- * 接管 #credit-label / #credit-label-2 的全部内容（仅竖屏可见，横屏由 CSS 隐藏）：
- *   第一行（金字）：TP制作➸369❖❁（纯文字符号，不用 emoji，各平台显示稳定）
- *   第二行：时:分:秒 星期(英文全称) 月-日-年(两位) 均为金字（继承 #credit-label-2 的颜色），
- *           「在线 …」本次已玩时间 为白色粗体
- * 在线时间严格按5分钟一档：0-5 mins、5 mins、10 mins …（向下取整到5的倍数）。
- * 只存内存，不写 localStorage；页面切到后台时暂停计时。
- * 横屏：竖屏那两行被 CSS 隐藏，改为在左侧栏的 #img-display-badge（TP制作）后面加当前时间的 时:分:秒，
- *       竖屏时该标签保持原样只显示"TP制作"。
- * 必须放在 13-game-actions.js 之后加载。
+ * 接管 #credit-label（署名）/ #credit-label-2（时钟+在线时长，5分钟一档，只存内存，后台暂停）；
+ * 横屏时在左侧栏徽标后追加时分秒。须在 13-game-actions.js 之后加载。
  */
 (function () {
     'use strict';

@@ -10,35 +10,8 @@ const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
 const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
-const VIEW_ORIGINAL_STORAGE_KEY = 'qionghu_mahjong_view_original_v1';
 
 let viewScale = ORIGINAL_VIEW_SCALE;
-/** 启动时记录的桌面原始像素尺寸（供对照/恢复） */
-let originalViewRecord = null;
-
-function captureOriginalViewSize() {
-    if (originalViewRecord) return originalViewRecord;
-    const frame = document.getElementById('table-frame');
-    const wrap = document.getElementById('table-wrap');
-    let w = 0, h = 0;
-    if (frame) {
-        const r = frame.getBoundingClientRect();
-        // 若当前已缩放，反推未缩放尺寸
-        const s = viewScale || 1;
-        w = r.width / s;
-        h = r.height / s;
-    }
-    originalViewRecord = {
-        scale: ORIGINAL_VIEW_SCALE,
-        width: Math.round(w * 10) / 10,
-        height: Math.round(h * 10) / 10,
-        capturedAt: Date.now()
-    };
-    try {
-        localStorage.setItem(VIEW_ORIGINAL_STORAGE_KEY, JSON.stringify(originalViewRecord));
-    } catch (e) { /* ignore */ }
-    return originalViewRecord;
-}
 
 function loadSavedViewScale() {
     try {
@@ -77,14 +50,8 @@ function applyViewScale() {
 }
 
 /* ==================== 横屏自动适配 ====================
- * 原因：手机浏览器里 100vh 常常比真正可见的高度大（地址栏/工具栏占了一部分），
- * 牌桌又是按 vh 算尺寸并在 body 里居中，于是底部被裁掉，只能手动缩小再上下拖。
- * 做法：把牌桌临时还原成"不缩放、不平移"量出它的自然位置，再按当前真正可见的区域（visualViewport，
- *       扣掉刘海/Home 条安全区和 4px 边距）算出：缩放比例 = min(1, 可用宽/桌宽, 可用高/桌高)，
- *       平移 = 让缩放后的牌桌在可见区域里垂直居中。整个过程同步完成、关掉过渡动画，不会闪。
- * 触发：启动、旋转、窗口大小/可视区域变化、进出全屏、弹窗关闭后。
- * 手动的 缩小/扩大/拖动 仍然可用，效果保留到下一次上述事件（或刷新）为止。
- * 竖屏完全不处理。 */
+ * 量出牌桌自然尺寸，按 visualViewport 可用区算缩放+垂直居中（100vh 常比可见高度大，底部会被裁）。
+ * 触发：启动/旋转/resize/全屏/弹窗关闭；手动缩放/拖动仍可用。竖屏不处理。 */
 let _autoFitApplied = false; // 已经自动适配过一次（第一次直接到位不做动画）
 let _autoFitReady = false;   // 13 启动段准备好之后才允许自动适配（避免脚本还没加载完就被 resize 事件触发）
 let _autoFitTimers = [];
@@ -117,7 +84,6 @@ function initViewScaleSlider() {
     ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'mouseup', 'change', 'blur'].forEach(ev => sl.addEventListener(ev, end, { passive: true }));
     sl.addEventListener('click', e => e.stopPropagation());
     sl.addEventListener('input', () => {
-        if (!originalViewRecord) captureOriginalViewSize();
         const upper = viewScaleUpper();
         let v = (parseInt(sl.value, 10) || 100) / 100;
         if (parseInt(sl.value, 10) >= parseInt(sl.max, 10)) v = upper;   // 拖到最右 = 精确的最大值
@@ -285,14 +251,8 @@ function endOrientTransition() {
 }
 
 /* ==================== 横屏界面元素自适应放大 ====================
- * 自动适配把整张牌桌缩放到刚好放进可见区域之后，桌面里往往还有空地。
- * 这里用一个系数 --ui-k（≥1）统一放大：四家头像+分数、你的手牌、手牌上方的提示文字、AI 副露牌，
- * 放大到「四个玩家区域之间、以及和牌桌边框之间刚好不重叠」为止。
- * 做法：用真实布局测量（getBoundingClientRect），在 [1, UI_K_MAX] 上二分找最大可行的系数，
- *       再乘一个安全系数，并复核一次；量不到或有异常时保持 1（=原尺寸）。
- * 触发：每次横屏自动适配之后；每局开局（可放大）；有人吃碰杠、副露变多时（只会缩小，不会中途变大，避免画面忽大忽小）。
- * 竖屏、AUTO_UI_SCALE=false 时系数恒为 1，界面与原来完全一致。
- * 样式在 css/09-ui-scale.css（下面会在缺少 <link> 时自动补上）。 */
+ * --ui-k 在 [1, UI_K_MAX] 二分搜索"各区域不重叠"的最大系数，统一放大头像/手牌/提示/AI副露；
+ * 异常回退 1（=原尺寸）。样式见 css/09-ui-scale.css。 */
 const AUTO_UI_SCALE = true;   // false：不放大，一切保持原尺寸
 const UI_K_MAX = 2;           // 放大上限
 const UI_GAP = 2;             // 各区域之间至少留的空隙（牌桌自身像素）
@@ -448,7 +408,6 @@ function uiScaleOnRender() {
 
 async function toggleLandscapeMaximize() {
     // 横屏调整 = 恢复原始正常大小 + 尽量全屏横屏
-    if (!originalViewRecord) captureOriginalViewSize();
     viewScale = ORIGINAL_VIEW_SCALE;
     applyViewScale();
     applyDevicePlatformClass();

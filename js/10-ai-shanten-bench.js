@@ -50,7 +50,7 @@ function buildCount34(concealed) {
 }
 
 /** 在已去掉完整面子、并已取走将牌（或确定无将）的剩余里，贪心数搭子。
- *  搭子 = 连张(45) / 嵌张(46) / 对子(55，可碰)。对子以前漏数了，导致多对子的手牌向听被高估。 */
+ *  搭子 = 连张(45) / 嵌张(46) / 对子(55，可碰)。 */
 function countTaatsu34(cnt) {
     const c = cnt.slice();
     let taatsu = 0;
@@ -93,7 +93,6 @@ function shantenFromRest(cnt, melds, needMelds) {
         // 搭子最多补 mNeed 个面子（面子+搭子的块数不能超过还缺的面子数）
         let t = taatsu;
         if (t > mNeed) t = mNeed;
-        if (t < 0) t = 0;
         // 完成形：melds==needMelds 且 pair→ -1；听牌 → 0
         return 2 * mNeed - (pair ? 1 : 0) - t;
     };

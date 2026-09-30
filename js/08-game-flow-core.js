@@ -1,6 +1,14 @@
 // ---------- 游戏流程 ----------
 const DEAD_WALL = 16; // 荒牌墙：摸到只剩这些时流局
 
+/** 轮换庄家（从 12-render-3.js 移入：这是流程逻辑，不是渲染） */
+function rotateDealer() {
+    // 有人胡牌：赢家是庄家就连庄，否则下庄
+    // 流局（winner为null）：无条件连庄
+    const dealerStays = winner === null ? true : (winner === dealer);
+    if (!dealerStays) dealer = nextPlayerOf(dealer);
+}
+
 function initGame() {
     gameEpoch++; // 新的一局：让上一局遗留的延时回调全部作废
     resetSpeechQueue();
@@ -77,11 +85,10 @@ function declareDraw() {
 }
 
 
-// 语音播报排队：连续触发的播报（比如摸/打这张牌的名字，紧接着又要念吃碰杠胡）
-// 不能互相打断，必须一句话说完再说下一句，所以用队列串行播放，而不是 cancel() 抢占
+// 语音串行队列：播报不能互相打断，一句说完再说下一句
 let speechQueue = [];
 let speechSpeaking = false;
-const SPEECH_QUEUE_MAX = 2; // 等待中最多囤2句，避免动作太密时语音越播越滞后于画面
+const SPEECH_QUEUE_MAX = 2; // 等待中最多囤2句
 
 function speak(text) {
     try {
@@ -181,21 +188,19 @@ function continueAfterFirstTurnCheck(player) {
         if (player === 'bottom') {
             offerHu({ mode: 'selfdraw' });
         } else {
-            gameOver = true;
-            winner = player;
-            const winTile = lastDrawnTile[player];
-            const before = [...hands[player]];
-            before.splice(before.indexOf(winTile), 1);
-            const bonus = scoreWinningHand(before, winTile, exposedMelds[player], true, lastDrawWasFinal[player]);
-            applyKongBonuses(bonus, player, 'selfdraw', null);
-            const result = settleScore(player, 'selfdraw', null, bonus);
-            clearKongFlags();
-            logFlow(nameOf(player) + ' 自摸胡牌！' + result.detail);
-            speak('胡了，自摸');
-            learnFromWin(player, null, { fan: bonus.mult, turns: handTurnCount });
-            try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡', player); } catch (e) {}
-            showResultModal(player, 'selfdraw', null, bonus, result, winTile);
+            settleWinNow({
+                winner: player,
+                tile: lastDrawnTile[player],
+                selfDraw: true,
+                finalTile: lastDrawWasFinal[player],
+                mode: 'selfdraw',
+                payer: null,
+                applyKong: true,
+                logText: nameOf(player) + ' 自摸胡牌！',
+                speakText: '胡了，自摸',
+                doRender: false, // 原样：AI自摸后直接弹结果，不重绘桌面
+                bannerPlayer: player
+            });
         }
         return;
     }
@@ -248,21 +253,19 @@ function executeSelfGang() {
             const idx = hands.bottom.indexOf(tile);
             if (idx > -1) hands.bottom.splice(idx, 1);
             hands[robber].push(tile);
-            gameOver = true;
-            winner = robber;
-            const before = [...hands[robber]];
-            before.splice(before.indexOf(tile), 1);
-            const bonus = scoreWinningHand(before, tile, exposedMelds[robber], false, false);
-            // 抢杠按点炮结算（不加杠后点炮；抢杠本身已是特殊）
-            const result = settleScore(robber, 'dianpao', 'bottom', bonus);
-            clearKongFlags();
-            logFlow(nameOf(robber) + ' 抢杠胡了你加杠的 ' + tileGlyph(tile) + '！' + result.detail);
-            speak('胡了，' + voiceName('bottom') + '点炮');
-            learnFromWin(robber, 'bottom', { fan: bonus.mult, turns: handTurnCount });
-            render();
-            try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡', robber); } catch (e) {}
-            showResultModal(robber, 'dianpao', 'bottom', bonus, result, tile);
+            settleWinNow({
+                winner: robber,
+                tile: tile,
+                selfDraw: false,
+                finalTile: false,
+                mode: 'dianpao',
+                payer: 'bottom',
+                applyKong: false, // 抢杠按点炮结算，不加杠后点炮；抢杠本身已是特殊
+                logText: nameOf(robber) + ' 抢杠胡了你加杠的 ' + tileGlyph(tile) + '！',
+                speakText: '胡了，' + voiceName('bottom') + '点炮',
+                doRender: true,
+                bannerPlayer: robber
+            });
             return;
         }
         const idx = hands.bottom.indexOf(tile);
@@ -284,10 +287,7 @@ try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
     }
     // 暗杠
     if (exposedMelds.bottom.length >= 3) { logFlow('穷胡规则：不能手把一，最后一组必须留在手里'); return; }
-    for (let i = 0; i < 4; i++) {
-        const idx = hands.bottom.indexOf(tile);
-        if (idx > -1) hands.bottom.splice(idx, 1);
-    }
+    takeTilesFromHand('bottom', tile, 4);
     exposedMelds.bottom.push({ type: 'gang', tiles: [tile, tile, tile, tile], concealed: true });
     logFlow('你暗杠了 ' + tileGlyph(tile) + '，补牌中...');
     speak('杠' + tileName(tile));
@@ -309,7 +309,6 @@ function nextTurn() {
     lastDrawWasFinal[player] = deck.length === DEAD_WALL;
     if (player === 'bottom') { lastDrawnIndex = hands.bottom.lastIndexOf(drawn); selectedIndex = null; }
     // 普通摸牌不是杠上开花
-    if (afterKongDrawPlayer === player) { /* 保留：仅杠补牌路径会 mark */ }
     validateHandCounts('nextTurn');
     render();
     try { if (typeof sfxDraw === 'function') sfxDraw(); } catch (e) {}

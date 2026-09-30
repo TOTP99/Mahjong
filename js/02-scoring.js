@@ -22,9 +22,9 @@ function hasSiGuiYi(decomp, exposed) {
 }
 
 // 分析这次胡牌的番型倍数（倍数部分）；底分在 settleScore：自摸1 / 点炮2，以下每项再翻倍可叠加：
-// 杠(每个×2，可多次) / 中发白刻子(三张相同中或发或白；亮中发白明组也算) / 单吊 / 边张 / 夹张 / 海底捞 等
+// 杠(暗杠×4/明杠×2，可多次) / 中发白刻子(三张相同中或发或白；亮中发白明组也算) / 单吊 / 边张 / 夹张 / 海底捞 等
 // 仅一对中/发/白做将不算「中发白×2」（只在 analyzeHu 补幺九+刻子）
-// 碰碰胡(全部刻子/杠，无顺子)例外：翻8倍代替翻2倍，但仍可与其他项叠加
+// 碰碰胡(全部刻子/杠，无顺子)：翻8倍，仍可与其他项叠加
 // concealedBeforeWin: 胡牌前的暗牌(不含winTile)；winTile: 刚好胡的这张
 // 在所有能胡的分解方式里取倍数最高的一种（对玩家最有利）
 /** 计算和牌番型倍数（不含自摸/点炮/庄家，那些在 settleScore） */
@@ -32,20 +32,8 @@ function scoreWinningHand(concealedBeforeWin, winTile, exposed, isSelfDraw, isLa
     const concealed = [...concealedBeforeWin, winTile].sort(tileCompare);
     const neededSets = 4 - exposed.length;
     let best = { mult: 1, tags: [] };
-    const counts = {};
-    for (const t of concealed) counts[t] = (counts[t] || 0) + 1;
 
-    for (const pairTile of Object.keys(counts)) {
-        if (counts[pairTile] < 2) continue;
-        const rest = [];
-        let skipped = 0;
-        for (const t of concealed) {
-            if (t === pairTile && skipped < 2) { skipped++; continue; }
-            rest.push(t);
-        }
-        const decompositions = decompose(rest);
-        for (const decomp of decompositions) {
-            if (decomp.length !== neededSets) continue;
+    forEachPairDecomposition(concealed, neededSets, (pairTile, decomp) => {
 
             // winTile在这套分解里落在哪：单吊(对子) / 边张 / 夹张 / 普通
             let waitType = 'normal';
@@ -75,7 +63,6 @@ function scoreWinningHand(concealedBeforeWin, winTile, exposed, isSelfDraw, isLa
             const tags = [];
             if (isAllTriplets) { mult *= 8; tags.push('碰碰胡×8'); }
             if (hasDragonTriplet) { mult *= 2; tags.push('中发白×2'); }
-            // 风刻明组：×1，不再加倍（保留判断但不影响总分）
             if (waitType === 'tanki') { mult *= 2; tags.push('单吊×2'); }
             if (waitType === 'bianzhang') { mult *= 2; tags.push('边张×2'); }
             if (waitType === 'kanchan') { mult *= 2; tags.push('夹张×2'); }
@@ -88,15 +75,13 @@ function scoreWinningHand(concealedBeforeWin, winTile, exposed, isSelfDraw, isLa
             }
 
             if (mult > best.mult) best = { mult, tags };
-        }
-    }
+    });
     return best;
 }
 
 
 /** 杠上开花 / 杠后点炮：在 settleScore 前调用，就地改 bonus.mult/tags */
 function applyKongBonuses(bonus, winner, mode, payer) {
-    if (!bonus) return bonus;
     if (mode === 'selfdraw' && afterKongDrawPlayer === winner) {
         bonus.mult *= 2;
         if (!bonus.tags.includes('杠上开花×2')) bonus.tags.push('杠上开花×2');

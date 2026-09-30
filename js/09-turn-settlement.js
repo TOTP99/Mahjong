@@ -6,8 +6,7 @@ function canGang(hand, tile) {
     return hand.filter(t => t === tile).length >= 3;
 }
 
-// 返回可吃的组合（手牌中的两张），找不到返回 null
-// 返回所有可行的吃法组合(可能不止一种，比如摸到5万，手里有3万4万又有6万7万)
+// 返回所有可行的吃法组合(可能不止一种，比如摸到5万，手里有3万4万又有6万7万)；找不到返回 []
 function findChiCombos(hand, tile) {
     const suit = tileSuit(tile);
     if (suit === '字') return []; // 字牌没有顺子，不能吃
@@ -20,19 +19,6 @@ function findChiCombos(hand, tile) {
         if (hand.includes(ta) && hand.includes(tb)) found.push([ta, tb]);
     }
     return found;
-}
-
-function nameOf(p) {
-    return { top: '西', left: '北', right: '南', bottom: '东' }[p];
-}
-/** 座位对应动物（状态栏小头像：龙西/虎北/狮南/猫东） */
-function animalOf(p) {
-    return { top: '龙', left: '虎', right: '狮', bottom: '猫' }[p] || '';
-}
-/** 「东 猫」「南 狮」 */
-function seatLabel(p) {
-    const w = nameOf(p), a = animalOf(p);
-    return a ? (w + ' ' + a) : w;
 }
 
 // 显示验胡结算画面：谁胡/自摸or点炮/完整手牌/吃碰杠亮/计分明细/每家加减分
@@ -73,6 +59,38 @@ function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
     if (btn) btn.textContent = '特殊情况：手动调分';
     $('result-modal').classList.add('show');
     flushSaveProgress(); // 结算后立刻落盘，防刷新丢分
+}
+
+/**
+ * 胡牌结算公共流程：6 处胡牌（08 AI自摸/抢杠、11 AI抢杠/点炮/杠上开花、13 AI点炮人类）
+ * 的样板代码收敛到这里。调用前须已把胡的那张牌 push 进 hands[o.winner]。
+ *
+ * o: {
+ *   winner, tile,        // 赢家、胡的那张牌
+ *   selfDraw, finalTile, // 是否自摸、是否海底/河底
+ *   mode, payer,         // 'selfdraw' | 'dianpao'、点炮者（自摸为 null）
+ *   applyKong,           // 是否调 applyKongBonuses（抢杠不调）
+ *   logText, speakText,  // 日志与语音文案（不含 result.detail 后缀）
+ *   doRender,            // 是否 render()（08 AI自摸那处原样为 false）
+ *   bannerPlayer         // feelBanner('胡', who) 的 who；13 那处原样没传，按 undefined 处理等价
+ * }
+ */
+function settleWinNow(o) {
+    gameOver = true;
+    winner = o.winner;
+    const before = [...hands[o.winner]];
+    before.splice(before.indexOf(o.tile), 1);
+    const bonus = scoreWinningHand(before, o.tile, exposedMelds[o.winner], o.selfDraw, !!o.finalTile);
+    if (o.applyKong) applyKongBonuses(bonus, o.winner, o.mode, o.payer);
+    const result = settleScore(o.winner, o.mode, o.payer, bonus);
+    clearKongFlags();
+    logFlow(o.logText + result.detail);
+    speak(o.speakText);
+    learnFromWin(o.winner, o.payer, { fan: bonus.mult, turns: handTurnCount });
+    if (o.doRender) render();
+    try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
+    try { if (typeof feelBanner === 'function') feelBanner('胡', o.bannerPlayer); } catch (e) {}
+    showResultModal(o.winner, o.mode, o.payer, bonus, result, o.tile);
 }
 
 function renderSettlementView() {
