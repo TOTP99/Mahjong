@@ -305,10 +305,11 @@
         letter-spacing: 0.2em;
         padding: 2px 10px;
     }
-    /* 竖屏副露浮层：与 #claim-indicator(top:3%) 上下错开，避免并发时重叠；金边框、分三排、无背景 */
+    /* 竖屏副露浮层：与 #claim-indicator(top:3%) 上下错开，避免并发时重叠；金边框、分三排、无背景
+       top 在 12% 基础上再上移 95% 张竖屏废牌高度（.discardTile 高 23px → 约 22px） */
     body.portrait-layout #tile-tooltip {
         position: absolute;
-        top: 12%;
+        top: calc(12% - 22px);
         left: 86%;
         transform: translate(-50%, 0);
         display: none;
