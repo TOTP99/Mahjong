@@ -70,6 +70,14 @@
     72%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
     100% { opacity: 0; transform: translate(-50%,-50%) scale(1.06); }
 }
+/* AI 横幅（竖屏）：废牌池正中 + 半透明深色底。
+   JS（16-game-feel.js）在竖屏且 who 为 AI 时加 .feel-banner-ai 类，
+   并用内联 left/top 把中心钉在 #discardWall 正中；你自己的、横屏的不加此类。 */
+.feel-banner-ai {
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 12px;
+    padding: 8px 16px;
+}
 @media (prefers-reduced-motion: reduce) {
     .feel-banner { animation-duration: 0.3s; }
 }
