@@ -473,7 +473,7 @@ function aiDiscard(player) {
                     learnFromWin(robber, player, { fan: bonus.mult, turns: handTurnCount });
                     render();
                     try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡', robber); } catch (e) {}
                     showResultModal(robber, 'dianpao', player, bonus, result, gTile);
                     return;
                 }
@@ -486,7 +486,7 @@ try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
                 speak('杠' + tileName(gTile));
                 render();
                 try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('杠', player); } catch (e) {}
                 aiDrawReplacement(player);
                 return;
             }
@@ -508,7 +508,7 @@ try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
                 speak('杠' + tileName(gangTile));
                 render();
                 try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('杠', player); } catch (e) {}
                 aiDrawReplacement(player);
                 return;
             }
@@ -551,7 +551,7 @@ try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
         learnFromWin(ronPlayer, player, { fan: bonus.mult, turns: handTurnCount });
         render();
         try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡', ronPlayer); } catch (e) {}
         showResultModal(ronPlayer, 'dianpao', player, bonus, result, tile);
         return;
     }
@@ -718,7 +718,7 @@ function aiPengClaim(p, tile) {
         speak('杠' + tileName(tile));
         render();
         try { if (typeof sfxGang === 'function') sfxGang(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('杠', p); } catch (e) {}
         aiDrawReplacement(p);
     } else {
         exposedMelds[p].push({ type: 'peng', tiles: [tile, tile, tile] });
@@ -726,7 +726,7 @@ try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
         speak('碰' + tileName(tile));
         render();
         try { if (typeof sfxPeng === 'function') sfxPeng(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('碰'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('碰', p); } catch (e) {}
         gameTimeout(() => aiDiscard(p), 700);
     }
 }
@@ -745,7 +745,7 @@ function aiChiClaim(p, tile, combo) {
     speak('吃' + tileName(tile));
     render();
     try { if (typeof sfxChi === 'function') sfxChi(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('吃'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('吃', p); } catch (e) {}
     gameTimeout(() => aiDiscard(p), 700);
 }
 
@@ -776,7 +776,7 @@ function aiDrawReplacement(p) {
         learnFromWin(p, null, { fan: bonus.mult, turns: handTurnCount });
         render();
         try { if (typeof sfxWin === 'function') sfxWin(); } catch (e) {}
-try { if (typeof feelBanner === 'function') feelBanner('胡'); } catch (e) {}
+try { if (typeof feelBanner === 'function') feelBanner('胡', p); } catch (e) {}
         showResultModal(p, 'selfdraw', null, bonus, result, drawn);
         return;
     }

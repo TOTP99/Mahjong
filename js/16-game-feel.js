@@ -197,8 +197,10 @@
     }
 
 
-    /** 中央短横幅：吃/碰/杠/胡，约 0.9s 自动消失（从新版移植） */
-    function feelBanner(text) {
+    /** 中央短横幅：吃/碰/杠/胡，约 0.9s 自动消失（从新版移植）
+     *  who = 做出动作的玩家（'top'/'left'/'right' 为三个 AI；缺省或 'bottom' 当作你自己）。
+     *  竖屏下，AI 的横幅改放到废牌池正中并带半透明深色底（.feel-banner-ai）；你自己的、以及横屏，位置不变。 */
+    function feelBanner(text, who) {
         try {
             if (!realDom() || !text) return;
             var old = document.querySelector('.feel-banner');
@@ -206,6 +208,19 @@
             var el = document.createElement('div');
             el.className = 'feel-banner';
             el.textContent = text;
+            var isAi = !!who && who !== 'bottom';
+            var portrait = !!(document.body && document.body.classList.contains('portrait-layout'));
+            if (isAi && portrait) {
+                var pool = document.getElementById('discardWall');
+                if (pool) {
+                    var r = pool.getBoundingClientRect();
+                    if (r && r.width > 0 && r.height > 0) {
+                        el.classList.add('feel-banner-ai');
+                        el.style.left = (r.left + r.width / 2) + 'px';
+                        el.style.top = (r.top + r.height / 2) + 'px';
+                    }
+                }
+            }
             document.body.appendChild(el);
             setTimeout(function () {
                 if (el.parentNode) el.parentNode.removeChild(el);
