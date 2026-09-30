@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="css/11-icons.css">
 <link rel="stylesheet" href="css/12-game-feel.css">
 <link rel="stylesheet" href="css/13-toolbar.css">
+<link rel="stylesheet" href="css/14-left-panel.css">
 </head>
 <body>
 
@@ -152,8 +153,7 @@
                 <button type="button" id="landscape-ctrl" title="横屏最大化" onclick="event.stopPropagation();toggleLandscapeMaximize()">横屏最大</button>
             </div>
             <div id="view-scale-btns">
-                <button type="button" id="btn-view-zoom-out" title="整体缩小5%（相对原始大小）" onclick="event.stopPropagation();adjustViewScale(-VIEW_SCALE_STEP)">缩小</button>
-                <button type="button" id="btn-view-zoom-in" title="整体扩大5%（不超过原始大小）" onclick="event.stopPropagation();adjustViewScale(VIEW_SCALE_STEP)">扩大</button>
+                <input type="range" id="view-scale-slider" min="50" max="100" step="1" value="100" aria-label="整体大小" title="左右拖动调整整体大小">
             </div>
         </div>
         <div id="wall-count-gap"></div>
