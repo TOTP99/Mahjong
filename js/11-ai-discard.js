@@ -137,23 +137,63 @@ function acrossPlayerOf(p) {
     const idx = turnOrder.indexOf(p);
     return turnOrder[(idx + 2) % turnOrder.length];
 }
-// 轴6兜底用：这张牌有几家能靠它胡（而不只是"有没有"），候选全是炮牌时挑数字最小的那张
-function dangerCount(player, tile) {
-    return turnOrder.filter(p => p !== player && checkHu([...hands[p], tile], exposedMelds[p], p)).length;
+// 公开信息点炮风险：估计把 tile 打给 opponent，对方能胡的概率 0~1。
+// 只用看得见的信息，绝不读暗牌：
+//   对手听牌概率 estimateOppTenpai（副露/舍牌趋势/巡数，全公开）
+// × 牌张危险系数（场上已现张数：生张最危险，熟张递减；幺九字牌相对安全）
+// 这是"猜"不是"看"——猜错是正常的，跟真人打牌一样。
+// （2026-09-30 纠正：暗牌只有人类玩家能看、且可关；AI 决策一律只用公开信息。）
+function publicDealInRisk(opponent, tile) {
+    let pTenpai = 0.05;
+    try { pTenpai = estimateOppTenpai(opponent); } catch (e) { pTenpai = 0.05; }
+    let seen = 0;
+    try { seen = tileSeenCount(tile); } catch (e) { seen = 0; }
+    let tileRisk;
+    if (seen >= 3) tileRisk = 0.15;
+    else if (seen === 2) tileRisk = 0.45;
+    else if (seen === 1) tileRisk = 0.7;
+    else tileRisk = 1.0;
+    try {
+        const s = tileSuit(tile), r = tileRank(tile);
+        if (s === '字' || r === 1 || r === 9) tileRisk *= 0.6;
+    } catch (e) {}
+    return Math.min(1, pTenpai * tileRisk * 1.6);
 }
-// 轴7a：这张牌会不会让下家吃/碰（下家是"你"时不受此轴约束——喂不喂你不算AI的"位置感"问题）
+// 轴6兜底用：这张牌有几家"按公开信息看"打出去危险（而不只是"有没有"），
+// 候选全是炮牌时挑数字最小的那张
+function dangerCount(player, tile) {
+    return turnOrder.filter(p => p !== player && publicDealInRisk(p, tile) > 0.5).length;
+}
+// 轴7a：这张牌会不会喂下家吃/碰（下家是"你"时不受此轴约束——喂不喂你不算AI的"位置感"问题）
+// 公平性：不用下家的真实手牌判断，改用公开信息估计"有没有可能吃/碰"
 function feedsXiajia(player, tile) {
     const next = nextPlayerOf(player);
     if (next === 'bottom') return false;
-    if (isTenpai(next)) return false; // 下家已听牌，危险度已经由 isTileDangerousFor 覆盖，这里不重复算
+    // 下家听牌概率高时走危险牌逻辑，这里不重复算
+    let oppTenpai = 0.05;
+    try { oppTenpai = estimateOppTenpai(next); } catch (e) {}
+    if (oppTenpai >= 0.55) return false;
     if (exposedMelds[next].length >= 3) return false;
-    if (canPeng(hands[next], tile)) return true;
-    return findChiCombos(hands[next], tile).length > 0;
+    // 碰/吃至少需要下家手里有对应的牌：4 张里，场上已现的 + 我自己手里的都刨掉，
+    // 剩下"可能在别家手里"的张数 <2 则连碰都不可能，<1 则吃也不可能
+    let seen = 0;
+    try { seen = tileSeenCount(tile); } catch (e) {}
+    let myOwn = 0;
+    try { myOwn = hands[player].filter(t => t === tile).length; } catch (e) {}
+    const couldHold = 4 - seen - myOwn;
+    if (couldHold >= 2) return true; // 有可能被碰
+    if (couldHold >= 1) {
+        try {
+            const s = tileSuit(tile), r = tileRank(tile);
+            if (s !== '字' && r >= 2 && r <= 8) return true; // 只有 2~8 的数牌才可能被吃
+        } catch (e) {}
+    }
+    return false;
 }
-
-// 检查某玩家打出这张牌，是否会点炮给别的玩家（用于AI出牌时的危险牌回避）
+// 检查某玩家打出这张牌，点炮风险是否超过阈值（用于AI出牌时的危险牌回避）
+// 公平性：只用公开信息估计，不读对手暗牌
 function isTileDangerousFor(player, tile) {
-    return turnOrder.some(p => p !== player && checkHu([...hands[p], tile], exposedMelds[p], p));
+    return turnOrder.some(p => p !== player && publicDealInRisk(p, tile) > 0.5);
 }
 
 // 轴2扩展：对手"看起来要听牌了"的启发式风险分（不是读心，纯看得见的信号）——
