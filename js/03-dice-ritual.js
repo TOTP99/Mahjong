@@ -147,7 +147,8 @@ function startDiceRitualWithMode(mode) {
     stage.classList.add('show');
     playDiceSound();
 
-    const face = 1 + Math.floor(Math.random() * 6);
+    // 调庄只掷 1~4 点（东南西北各 1/4）；清零菜单那次的点数只是动画，仍是 1~6
+    const face = 1 + Math.floor(Math.random() * (diceRitualMode === 'dealer' ? 4 : 6));
     diceLastFace = face;
     const end = DICE.FACE_ROT[face];
     /* 惯性：主轴转得多、衰减慢；副轴摩擦大更快停 */
@@ -299,9 +300,9 @@ function cancelDiceRitual() {
 /** 清零重启：积分/庄家/存档全部归零并开新局 */
 
 /**
- * 调庄：一颗骰 1–6，从东（bottom/猫）起顺时针数
- * turnOrder: bottom → right → top → left → bottom …
- * 1=东猫 2=南狮 3=西龙 4=北虎 5=东猫 6=南狮
+ * 调庄：一颗骰只掷 1–4 点，从东（bottom/猫）起顺时针数，四家机会均等
+ * turnOrder: bottom → right → top → left
+ * 1=东猫 2=南狮 3=西龙 4=北虎
  * 保留积分，按新庄重新发牌开一局
  */
 function applyDealerFromDice(face) {
@@ -312,7 +313,7 @@ function applyDealerFromDice(face) {
     diceSavedClaim = null;
     pendingClaim = null;
 
-    const f = Math.max(1, Math.min(6, face | 0));
+    const f = Math.max(1, Math.min(4, face | 0));
     const start = turnOrder.indexOf('bottom');
     const idx = (start + (f - 1)) % 4;
     dealer = turnOrder[idx];
