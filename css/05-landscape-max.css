@@ -40,6 +40,7 @@
         body.is-android #wall-count-text { font-size: 9px; }
         html.is-android #discard-query-btn,
         body.is-android #discard-query-btn { font-size: 9px; }
+        /* #view-scale-btns button 不再缩小：缩放按钮走统一 44px 点按标准 */
     }
     body.landscape-max #table-wrap {
         width: var(--app-width, 100%);

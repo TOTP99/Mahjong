@@ -28,45 +28,8 @@ body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
     line-height: 1.2;
 }
 
-/* ---------- ② 金线滑杆 ---------- */
+/* ---------- ② 缩放按钮区（《缩小 / 》放大） ---------- */
 body:not(.portrait-layout) #view-scale-btns { width: 100%; }
-#view-scale-slider {
-    -webkit-appearance: none; appearance: none;
-    width: 86%; max-width: 120px; height: 18px;      /* 高度只是热区，视觉上只有一条细线 */
-    margin: 0; padding: 0;
-    background: transparent;
-    cursor: pointer;
-    touch-action: none;                                /* 横向拖动时不触发页面滚动/手势 */
-    -webkit-tap-highlight-color: transparent;
-}
-#view-scale-slider:focus { outline: none; }
-#view-scale-slider::-webkit-slider-runnable-track {
-    height: 2px; border-radius: 1px;
-    background: var(--gold);
-    box-shadow: 0 0 4px rgba(212, 175, 55, 0.45);
-}
-#view-scale-slider::-moz-range-track {
-    height: 2px; border-radius: 1px;
-    background: var(--gold);
-    box-shadow: 0 0 4px rgba(212, 175, 55, 0.45);
-}
-#view-scale-slider::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 12px; height: 12px; margin-top: -5px;      /* 轨道 2px：(2-12)/2 = -5 居中 */
-    border-radius: 50%;
-    border: 1px solid var(--gold);
-    background: #0b1a14;
-    box-shadow: 0 0 5px rgba(212, 175, 55, 0.6);
-}
-#view-scale-slider::-moz-range-thumb {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    border: 1px solid var(--gold);
-    background: #0b1a14;
-    box-shadow: 0 0 5px rgba(212, 175, 55, 0.6);
-}
-#view-scale-slider:active::-webkit-slider-thumb { background: var(--gold); }
-#view-scale-slider:active::-moz-range-thumb { background: var(--gold); }
 
 /* ---------- ③ 清零菜单（横屏）收窄收矮 ---------- */
 body:not(.portrait-layout) #claim-indicator.show:has(.reset-menu) {

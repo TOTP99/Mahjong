@@ -9,9 +9,7 @@
         .avatar img { width: 36px; height: 36px; }
         .player-score { font-size: 10px; }
         #wall-count { font-size: 10px; top: 5%; height: 88%; }
-        /* 查牌池按钮与废牌池同步下移到 5%，与左栏同一水平线 */
-        #game-table { --pool-col-top: 5%; }
-        #discardWall { height: 50%; }
+        #discardWall { top: calc(5% + 1.3em + 12.87px); height: 50%; }
         .bottom { padding: 2px 4px 1px; }
         #flow-log { font-size: 10px; min-height: 24px; padding: 2px 6px; }
         .result-box, .hu-box { max-height: min(88vh, 360px); }
@@ -24,9 +22,8 @@
             border-radius: 0;
         }
         .avatar img { width: 30px; height: 30px; }
-        /* 偏移随头像基准联动（原 40px=48×0.833，36px=48×0.75），不再手算像素 */
-        .left { left: calc(18% + var(--avatar-base) * 0.833); top: calc(50% - var(--avatar-base) * 0.75); }
-        .right { right: calc(18% + var(--avatar-base) * 0.833); top: calc(50% - var(--avatar-base) * 0.75); }
+        .left { left: calc(18% + 40px); top: calc(50% - 36px); }
+        .right { right: calc(18% + 40px); top: calc(50% - 36px); }
         #wall-count { width: 15%; font-size: 9px; }
         #discardWall { width: 15%; }
         .bottom .hand {
@@ -70,8 +67,8 @@
         #img-display-badge { font-size: 9px; }
         #wall-count-text { font-size: 9px; }
         #landscape-ctrl { font-size: 9px; }
-        .result-box { width: min(88vw, 200px); }
-        .hu-box { width: min(88vw, 240px); }
+        /* #view-scale-btns button 不再缩小：走统一 44px 点按标准 */
+        /* .result-box/.hu-box 宽度由 03 的 #result-modal 规则统一控制，这里不再覆盖 */
     }
 
     /* 高分屏稍收紧阴影，更利落 */
