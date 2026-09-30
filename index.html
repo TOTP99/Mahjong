@@ -30,7 +30,7 @@
 <body>
 
 
-<div id="reveal-modal">
+<div id="reveal-modal" role="dialog" aria-modal="true" aria-labelledby="reveal-title">
     <div class="hu-box">
         <div class="hu-title" id="reveal-title">检测到特殊牌型</div>
         <div class="hu-actions">
@@ -40,7 +40,7 @@
     </div>
 </div>
 
-<div id="chi-choice-modal">
+<div id="chi-choice-modal" role="dialog" aria-modal="true" aria-label="选择吃法">
     <div class="hu-box">
         <div class="hu-title">选择吃法</div>
         <div class="result-label" style="margin-top:0; text-align:center;">点选一组顺子</div>
@@ -73,7 +73,7 @@
     </div>
 </div>
 
-<div id="pool-modal" onclick="if(event.target.id==='pool-modal')closePoolModal()">
+<div id="pool-modal" role="dialog" aria-modal="true" aria-label="牌池" onclick="if(event.target.id==='pool-modal')closePoolModal()">
     <div class="pool-box">
         <div class="pool-box-header">
             <span class="pool-box-title">牌池<span class="pool-box-count" id="pool-box-count"></span></span>
@@ -84,7 +84,7 @@
 </div>
 
 
-<div id="result-modal">
+<div id="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title">
     <div class="result-box">
         <div class="result-title" id="result-title">东胡</div>
         <div class="result-subtitle" id="result-subtitle">自摸</div>
