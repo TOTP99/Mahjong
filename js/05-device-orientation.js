@@ -150,6 +150,9 @@ function hardenResultModalInteract() {
             b.style.pointerEvents = 'auto';
             b.style.touchAction = 'manipulation';
         });
+        rm.querySelectorAll('input').forEach(function (inp) {
+            inp.style.touchAction = 'manipulation';
+        });
     } catch (e) { /* ignore */ }
 }
 

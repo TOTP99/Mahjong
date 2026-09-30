@@ -9,9 +9,37 @@ const AUTO_FIT_USE_SAFE_AREA = true; /* true：让开刘海/Home 条等安全区
 const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
 const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
+const VIEW_SCALE_STEP = 0.05;
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
+const VIEW_ORIGINAL_STORAGE_KEY = 'qionghu_mahjong_view_original_v1';
 
 let viewScale = ORIGINAL_VIEW_SCALE;
+/** 启动时记录的桌面原始像素尺寸（供对照/恢复） */
+let originalViewRecord = null;
+
+function captureOriginalViewSize() {
+    if (originalViewRecord) return originalViewRecord;
+    const frame = document.getElementById('table-frame');
+    const wrap = document.getElementById('table-wrap');
+    let w = 0, h = 0;
+    if (frame) {
+        const r = frame.getBoundingClientRect();
+        // 若当前已缩放，反推未缩放尺寸
+        const s = viewScale || 1;
+        w = r.width / s;
+        h = r.height / s;
+    }
+    originalViewRecord = {
+        scale: ORIGINAL_VIEW_SCALE,
+        width: Math.round(w * 10) / 10,
+        height: Math.round(h * 10) / 10,
+        capturedAt: Date.now()
+    };
+    try {
+        localStorage.setItem(VIEW_ORIGINAL_STORAGE_KEY, JSON.stringify(originalViewRecord));
+    } catch (e) { /* ignore */ }
+    return originalViewRecord;
+}
 
 function loadSavedViewScale() {
     try {
@@ -33,7 +61,7 @@ function applyViewScale() {
     try {
         localStorage.setItem(VIEW_SCALE_STORAGE_KEY, String(viewScale));
     } catch (e) { /* ignore */ }
-    syncViewScaleSlider();
+    syncViewScaleButtons();
     // 兜底：部分安卓 WebView 在缩放瞬间会出现"金边框已更新、内部圆角裁剪内容未同步重绘"
     // 的错位现象，这里强制触发一次重排+重绘，确保边框与桌面内容一起刷新
     const frameEl = document.getElementById('table-frame');
@@ -49,9 +77,44 @@ function applyViewScale() {
     setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 120);
 }
 
+/** delta: +0.05 扩大 / -0.05 缩小；相对「原始正常大小」等比缩放 */
+function adjustViewScale(delta) {
+    if (!originalViewRecord) captureOriginalViewSize();
+    // 已达原始最大尺寸时，扩大无效
+    if (delta > 0 && viewScale >= viewScaleUpper() - 1e-9) {
+        logFlow(_autoFitMax != null && AUTO_FIT_LANDSCAPE
+            ? '已是自动适配的最大尺寸（刚好放满可视区域），无法再扩大'
+            : (viewScale > ORIGINAL_VIEW_SCALE + 1e-9 ? '已放大到上限，无法再扩大' : '已是原始正常大小，无法再扩大'));
+        applyViewScale();
+        return;
+    }
+    if (delta < 0 && viewScale <= VIEW_SCALE_MIN + 1e-9) {
+        logFlow('已缩小到原始大小的 ' + Math.round(VIEW_SCALE_MIN * 100) + '%，无法再缩');
+        applyViewScale();
+        return;
+    }
+    viewScale = viewScale + delta;
+    if (delta > 0) viewScale = Math.min(viewScale, viewScaleUpper()); // 不超过自动适配的最大值
+    applyViewScale();
+    const pct = Math.round(viewScale * 100);
+    if (Math.abs(viewScale - ORIGINAL_VIEW_SCALE) < 1e-9) {
+        logFlow('已恢复原始正常大小（100%）');
+    } else if (delta < 0) {
+        logFlow('整体（含头像）缩小至 ' + pct + '%（原始=100%）');
+    } else {
+        logFlow('整体（含头像）扩大至 ' + pct + '%（原始=100%）');
+    }
+}
+
 /* ==================== 横屏自动适配 ====================
- * 量出牌桌自然尺寸，按 visualViewport 可用区算缩放+垂直居中（100vh 常比可见高度大，底部会被裁）。
- * 触发：启动/旋转/resize/全屏/弹窗关闭；手动缩放/拖动仍可用。竖屏不处理。 */
+ * 原因：手机浏览器里 100vh 常常比真正可见的高度大（地址栏/工具栏占了一部分），
+ * 牌桌又是按 vh 算尺寸并在 body 里居中，于是底部被裁掉，只能手动缩小再上下拖。
+ * 做法：把牌桌临时还原成"不缩放、不平移"量出它的自然位置，再按当前真正可见的区域（visualViewport，
+ *       扣掉刘海/Home 条安全区和 4px 边距）算出：缩放比例 = min(1, 可用宽/桌宽, 可用高/桌高)，
+ *       平移 = 让缩放后的牌桌在可见区域里垂直居中。整个过程同步完成、关掉过渡动画，不会闪。
+ * 触发：启动、旋转、窗口大小/可视区域变化、进出全屏、弹窗关闭后。
+ * 手动的 缩小/扩大/拖动 仍然可用，效果保留到下一次上述事件（或刷新）为止。
+ * 竖屏完全不处理。 */
 let _autoFitApplied = false; // 已经自动适配过一次（第一次直接到位不做动画）
 let _autoFitReady = false;   // 13 启动段准备好之后才允许自动适配（避免脚本还没加载完就被 resize 事件触发）
 let _autoFitTimers = [];
@@ -61,39 +124,11 @@ function viewScaleUpper() {
     return (AUTO_FIT_LANDSCAPE && _autoFitMax != null) ? Math.min(VIEW_SCALE_MAX, _autoFitMax) : VIEW_SCALE_MAX;
 }
 
-function syncViewScaleSlider() {
-    // 大小滑杆：范围 = [最小, 当前可视区域下的最大]，拖到头就是"刚好放满"
-    const sl = document.getElementById('view-scale-slider');
-    if (sl) {
-        const lo = Math.round(VIEW_SCALE_MIN * 100);
-        const hi = Math.max(lo + 1, Math.round(viewScaleUpper() * 100));
-        sl.min = String(lo);
-        sl.max = String(hi);
-        sl.value = String(Math.max(lo, Math.min(hi, Math.round(viewScale * 100))));
-    }
-}
-
-/** 左侧栏的大小滑杆：左右拖动改整体大小（代替原来的 缩小/扩大 两个按钮） */
-function initViewScaleSlider() {
-    const sl = document.getElementById('view-scale-slider');
-    const wrap = document.getElementById('table-wrap');
-    if (!sl) return;
-    const begin = () => { if (wrap) wrap.classList.add('panning'); };   // 拖动期间关掉过渡，牌桌跟手
-    const end = () => { if (wrap) wrap.classList.remove('panning'); };
-    ['pointerdown', 'touchstart', 'mousedown'].forEach(ev => sl.addEventListener(ev, e => { e.stopPropagation(); begin(); }, { passive: true }));
-    ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'mouseup', 'change', 'blur'].forEach(ev => sl.addEventListener(ev, end, { passive: true }));
-    sl.addEventListener('click', e => e.stopPropagation());
-    sl.addEventListener('input', () => {
-        const upper = viewScaleUpper();
-        let v = (parseInt(sl.value, 10) || 100) / 100;
-        if (parseInt(sl.value, 10) >= parseInt(sl.max, 10)) v = upper;   // 拖到最右 = 精确的最大值
-        viewScale = Math.max(VIEW_SCALE_MIN, Math.min(upper, v));
-        applyViewScale();
-    });
-    sl.addEventListener('change', () => {
-        logFlow('整体大小 ' + Math.round(viewScale * 100) + '%（原始=100%）');
-    });
-    syncViewScaleSlider();
+function syncViewScaleButtons() {
+    const btnIn = document.getElementById('btn-view-zoom-in');
+    const btnOut = document.getElementById('btn-view-zoom-out');
+    if (btnIn) btnIn.disabled = viewScale >= viewScaleUpper() - 1e-9;
+    if (btnOut) btnOut.disabled = viewScale <= VIEW_SCALE_MIN + 1e-9;
 }
 
 function autoFitLandscapeView() {
@@ -163,7 +198,7 @@ function autoFitLandscapeView() {
         } else {
             requestAnimationFrame(() => wrap.classList.remove('panning'));
         }
-        syncViewScaleSlider();
+        syncViewScaleButtons();
         setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);
         return true;
     } catch (e) {
@@ -251,8 +286,14 @@ function endOrientTransition() {
 }
 
 /* ==================== 横屏界面元素自适应放大 ====================
- * --ui-k 在 [1, UI_K_MAX] 二分搜索"各区域不重叠"的最大系数，统一放大头像/手牌/提示/AI副露；
- * 异常回退 1（=原尺寸）。样式见 css/09-ui-scale.css。 */
+ * 自动适配把整张牌桌缩放到刚好放进可见区域之后，桌面里往往还有空地。
+ * 这里用一个系数 --ui-k（≥1）统一放大：四家头像+分数、你的手牌、手牌上方的提示文字、AI 副露牌，
+ * 放大到「四个玩家区域之间、以及和牌桌边框之间刚好不重叠」为止。
+ * 做法：用真实布局测量（getBoundingClientRect），在 [1, UI_K_MAX] 上二分找最大可行的系数，
+ *       再乘一个安全系数，并复核一次；量不到或有异常时保持 1（=原尺寸）。
+ * 触发：每次横屏自动适配之后；每局开局（可放大）；有人吃碰杠、副露变多时（只会缩小，不会中途变大，避免画面忽大忽小）。
+ * 竖屏、AUTO_UI_SCALE=false 时系数恒为 1，界面与原来完全一致。
+ * 样式在 css/09-ui-scale.css（下面会在缺少 <link> 时自动补上）。 */
 const AUTO_UI_SCALE = true;   // false：不放大，一切保持原尺寸
 const UI_K_MAX = 2;           // 放大上限
 const UI_GAP = 2;             // 各区域之间至少留的空隙（牌桌自身像素）
@@ -407,9 +448,7 @@ function uiScaleOnRender() {
 }
 
 async function toggleLandscapeMaximize() {
-    // 横屏调整 = 恢复原始正常大小 + 尽量全屏横屏
-    viewScale = ORIGINAL_VIEW_SCALE;
-    applyViewScale();
+    // 横屏最佳 = 直接算出"刚好放满当前可视区域"的最佳最大显示 + 尽量全屏横屏
     applyDevicePlatformClass();
     const body = document.body;
     const ios = isIOSDevice();
@@ -448,6 +487,15 @@ async function toggleLandscapeMaximize() {
         }
         body.classList.add('landscape-max');
         syncAppViewportVars();
+        // 点下去直接就是算好的最佳最大显示：立即跑一次自动适配（会平滑过渡过去），
+        // 不再先回到 100% 再跳变；算不出来时才回退到原始大小
+        try {
+            if (typeof autoFitLandscapeView === 'function' && !isPortraitOrientation()) {
+                if (!autoFitLandscapeView()) { viewScale = ORIGINAL_VIEW_SCALE; applyViewScale(); }
+            } else if (isPortraitOrientation()) {
+                viewScale = ORIGINAL_VIEW_SCALE; applyViewScale();
+            }
+        } catch (e) { try { viewScale = ORIGINAL_VIEW_SCALE; applyViewScale(); } catch (e2) {} }
         if (ios) {
             logFlow(isPortraitOrientation()
                 ? '请横向持机；可在设置中关闭竖屏锁定'
@@ -457,12 +505,12 @@ async function toggleLandscapeMaximize() {
                 ? '已全屏横屏（Android）'
                 : '已横屏铺满；可再点一次尝试全屏，或「添加到主屏幕」');
         } else {
-            logFlow(fsOk ? '已最大化' : '已最大化（可尝试全屏或添加到主屏幕）');
+            logFlow(fsOk ? '已设为最佳显示' : '已设为最佳显示（可尝试全屏或添加到主屏幕）');
         }
     } catch (e) {
         body.classList.add('landscape-max');
         syncAppViewportVars();
-        logFlow('已最大化');
+        logFlow('已设为最佳显示');
     }
     if (!fsOk) {
         [60, 200, 400, 800, 1200].forEach(ms => {
@@ -502,5 +550,3 @@ document.addEventListener('webkitfullscreenchange', () => {
     scheduleAutoFitBurst();
     schedulePortraitGuardChecks();
 });
-
-initViewScaleSlider();
