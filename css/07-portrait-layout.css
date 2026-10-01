@@ -194,7 +194,6 @@
         height: 8px;
     }
     /* 横屏专用控件：竖屏隐藏 */
-    body.portrait-layout #landscape-ctrl,
     body.portrait-layout #btn-view-zoom-in,
     body.portrait-layout #btn-view-zoom-out {
         display: none !important;

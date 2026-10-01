@@ -38,44 +38,7 @@
         margin-bottom: 0; color: #c5d4e0; font-weight: normal; letter-spacing: 0; text-align: center;
         font-size: 10px; white-space: nowrap;
     }
-    #landscape-ctrl {
-        position: relative;
-        left: auto; top: auto;
-        transform: none;
-        z-index: 7;
-        width: auto; height: auto;
-        min-width: 0; min-height: 0;
-        padding: 0 2px;
-        display: inline;
-        border: none;
-        border-radius: 0;
-        background: transparent !important;
-        box-shadow: none !important;
-        color: var(--gold);
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        line-height: 1.2;
-        font-family: inherit;
-        cursor: pointer;
-        user-select: none;
-        white-space: nowrap;
-        flex-shrink: 0;
-        transition: color 0.15s, opacity 0.15s;
-    }
-    /* 热区略微扩大，不影响视觉尺寸 */
-    #landscape-ctrl::after {
-        content: '';
-        position: absolute;
-        inset: -4px -3px;
-    }
-    #landscape-ctrl:active {
-        background: transparent !important;
-        box-shadow: none !important;
-        transform: none;
-        opacity: 0.7;
-        color: var(--ice);
-    }
+    /* Max 按钮已移除（2026-09-30）：横屏自动适配开机/旋转时自动跑，默认即最佳尺寸 */
     /* 加/减：真 44px 点按目标（Apple HIG），横竖屏同一套；与 Max 同处一行 */
     #btn-view-zoom-in,
     #btn-view-zoom-out {
