@@ -40,7 +40,6 @@
         body.is-android #wall-count-text { font-size: 9px; }
         html.is-android #discard-query-btn,
         body.is-android #discard-query-btn { font-size: 9px; }
-        /* #view-scale-btns button 不再缩小：缩放按钮走统一 44px 点按标准 */
     }
     body.landscape-max #table-wrap {
         width: var(--app-width, 100%);
@@ -81,7 +80,6 @@
     }
     /* 横屏最大化：保留牌墙/缩放/查牌池等控件，便于操作
        （下面按元素分别给出最终 display/opacity，避免中间值被立刻覆盖的冗余声明） */
-    body.landscape-max #view-scale-btns,
     body.landscape-max #discard-query-btn,
     body.landscape-max #img-display-badge,
     body.landscape-max #landscape-ctrl {
@@ -95,9 +93,6 @@
     }
     body.landscape-max #img-display-badge {
         display: unset;
-    }
-    body.landscape-max #view-scale-btns {
-        display: flex !important;
     }
     body.landscape-max #discard-query-btn {
         display: inline !important;

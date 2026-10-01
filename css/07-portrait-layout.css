@@ -195,7 +195,8 @@
     }
     /* 横屏专用控件：竖屏隐藏 */
     body.portrait-layout #landscape-ctrl,
-    body.portrait-layout #view-scale-btns {
+    body.portrait-layout #btn-view-zoom-in,
+    body.portrait-layout #btn-view-zoom-out {
         display: none !important;
     }
     /* 竖屏：废牌池上方「点击查询牌池」，功能与横屏相同 */
