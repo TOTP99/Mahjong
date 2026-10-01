@@ -21,7 +21,7 @@
 .qj-tb .qj-btn::after {
     content: ''; position: absolute; inset: -14px -8px;
 }
-.qj-tb .qj-btn:active { opacity: 0.6; }
+.qj-tb .qj-btn:active { text-shadow: 0 0 8px rgba(212, 175, 55, 0.9); }
 
 /* 横屏：署名两行被隐藏，按钮放在左侧栏「TP制作 牌墙 横屏最大」那一行的下面，居中，放不下自动换行 */
 #qj-tb-ls { display: none; text-align: center; line-height: 1.2; }

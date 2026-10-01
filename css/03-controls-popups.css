@@ -39,19 +39,18 @@
         font-size: 10px; white-space: nowrap;
     }
     /* Max 按钮已移除（2026-09-30）：横屏自动适配开机/旋转时自动跑，默认即最佳尺寸 */
-    /* 加/减：真 44px 点按目标（Apple HIG），横竖屏同一套；与 Max 同处一行 */
+    /* 加/减：无外框，就是加减两个字，节约空间；点按不变形只发微光；与 Max 同处一行 */
     #btn-view-zoom-in,
     #btn-view-zoom-out {
-        position: relative;
+        background: none;
+        border: none;
+        border-radius: 0;
         margin: 0;
-        padding: 6px 10px;
-        min-width: 44px;
-        min-height: 40px;
-        border: 1px solid var(--gold-dim);
-        border-radius: 6px;
-        background: transparent;
-        color: var(--text-muted);
-        font-size: 15px;
+        padding: 2px 6px;
+        min-width: 0;
+        min-height: 0;
+        color: var(--gold);
+        font-size: var(--panel-fs, 15px);
         font-weight: 600;
         font-family: inherit;
         line-height: 1.2;
@@ -59,15 +58,13 @@
         user-select: none;
         -webkit-user-select: none;
         box-shadow: none;
-        touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
-        transition: color 0.12s, border-color 0.12s, background 0.12s;
+        transition: text-shadow 0.12s;
     }
     #btn-view-zoom-in:active,
     #btn-view-zoom-out:active {
         color: var(--gold);
-        border-color: var(--gold);
-        background: rgba(212, 175, 55, 0.1);
+        text-shadow: 0 0 8px rgba(212, 175, 55, 0.9);
     }
     #btn-view-zoom-in:disabled,
     #btn-view-zoom-out:disabled {

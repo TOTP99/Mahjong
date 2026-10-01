@@ -67,7 +67,7 @@ body:not(.portrait-layout) #wall-count-text {
     flex: 0 0 100%;
     text-align: center;
 }
-/* 加/减：字号并入左栏统一体系，视觉收紧；隐形热区保持可点 */
+/* 加/减：字号并入左栏统一体系，视觉收紧为纯文字（2026-10-01 去外框） */
 body:not(.portrait-layout) #btn-view-zoom-in,
 body:not(.portrait-layout) #btn-view-zoom-out {
     font-size: var(--panel-fs) !important;
@@ -75,12 +75,6 @@ body:not(.portrait-layout) #btn-view-zoom-out {
     min-width: 0 !important;
     min-height: 0 !important;
     padding: 2px 8px !important;
-}
-body:not(.portrait-layout) #btn-view-zoom-in::after,
-body:not(.portrait-layout) #btn-view-zoom-out::after {
-    content: '';
-    position: absolute;
-    inset: -12px -8px;
 }
 /* 第4/5行：音效开+危险开一行，初始筹码单独一行 */
 body:not(.portrait-layout) #qj-tb-ls .qj-tb {
@@ -93,23 +87,11 @@ body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
     text-align: center;
 }
 
-/* ---------- ⑦ ＋/－：点按反馈（Max 按钮已移除，2026-09-30） ---------- */
-/* 点按不变形（不放大），只发微光；两者之间留间距方便点按；保持同一行 */
+/* ---------- ⑦ ＋/－：点按反馈（Max 按钮已移除，2026-09-30；2026-10-01 去外框纯文字） ---------- */
+/* 无外框就是加减两个字，点按不变形（不放大），只发微光；两者之间留间距方便点按；保持同一行 */
 body:not(.portrait-layout) #btn-view-zoom-in,
 body:not(.portrait-layout) #btn-view-zoom-out {
     transform: none !important;
     margin-left: 5px;
     margin-right: 5px;
-}
-body:not(.portrait-layout) #btn-view-zoom-in,
-body:not(.portrait-layout) #btn-view-zoom-out {
-    transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.12s;
-}
-body:not(.portrait-layout) #btn-view-zoom-in:active,
-body:not(.portrait-layout) #btn-view-zoom-out:active {
-    transform: none;
-    color: var(--gold);
-    border-color: var(--gold);
-    background: transparent;
-    box-shadow: 0 0 8px rgba(212, 175, 55, 0.45);
 }
