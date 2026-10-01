@@ -93,3 +93,34 @@ body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
     flex: 0 0 100%;
     text-align: center;
 }
+
+/* ---------- ⑦ Max/＋/－：点按反馈 ---------- */
+/* 点按不变形（不放大），只发微光；三者之间留间距方便点按；保持同一行 */
+body:not(.portrait-layout) #landscape-ctrl,
+body:not(.portrait-layout) #btn-view-zoom-in,
+body:not(.portrait-layout) #btn-view-zoom-out {
+    transform: none !important;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+body:not(.portrait-layout) #landscape-ctrl {
+    transition: color 0.15s, opacity 0.15s, text-shadow 0.15s;
+}
+body:not(.portrait-layout) #landscape-ctrl:active {
+    transform: none !important;
+    opacity: 1;
+    color: var(--gold);
+    text-shadow: 0 0 6px rgba(212, 175, 55, 0.8);
+}
+body:not(.portrait-layout) #btn-view-zoom-in,
+body:not(.portrait-layout) #btn-view-zoom-out {
+    transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+body:not(.portrait-layout) #btn-view-zoom-in:active,
+body:not(.portrait-layout) #btn-view-zoom-out:active {
+    transform: none;
+    color: var(--gold);
+    border-color: var(--gold);
+    background: transparent;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.45);
+}
