@@ -1,4 +1,4 @@
-    /* 单骰：铺满牌桌居中 */
+    /* 单颗八面 d8：canvas 绘制，舞台铺满牌桌 */
     #dice-stage {
         position: absolute;
         inset: 0;
@@ -13,11 +13,9 @@
         perspective-origin: 50% 50%;
     }
     #dice-stage.show { display: flex; }
+    /* 单颗八面 d8：canvas 绘制，舞台铺满牌桌 */
     #dice-scene {
-        width: 36px; height: 36px;
-        position: relative;
-        margin: 0 auto;
-        transform-style: preserve-3d;
+        position: absolute; inset: 0;
         will-change: transform;
         transition: none;
     }
@@ -26,75 +24,8 @@
         transform: scale(0.12) !important;
         opacity: 0;
     }
-    #dice-cube {
-        width: 36px; height: 36px; position: relative;
-        transform-style: preserve-3d;
-        will-change: transform;
-    }
-    #dice-cube .face {
-        position: absolute; width: 37px; height: 37px;
-        left: -0.5px; top: -0.5px;
-        border-radius: 4px;
-        border: none;
-        outline: none;
-        display: grid; place-items: center;
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.35),
-            inset 0 -1px 1px rgba(0, 0, 0, 0.18);
-    }
-    #dice-cube .f1 { background: linear-gradient(145deg, #fff9d8 0%, #f0d050 40%, #c9a020 78%, #8a6810 100%); }
-    #dice-cube .f2 { background: linear-gradient(145deg, #f0dc88 0%, #d4a828 45%, #a07818 80%, #6e5010 100%); }
-    #dice-cube .f3 { background: linear-gradient(145deg, #e0c868 0%, #b89020 50%, #8a6410 85%, #5a4008 100%); }
-    #dice-cube .f4 { background: linear-gradient(145deg, #ecd878 0%, #c9a024 48%, #967014 82%, #6a5010 100%); }
-    #dice-cube .f5 { background: linear-gradient(160deg, #fff8d0 0%, #f5d858 42%, #d4b028 75%, #a07818 100%); }
-    #dice-cube .f6 { background: linear-gradient(160deg, #c9a028 0%, #9a7018 50%, #6e5010 85%, #3a2a08 100%); }
-    #dice-cube.settled {
-        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45)) drop-shadow(0 0 12px rgba(255, 210, 80, 0.55));
-    }
-    #dice-cube.settled .f1 {
-        background:
-            radial-gradient(circle at 28% 26%, rgba(255,255,255,0.55) 0%, transparent 28%),
-            linear-gradient(145deg, #fff9d8 0%, #f0d050 40%, #c9a020 78%, #8a6810 100%);
-    }
-    #dice-cube .face::after {
-        content: '✦';
-        position: absolute; font-size: 6px; color: rgba(255,255,255,0.88);
-        top: 3px; right: 4px;
-        text-shadow: 0 0 2px rgba(255, 220, 100, 0.5);
-        opacity: 0.85;
-    }
-    #dice-cube.settled .face::after { opacity: 1; }
-    #dice-cube .face .pips {
-        width: 78%; height: 78%;
-        display: grid; grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: 1fr 1fr 1fr;
-        place-items: center;
-    }
-    #dice-cube .face .pip {
-        width: 5px; height: 5px; border-radius: 50%;
-        background: #2a1206;
-        box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.15);
-    }
-    #dice-cube.settled .face .pip {
-        background: radial-gradient(circle at 35% 35%, #5a2a0a, #1a0a02 70%);
-        box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.28), 0 0.5px 1px rgba(0,0,0,0.4);
-    }
-    #dice-cube .f1 { transform: rotateY(0deg) translateZ(18px); }
-    #dice-cube .f2 { transform: rotateY(90deg) translateZ(18px); }
-    #dice-cube .f3 { transform: rotateY(180deg) translateZ(18px); }
-    #dice-cube .f4 { transform: rotateY(-90deg) translateZ(18px); }
-    #dice-cube .f5 { transform: rotateX(90deg) translateZ(18px); }
-    #dice-cube .f6 { transform: rotateX(-90deg) translateZ(18px); }
-    #dice-shadow {
-        position: absolute; left: 50%; top: 50%;
-        width: 40px; height: 12px;
-        margin-left: -20px; margin-top: 22px;
-        border-radius: 50%;
-        background: radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 72%);
-        transform: translateZ(-36px);
-        opacity: 0.55;
+    #dice-canvas {
+        position: absolute; inset: 0;
         pointer-events: none;
     }
     /* 清零菜单：金色长框 + 透明底 */
