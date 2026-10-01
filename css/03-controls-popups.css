@@ -31,7 +31,7 @@
         text-align: center;
     }
     #wall-count-row {
-        display: flex; align-items: center; justify-content: center; flex-wrap: nowrap;
+        display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
         gap: 3px 5px;
     }
     #wall-count-text {

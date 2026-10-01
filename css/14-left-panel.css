@@ -28,8 +28,7 @@ body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
     line-height: 1.2;
 }
 
-/* ---------- ② 缩放按钮区（《缩小 / 》放大） ---------- */
-body:not(.portrait-layout) #view-scale-btns { width: 100%; }
+/* ---------- ②（已删除 2026-09-30：#view-scale-btns 容器已随《》按钮移除，加/减按钮直接进 #wall-count-row 第3行） ---------- */
 
 /* ---------- ③ 清零菜单（横屏）收窄收矮 ---------- */
 body:not(.portrait-layout) #claim-indicator.show:has(.reset-menu) {
@@ -60,4 +59,37 @@ body:not(.portrait-layout) { --reset-shift: calc(41px * var(--ui-k, 1) * 0.5); }
 }
 body:not(.portrait-layout) #claim-indicator .reset-menu {
     transform: translateY(var(--reset-shift));
+}
+
+/* ---------- ⑥ 横屏左栏 5 行布局 ---------- */
+/* 第1行 TP制作+时分秒 / 第2行 牌墙张数 / 第3行 Max+加+减 / 第4行 音效开+危险开 / 第5行 初始筹码 */
+body:not(.portrait-layout) #img-display-badge,
+body:not(.portrait-layout) #wall-count-text {
+    flex: 0 0 100%;
+    text-align: center;
+}
+/* 加/减：字号并入左栏统一体系，视觉收紧；隐形热区保持可点 */
+body:not(.portrait-layout) #btn-view-zoom-in,
+body:not(.portrait-layout) #btn-view-zoom-out {
+    font-size: var(--panel-fs) !important;
+    font-weight: 600 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 2px 8px !important;
+}
+body:not(.portrait-layout) #btn-view-zoom-in::after,
+body:not(.portrait-layout) #btn-view-zoom-out::after {
+    content: '';
+    position: absolute;
+    inset: -12px -8px;
+}
+/* 第4/5行：音效开+危险开一行，初始筹码单独一行 */
+body:not(.portrait-layout) #qj-tb-ls .qj-tb {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
+    flex: 0 0 100%;
+    text-align: center;
 }
