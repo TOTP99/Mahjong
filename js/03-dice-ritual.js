@@ -1,29 +1,31 @@
-// ========== 三击桌面：黄金骰子仪式（清零 / 继续）+ 单骰调庄 ==========
-// 流程：连点空白处 3 次 → 3D 旋转 2s → 缩小消失 → 弹出清零菜单
-// 调庄：startDiceDealerRitual / applyDealerFromDice，单骰掷 1–4 点定庄家
+// ========== 三击桌面：黄金镶钻八面骰仪式（清零 / 继续）+ 单骰调庄 ==========
+// 流程：连点空白处 3 次 → 一颗八面 d8 从上方抛入桌心，翻滚弹跳落定 → 淡出 → 弹出清零菜单
+// 调庄：startDiceDealerRitual / applyDealerFromDice，单骰掷 1–8 点定庄家
+//   1-2→东（bottom/猫） 3-4→南（right） 5-6→西（top） 7-8→北（left），四家等概率
 const DICE = {
-    ROLL_MS: 2400,       // 旋转时长（含惯性滑行段）
-    VANISH_MS: 380,      // 缩小消失时长
-    TAP_WINDOW: 450,     // 三击判定窗口
-    // 3×3 点数格索引（0–8）
-    PIPS: {
-        1: [4],
-        2: [0, 8],
-        3: [0, 4, 8],
-        4: [0, 2, 6, 8],
-        5: [0, 2, 4, 6, 8],
-        6: [0, 2, 3, 5, 6, 8]
-    },
-    // 目标面朝前时的欧拉角
-    FACE_ROT: {
-        1: { x: 0, y: 0 },
-        2: { x: 0, y: -90 },
-        3: { x: 0, y: 180 },
-        4: { x: 0, y: 90 },
-        5: { x: -90, y: 0 },
-        6: { x: 90, y: 0 }
-    }
+    R: 32,               // 八面体中心到顶点距离（小骰子）
+    CAM_D: 620, CAM_F: 620,
+    GRAVITY: 2600,       // 重力加速度 px/s²
+    BOUNCE_DAMP: 0.5,    // 落地反弹保留系数
+    BOUNCE_MIN_VY: 170,  // 小于此速度视为落定
+    SETTLE_MS: 300,      // 落定转到目标面的时长
+    REST_MS: 1150,       // 落定后停留展示
+    VANISH_MS: 450,      // 淡出时长
+    TAP_WINDOW: 450       // 三击判定窗口
 };
+
+/* 8 个面：符号组合 → 点数（对面之和为 9，标准 d8） */
+const D8_FACES = [
+    { s: [ 1,  1,  1], n: 1 }, { s: [ 1,  1, -1], n: 2 },
+    { s: [ 1, -1,  1], n: 3 }, { s: [ 1, -1, -1], n: 4 },
+    { s: [-1,  1,  1], n: 5 }, { s: [-1,  1, -1], n: 6 },
+    { s: [-1, -1,  1], n: 7 }, { s: [-1, -1, -1], n: 8 }
+];
+const D8_SQ3 = Math.sqrt(3);
+/* 点数 → 座位（turnOrder 顺序：bottom→right→top→left） */
+function d8SeatIndexOfFace(face, startIdx) {
+    return (startIdx + Math.floor((face - 1) / 2)) % 4; // 1-2 东 3-4 南 5-6 西 7-8 北
+}
 
 let tableTapTimes = [];
 let diceBusy = false;
@@ -37,20 +39,12 @@ function diceEls() {
     return {
         stage: $('dice-stage'),
         scene: $('dice-scene'),
-        cube: $('dice-cube'),
-        shadow: $('dice-shadow')
+        canvas: $('dice-canvas')
     };
 }
 
-function initDicePips() {
-    document.querySelectorAll('#dice-cube .pips').forEach(el => {
-        const n = parseInt(el.dataset.n, 10);
-        const on = DICE.PIPS[n] || [];
-        el.innerHTML = Array.from({ length: 9 }, (_, i) =>
-            on.includes(i) ? '<span class="pip"></span>' : '<span></span>'
-        ).join('');
-    });
-}
+/** 启动时调用：canvas 版无需预生成点数 DOM，保留为空操作（兼容旧调用） */
+function initDicePips() { /* no-op: d8 点数由 canvas 绘制 */ }
 
 /** 合成一串撞击噪声 + 落地低音 */
 function playDiceSound() {
@@ -90,7 +84,7 @@ function playDiceSound() {
     } catch (e) { /* 无音频权限时静默 */ }
 }
 
-// ---------- 三击判定 / 旋转动画 / 清零菜单（原先放在 05-device-orientation.js，现与骰子常量放在一起） ----------
+// ---------- 三击判定 / 骰子仪式 / 清零菜单 ----------
 function onTableTap(e) {
     if (diceBusy) return;
     if ($('result-modal').classList.contains('show')) return;
@@ -107,22 +101,51 @@ function onTableTap(e) {
     }
 }
 
-/** 重置骰子 DOM 状态（隐藏、清除动画类与内联 transform） */
+/** 重置骰子 DOM 状态（隐藏、停掉 rAF、清掉 canvas） */
 function resetDiceDom() {
-    const { stage, scene, cube, shadow } = diceEls();
+    const { stage, scene, canvas } = diceEls();
     if (diceRafId) { cancelAnimationFrame(diceRafId); diceRafId = 0; }
     if (diceVanishTimer) { clearTimeout(diceVanishTimer); diceVanishTimer = 0; }
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
     stage.classList.remove('show', 'fade-out');
     scene.classList.remove('vanish');
     scene.style.transform = '';
     scene.style.opacity = '';
-    cube.classList.remove('settled');
-    cube.style.transform = '';
-    if (shadow) {
-        shadow.style.transform = 'translateZ(-30px) scale(1)';
-        shadow.style.opacity = '0.6';
-    }
 }
+
+/* ---------- 八面体数学 ---------- */
+/** 先 Ry(ry) 再 Rx(rx) */
+function d8Rot(p, rx, ry) {
+    const c1 = Math.cos(ry), s1 = Math.sin(ry);
+    const x1 = p.x * c1 + p.z * s1, y1 = p.y, z1 = -p.x * s1 + p.z * c1;
+    const c2 = Math.cos(rx), s2 = Math.sin(rx);
+    return { x: x1, y: y1 * c2 - z1 * s2, z: y1 * s2 + z1 * c2 };
+}
+/** 把目标面的法线转到朝向观众所需的 rx, ry（弧度） */
+function d8FaceAngles(f) {
+    const nx = f.s[0] / D8_SQ3, ny = f.s[1] / D8_SQ3, nz = f.s[2] / D8_SQ3;
+    return { ry: Math.atan2(-nx, nz), rx: Math.atan2(ny, Math.hypot(nx, nz)) };
+}
+function d8NearAngle(cur, target) {
+    const TAU = Math.PI * 2;
+    return target + TAU * Math.round((cur - target) / TAU);
+}
+/** 金色：更黄更暗（深 #69460a → 亮 #ebbe2d） */
+function d8Gold(b) {
+    const dk = [105, 70, 10], lt = [235, 190, 45];
+    const k = Math.max(0, Math.min(1, b));
+    return 'rgb(' + Math.round(dk[0] + (lt[0] - dk[0]) * k) + ','
+        + Math.round(dk[1] + (lt[1] - dk[1]) * k) + ','
+        + Math.round(dk[2] + (lt[2] - dk[2]) * k) + ')';
+}
+const D8_LIGHT = (function () {
+    const l = { x: -0.35, y: -0.55, z: 0.76 };
+    const m = Math.hypot(l.x, l.y, l.z);
+    return { x: l.x / m, y: l.y / m, z: l.z / m };
+})();
 
 /** 三击桌面清零菜单用 */
 function startDiceRitual() {
@@ -144,126 +167,200 @@ function startDiceRitualWithMode(mode) {
     hideIndicator();
     resetDiceDom();
 
-    const { stage, scene, cube, shadow } = diceEls();
+    const { stage, canvas } = diceEls();
+    if (!stage || !canvas) { diceBusy = false; return; }
+    // canvas 铺满舞台
+    const w = stage.clientWidth || window.innerWidth;
+    const h = stage.clientHeight || window.innerHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
     stage.classList.add('show');
     playDiceSound();
 
-    // 调庄只掷 1~4 点（东南西北各 1/4）；清零菜单那次的点数只是动画，仍是 1~6
-    const face = 1 + Math.floor(Math.random() * (diceRitualMode === 'dealer' ? 4 : 6));
-    diceLastFace = face;
-    const end = DICE.FACE_ROT[face];
-    /* 惯性：主轴转得多、衰减慢；副轴摩擦大更快停 */
-    const spinsX = (5 + Math.floor(Math.random() * 6)) * 360;
-    const spinsY = (8 + Math.floor(Math.random() * 9)) * 360;
-    const spinsZ = (3 + Math.floor(Math.random() * 4)) * 360;
-    const phase = Math.random() * Math.PI * 2;
-    const driftDir = (Math.random() < 0.5 ? -1 : 1);
-    const t0 = performance.now();
+    // 调庄掷 1–8 定庄；清零仪式点数仅动画展示
+    const face = D8_FACES[Math.floor(Math.random() * 8)];
+    diceLastFace = face.n;
 
-    /** 角速度积分型缓动：前段快转（冲量），中段滑行（惯性），末段摩擦刹停 */
-    function spinProgress(t) {
-        if (t <= 0) return 0;
-        if (t >= 1) return 1;
-        // 前 62%：快速释放大部分转角（≈90%）
-        if (t < 0.62) {
-            const u = t / 0.62;
-            return (1 - Math.pow(1 - u, 1.55)) * 0.90;
-        }
-        // 后 38%：剩余 10% 用更强摩擦慢慢咬住目标面
-        const u = (t - 0.62) / 0.38;
-        return 0.90 + 0.10 * (1 - Math.pow(1 - u, 2.4));
-    }
-    /** 副轴摩擦更大，更早贴近终值 */
-    function axisProgress(t, friction) {
-        const p = spinProgress(t);
-        // friction>1 → 更早接近 1
-        return 1 - Math.pow(1 - p, friction);
-    }
+    const cx = w / 2, cy = h * 0.46;
+    const sx = Math.random() < 0.5 ? -1 : 1;
+    const x0 = cx + sx * (110 + Math.random() * 70);
+    const die = {
+        x: x0, y: -70,
+        vx: (cx + (Math.random() * 20 - 10) - x0) * 2.1, vy: 60,
+        rx: Math.random() * 6.28, ry: Math.random() * 6.28,
+        vrx: (650 + Math.random() * 550) * (Math.random() < 0.5 ? -1 : 1),
+        vry: (650 + Math.random() * 550) * (Math.random() < 0.5 ? -1 : 1),
+        floorX: cx + (Math.random() * 16 - 8), floorY: cy + (Math.random() * 12 - 6),
+        face: face, state: 'fly',
+        fade: 1, dpr: dpr
+    };
 
+    const ctx = canvas.getContext('2d');
+    let last = performance.now();
     function tick(now) {
-        const t = Math.min(1, (now - t0) / DICE.ROLL_MS);
-        const pY = axisProgress(t, 1.0);   // 主自旋：惯性最长
-        const pX = axisProgress(t, 1.35);  // 俯仰：略快停
-        const pZ = axisProgress(t, 1.55);  // 横滚：最先咬死
-        const invY = 1 - pY;
-
-        // 抛起 + 落地连跳（一次主跳 + 一次衰减小跳）
-        const lift = Math.sin(Math.PI * Math.min(1, t / 0.92));
-        let hop = 0;
-        if (t > 0.78 && t < 0.92) {
-            const u = (t - 0.78) / 0.14;
-            hop = Math.sin(u * Math.PI) * 6.2 * (1 - u * 0.5);
-        } else if (t >= 0.92 && t < 1) {
-            const u = (t - 0.92) / 0.08;
-            hop = Math.sin(u * Math.PI) * 2.2 * (1 - u);
-        }
-        const toss = lift * 46 + hop;
-
-        // 空中水平漂移，落地后被摩擦拉回中心
-        const air = Math.max(0, 1 - t / 0.85);
-        const driftX = driftDir * Math.sin(phase + t * 5.2) * 7.5 * air * air;
-        const driftZ = Math.cos(phase * 0.7 + t * 3.5) * 3.5 * air * air;
-
-        // 转速越高 wobble 越大，随惯性衰减
-        const wobbleAmp = 32 * invY * invY;
-        const wobble = wobbleAmp * Math.sin((now - t0) * 0.028 + phase);
-        const wobble2 = wobbleAmp * 0.55 * Math.sin((now - t0) * 0.041 + phase * 1.3);
-
-        // 接近终面时轻微过冲再回正（咬合感）
-        let overshoot = 0;
-        if (t > 0.72 && t < 1) {
-            const u = (t - 0.72) / 0.28;
-            overshoot = Math.sin(u * Math.PI) * 14 * (1 - u) * (1 - pY);
-        }
-
-        const rx = spinsX * (1 - pX) + end.x * pX + wobble * 0.85 + overshoot * 0.25;
-        const ry = spinsY * (1 - pY) + end.y * pY + wobble * 0.55;
-        const rz = spinsZ * (1 - pZ) + overshoot * 0.4 + wobble2 * 0.35;
-
-        const scale = 1 + lift * 0.26 + hop * 0.012;
-        scene.style.transform =
-            `translateX(${driftX}px) translateY(${-toss}px) translateZ(${driftZ}px) scale(${scale})`;
-        cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
-        if (shadow) {
-            // 阴影略滞后于骰子水平位置 → 惯性拖影
-            const lag = 0.65;
-            const shX = driftX * lag;
-            const shScale = Math.max(0.32, 1 - lift * 0.52 + hop * 0.03);
-            shadow.style.transform =
-                `translateX(${shX}px) translateZ(-36px) scale(${shScale}, ${0.85 + lift * 0.15})`;
-            shadow.style.opacity = String(0.18 + 0.42 * (1 - lift * 0.85));
-        }
-
-        if (t < 1) {
-            diceRafId = requestAnimationFrame(tick);
-            return;
-        }
-        // 落地定格 → 缩小消失
-        diceRafId = 0;
-        scene.style.transform = 'translateY(0) scale(1)';
-        cube.style.transform = `rotateX(${end.x}deg) rotateY(${end.y}deg) rotateZ(0deg)`;
-        cube.classList.add('settled');
-        if (shadow) {
-            shadow.style.transform = 'translateZ(-36px) scale(1)';
-            shadow.style.opacity = '0.55';
-        }
-        // 强制重绘一帧再加 vanish，确保 transition 生效
-        void scene.offsetWidth;
-        scene.classList.add('vanish');
-        diceVanishTimer = setTimeout(() => {
-            diceVanishTimer = 0;
-            stage.classList.remove('show');
-            scene.classList.remove('vanish');
-            scene.style.transform = '';
-            scene.style.opacity = '';
-            if (diceRitualMode === 'dealer') {
-                applyDealerFromDice(diceLastFace);
-            } else {
-                showDiceResetMenu();
+        const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000));
+        last = now;
+        d8Step(die, dt, now);
+        d8Draw(ctx, die);
+        if (die.state === 'fade') {
+            die.fade -= dt / (DICE.VANISH_MS / 1000);
+            if (die.fade <= 0) {
+                diceRafId = 0;
+                resetDiceDom();
+                if (diceRitualMode === 'dealer') {
+                    applyDealerFromDice(diceLastFace);
+                } else {
+                    showDiceResetMenu();
+                }
+                return;
             }
-        }, DICE.VANISH_MS);
+        }
+        diceRafId = requestAnimationFrame(tick);
     }
     diceRafId = requestAnimationFrame(tick);
+}
+
+/** 单颗骰子物理步进：重力下落 → 碰地反弹 → 减速落定转到目标面 */
+function d8Step(t, dt, now) {
+    if (t.state === 'fly') {
+        t.vy += DICE.GRAVITY * dt;
+        t.x += t.vx * dt;
+        t.y += t.vy * dt;
+        t.rx += t.vrx * dt;
+        t.ry += t.vry * dt;
+        if (t.y >= t.floorY && t.vy > 0) {
+            t.y = t.floorY;
+            const impact = Math.abs(t.vy);
+            if (impact > DICE.BOUNCE_MIN_VY) {
+                t.vy = -t.vy * DICE.BOUNCE_DAMP;
+                t.vx *= 0.72;
+                t.vrx *= 0.55; t.vry *= 0.55;
+                t.vrx += (Math.random() * 240 - 120);
+                t.vry += (Math.random() * 240 - 120);
+            } else {
+                // 落定：位置咬住桌心目标点（消除弹跳带来的水平漂移），再 ease 转到目标面
+                t.x = t.floorX; t.y = t.floorY;
+                t.state = 'settle';
+                t.settleT0 = now;
+                const a = d8FaceAngles(t.face);
+                t.fromRx = t.rx; t.fromRy = t.ry;
+                t.toRx = d8NearAngle(t.fromRx, a.rx);
+                t.toRy = d8NearAngle(t.fromRy, a.ry);
+            }
+        }
+    } else if (t.state === 'settle') {
+        const u = Math.min(1, (now - t.settleT0) / DICE.SETTLE_MS);
+        // easeOutBack：轻微过冲再回正 → 咬合感
+        const c = 1.4;
+        const e = 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2);
+        t.rx = t.fromRx + (t.toRx - t.fromRx) * e;
+        t.ry = t.fromRy + (t.toRy - t.fromRy) * e;
+        if (u >= 1) {
+            t.state = 'rest';
+            t.rx = t.toRx; t.ry = t.toRy;
+            t.restT0 = now;
+        }
+    } else if (t.state === 'rest') {
+        if (now - t.restT0 > DICE.REST_MS) t.state = 'fade';
+    }
+}
+
+/** 把物理状态画到 canvas：阴影 / 八面体 / 镶钻点数 */
+function d8Draw(ctx, t) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    ctx.save();
+    ctx.scale(t.dpr || 1, t.dpr || 1);
+    const w = W / (t.dpr || 1), h = H / (t.dpr || 1);
+    ctx.clearRect(0, 0, w, h);
+    ctx.globalAlpha = Math.max(0, t.fade);
+    const R = DICE.R, D = DICE.CAM_D, F = DICE.CAM_F;
+    // 落地阴影
+    const hgt = Math.max(0, (t.floorY - t.y)) / 400;
+    ctx.save();
+    ctx.translate(t.x, t.floorY + R * 0.9 + 8);
+    const shScale = Math.max(0.5, 1 - hgt * 0.3);
+    ctx.scale(shScale, 1);
+    const sg = ctx.createRadialGradient(0, 0, 2, 0, 0, R * 1.15);
+    sg.addColorStop(0, 'rgba(0,0,0,' + (0.5 * Math.max(0.2, 1 - hgt * 0.6)).toFixed(2) + ')');
+    sg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.15, 0, 6.29); ctx.fill();
+    ctx.restore();
+    // 8 个面：旋转 → 按深度排序 → 绘制
+    const items = D8_FACES.map(function (f) {
+        const v = f.s.map(function (sgn, i) {
+            const p = { x: 0, y: 0, z: 0 };
+            if (i === 0) p.x = sgn * R; else if (i === 1) p.y = sgn * R; else p.z = sgn * R;
+            return d8Rot(p, t.rx, t.ry);
+        });
+        const n = d8Rot({ x: f.s[0] / D8_SQ3, y: f.s[1] / D8_SQ3, z: f.s[2] / D8_SQ3 }, t.rx, t.ry);
+        return { f: f, v: v, n: n, z: (v[0].z + v[1].z + v[2].z) / 3 };
+    });
+    items.sort(function (a, b) { return a.z - b.z; }); // 远的先画
+    items.forEach(function (it) {
+        if (it.n.z <= 0.02) return; // 背面不画
+        const b = 0.42 + 0.58 * Math.max(0, it.n.x * D8_LIGHT.x + it.n.y * D8_LIGHT.y + it.n.z * D8_LIGHT.z);
+        const pts = it.v.map(function (p) {
+            const s = F / (D - p.z);
+            return { x: t.x + p.x * s, y: t.y + p.y * s, s: s };
+        });
+        // 金面
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y); ctx.lineTo(pts[2].x, pts[2].y);
+        ctx.closePath();
+        ctx.fillStyle = d8Gold(b);
+        ctx.fill();
+        // 顶部高光
+        const hg = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
+        hg.addColorStop(0, 'rgba(255,250,225,' + (0.42 * b).toFixed(2) + ')');
+        hg.addColorStop(0.55, 'rgba(255,250,225,0)');
+        ctx.fillStyle = hg; ctx.fill();
+        ctx.strokeStyle = 'rgba(90,60,10,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+        // 镶钻：三个顶点小钻
+        pts.forEach(function (p) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(220,240,255,0.95)'; ctx.shadowBlur = 6;
+            ctx.fillStyle = '#f4faff';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 2.1 * p.s, 0, 6.29); ctx.fill();
+            ctx.restore();
+        });
+        // 钻石点数
+        const cxp = (pts[0].x + pts[1].x + pts[2].x) / 3, cyp = (pts[0].y + pts[1].y + pts[2].y) / 3;
+        const sc = (pts[0].s + pts[1].s + pts[2].s) / 3;
+        const fs = 15 * sc;
+        ctx.save();
+        ctx.font = '700 ' + fs.toFixed(1) + 'px system-ui';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(190,225,255,0.95)'; ctx.shadowBlur = 9;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(it.f.n, cxp, cyp + 1);
+        ctx.shadowBlur = 0;
+        // 星芒呼吸
+        const tw = 0.6 + 0.4 * Math.sin(performance.now() / 380 + it.f.n);
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.75 * tw).toFixed(2) + ')';
+        ctx.lineWidth = 1.1;
+        const L = fs * 0.85 * tw;
+        ctx.beginPath();
+        ctx.moveTo(cxp - L, cyp); ctx.lineTo(cxp + L, cyp);
+        ctx.moveTo(cxp, cyp - L * 0.7); ctx.lineTo(cxp, cyp + L * 0.7);
+        ctx.stroke();
+        ctx.restore();
+    });
+    // 落定金光
+    if (t.state === 'rest' || t.state === 'fade') {
+        ctx.save();
+        ctx.globalAlpha *= 0.5;
+        const gg = ctx.createRadialGradient(t.x, t.y, 4, t.x, t.y, R * 2.4);
+        gg.addColorStop(0, 'rgba(255,220,120,0.55)');
+        gg.addColorStop(1, 'rgba(255,220,120,0)');
+        ctx.fillStyle = gg;
+        ctx.beginPath(); ctx.arc(t.x, t.y, R * 2.4, 0, 6.29); ctx.fill();
+        ctx.restore();
+    }
+    ctx.restore();
 }
 
 function showDiceResetMenu() {
@@ -299,10 +396,9 @@ function cancelDiceRitual() {
 }
 
 /**
- * 调庄：一颗骰只掷 1–4 点，从东（bottom/猫）起顺时针数，四家机会均等
+ * 调庄：一颗八面骰，1-2→东（bottom/猫）3-4→南（right）5-6→西（top）7-8→北（left）
  * turnOrder: bottom → right → top → left
- * 1=东猫 2=南狮 3=西龙 4=北虎
- * 保留积分，按新庄重新发牌开一局
+ * 四家等概率，保留积分，按新庄重新发牌开一局
  */
 function applyDealerFromDice(face) {
     resetDiceDom();
@@ -312,14 +408,14 @@ function applyDealerFromDice(face) {
     diceSavedClaim = null;
     pendingClaim = null;
 
-    const f = Math.max(1, Math.min(4, face | 0));
+    const f = Math.max(1, Math.min(8, face | 0));
     const start = turnOrder.indexOf('bottom');
-    const idx = (start + (f - 1)) % 4;
+    const idx = d8SeatIndexOfFace(f, start);
     dealer = turnOrder[idx];
     try { markDealer(); } catch (e) {}
 
     const who = (typeof seatLabel === 'function') ? seatLabel(dealer) : nameOf(dealer);
-    logFlow('调庄：骰子 ' + f + ' → ' + who + ' 做庄（保留积分开新局）');
+    logFlow('调庄：八面骰 ' + f + ' → ' + who + ' 做庄（保留积分开新局）');
     try {
         if (typeof speak === 'function') speak(nameOf(dealer) + '庄');
     } catch (e) {}
