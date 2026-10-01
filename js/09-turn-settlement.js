@@ -57,6 +57,7 @@ function showResultModal(winnerPlayer, mode, payer, bonus, result, winTile) {
     $('result-adjust-panel').style.display = 'none';
     const btn = $('btn-toggle-adjust');
     if (btn) btn.textContent = '特殊情况：手动调分';
+    try { if (typeof syncAppViewportVars === 'function') syncAppViewportVars(); } catch (e) {}
     $('result-modal').classList.add('show');
     flushSaveProgress(); // 结算后立刻落盘，防刷新丢分
 }
