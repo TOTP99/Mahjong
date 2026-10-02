@@ -112,11 +112,11 @@ function renderSettlementView() {
         return `<div class="${cls}">${nameOf(p)} ${sign}${v}${tag}</div>`;
     }).join('');
 
-    // 调分面板（仅打开时可见）
+    // 调分面板（仅打开时可见）：两家一行，格内全宽，×2 不会被裁
     $('result-payouts-edit').innerHTML = turnOrder.map(p => {
         const v = pay[p];
         const cls = v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
-        const tag = noKaimenPlayers.includes(p) ? ' <span class="no-kaimen-tag">没开门</span>' : '';
+        const tag = noKaimenPlayers.includes(p) ? '<i class="nk-dot" aria-hidden="true"></i>' : '';
         return `<div class="payout-row ${cls}">
             <span class="pname">${nameOf(p)}${tag}</span>
             <button type="button" class="payout-btn" onclick="event.stopPropagation();adjustSettlementPayoutFactor('${p}', 0.5)">÷2</button>
