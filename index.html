@@ -34,8 +34,8 @@
     <div class="hu-box">
         <div class="hu-title" id="reveal-title">检测到特殊牌型</div>
         <div class="hu-actions">
-            <button onclick="confirmReveal(true)">亮牌</button>
-            <button onclick="confirmReveal(false)">不亮</button>
+            <button type="button" class="btn-primary" onclick="confirmReveal(true)">亮牌</button>
+            <button type="button" class="btn-ghost" onclick="confirmReveal(false)">不亮</button>
         </div>
     </div>
 </div>
@@ -43,10 +43,12 @@
 <div id="chi-choice-modal" role="dialog" aria-modal="true" aria-label="选择吃法">
     <div class="hu-box">
         <div class="hu-title">选择吃法</div>
-        <div class="result-label" style="margin-top:0; text-align:center;">点选一组顺子</div>
-        <div class="hu-options" id="chi-choice-options"></div>
+        <div class="hu-scroll">
+            <div class="result-label center">点选一组顺子</div>
+            <div class="hu-options" id="chi-choice-options"></div>
+        </div>
         <div class="hu-actions">
-            <button type="button" onclick="closeChiChoice()">取消</button>
+            <button type="button" class="btn-ghost" onclick="closeChiChoice()">取消</button>
         </div>
     </div>
 </div>
@@ -69,6 +71,9 @@
             <button type="button" class="pool-box-close" onclick="closePoolModal()">✕</button>
         </div>
         <div id="pool-grid"></div>
+        <div class="hu-actions" style="margin-top: 8px;">
+            <button type="button" class="btn-ghost" onclick="closePoolModal()">关闭</button>
+        </div>
     </div>
 </div>
 
