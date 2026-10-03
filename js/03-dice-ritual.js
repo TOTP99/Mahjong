@@ -46,42 +46,72 @@ function diceEls() {
 /** 启动时调用：canvas 版无需预生成点数 DOM，保留为空操作（兼容旧调用） */
 function initDicePips() { /* no-op: d8 点数由 canvas 绘制 */ }
 
-/** 合成一串撞击噪声 + 落地低音 */
-function playDiceSound() {
+/* ---------- 音效：共用一个 AudioContext，由真实的弹跳/落定事件触发（与动画同步） ---------- */
+let diceAudioCtx = null;
+function diceCtx() {
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const now = ctx.currentTime;
-        for (let i = 0; i < 8; i++) {
-            const t0 = now + i * 0.07;
-            const dur = 0.04 + Math.random() * 0.03;
-            const n = Math.floor(ctx.sampleRate * dur);
-            const buf = ctx.createBuffer(1, n, ctx.sampleRate);
-            const data = buf.getChannelData(0);
-            for (let j = 0; j < n; j++) data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / n, 2);
-            const src = ctx.createBufferSource();
-            src.buffer = buf;
-            const filt = ctx.createBiquadFilter();
-            filt.type = 'bandpass';
-            filt.frequency.value = 800 + Math.random() * 1800;
-            filt.Q.value = 1.2;
-            const gain = ctx.createGain();
-            gain.gain.setValueAtTime(0.35 * (1 - i * 0.04), t0);
-            gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-            src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
-            src.start(t0); src.stop(t0 + dur + 0.01);
-        }
-        const tEnd = now + 0.58;
-        const osc = ctx.createOscillator();
-        const g2 = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(180, tEnd);
-        osc.frequency.exponentialRampToValueAtTime(60, tEnd + 0.12);
-        g2.gain.setValueAtTime(0.22, tEnd);
-        g2.gain.exponentialRampToValueAtTime(0.001, tEnd + 0.14);
-        osc.connect(g2); g2.connect(ctx.destination);
-        osc.start(tEnd); osc.stop(tEnd + 0.15);
-        setTimeout(() => { try { ctx.close(); } catch (e) {} }, 1200);
+        if (!diceAudioCtx) diceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (diceAudioCtx.state === 'suspended') diceAudioCtx.resume();
+        return diceAudioCtx;
+    } catch (e) { return null; }
+}
+/** 弹跳：短促滤波噪声，intensity 0–1 决定音量与亮度 */
+function playDiceBounce(intensity) {
+    const ctx = diceCtx();
+    if (!ctx) return;
+    try {
+        const t0 = ctx.currentTime;
+        const dur = 0.035 + 0.03 * intensity;
+        const n = Math.floor(ctx.sampleRate * dur);
+        const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let j = 0; j < n; j++) data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / n, 2.2);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const filt = ctx.createBiquadFilter();
+        filt.type = 'bandpass';
+        filt.frequency.value = 1900 + Math.random() * 1600 + intensity * 600;
+        filt.Q.value = 1.1;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.12 + 0.3 * intensity, t0);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+        src.start(t0); src.stop(t0 + dur + 0.02);
     } catch (e) { /* 无音频权限时静默 */ }
+}
+/** 落定：木质脆响 + 低频收尾 */
+function playDiceSettle() {
+    const ctx = diceCtx();
+    if (!ctx) return;
+    try {
+        const t0 = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, t0);
+        osc.frequency.exponentialRampToValueAtTime(110, t0 + 0.07);
+        g.gain.setValueAtTime(0.28, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.09);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0 + 0.1);
+    } catch (e) { /* ignore */ }
+}
+/** 仪式开场哨声 */
+function playDiceSound() {
+    const ctx = diceCtx();
+    if (!ctx) return;
+    try {
+        const t0 = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, t0);
+        osc.frequency.exponentialRampToValueAtTime(880, t0 + 0.12);
+        g.gain.setValueAtTime(0.16, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.16);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0 + 0.18);
+    } catch (e) { /* ignore */ }
 }
 
 // ---------- 三击判定 / 骰子仪式 / 清零菜单 ----------
@@ -240,6 +270,7 @@ function d8Step(t, dt, now) {
                 t.vrx *= 0.55; t.vry *= 0.55;
                 t.vrx += (Math.random() * 240 - 120);
                 t.vry += (Math.random() * 240 - 120);
+                playDiceBounce(Math.min(1, impact / 950));
             } else {
                 // 落定：位置咬住桌心目标点（消除弹跳带来的水平漂移），再 ease 转到目标面
                 t.x = t.floorX; t.y = t.floorY;
@@ -249,6 +280,7 @@ function d8Step(t, dt, now) {
                 t.fromRx = t.rx; t.fromRy = t.ry;
                 t.toRx = d8NearAngle(t.fromRx, a.rx);
                 t.toRy = d8NearAngle(t.fromRy, a.ry);
+                playDiceSettle();
             }
         }
     } else if (t.state === 'settle') {
