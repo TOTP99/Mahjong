@@ -10,6 +10,24 @@
         --avatar-base: 48px; /* 头像基准尺寸，左右家偏移公式用 */
         --modal-scrim: rgba(8, 14, 24, 0.72);
         --modal-scrim-blur: 6px;
+        /* —— 字阶：六级统一（展示/标题/分组/正文/说明/微注），clamp 智能缩放 —— */
+        --fs-d1: clamp(14px, 3.6vw, 18px);   /* 展示级：结算大标题 */
+        --fs-t1: clamp(12px, 3.2vw, 15px);   /* 弹窗标题 */
+        --fs-t2: clamp(11px, 3vw, 13px);     /* 分组标题 / 小标题 */
+        --fs-b1: clamp(10px, 2.8vw, 12px);   /* 正文 / 按钮 / 选项 */
+        --fs-b2: clamp(9px, 2.5vw, 10.5px);  /* 次要说明 */
+        --fs-c1: clamp(8px, 2.2vw, 9px);     /* 微注 / 标签 */
+        /* —— 间距阶：弹窗统一用 —— */
+        --sp-1: 4px;
+        --sp-2: 8px;
+        --sp-3: 12px;
+        --sp-4: 16px;
+        --sp-5: 20px;
+        --sp-6: 28px;
+        /* —— 弹窗：宽度/内边距/圆角统一 —— */
+        --modal-w: min(72vw, 360px);
+        --modal-pad: clamp(12px, 3.5vw, 20px);
+        --modal-radius: 12px;
         --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.4);
         --font-ui: "Songti SC", "STSong", "PingFang SC", "SimSun", serif;
         /* 侧区牌面 = 手牌基准 29×39 的 66% */

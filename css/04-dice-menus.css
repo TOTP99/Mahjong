@@ -57,15 +57,15 @@
     }
     /* 弹窗盒：与结算页统一 */
     .hu-box {
-        width: min(72vw, 360px);
+        width: var(--modal-w);
         max-height: min(72vh, 300px);
-        overflow-x: auto; overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-        touch-action: pan-x pan-y;
+        /* 弹窗统一：外盒 flex 纵向、自身不滚动（内容走 .hu-scroll，标题与底栏钉死） */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         margin: auto;
-        padding: 8px 12px 8px;
-        border-radius: 10px;
+        padding: var(--modal-pad);
+        border-radius: var(--modal-radius);
         text-align: center;
         color: var(--text);
         background: var(--glass-strong);
@@ -73,22 +73,38 @@
         box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.06);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+        box-sizing: border-box;
     }
+    .hu-box .hu-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+    }
+    .hu-box .hu-title { flex: 0 0 auto; }
+    .hu-box .hu-actions { flex: 0 0 auto; }
     .hu-title {
-        font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
-        color: var(--ice); margin: 0 0 8px;
+        font-size: var(--fs-t1); font-weight: 700; letter-spacing: 0.1em;
+        color: var(--ice); margin: 0 0 var(--sp-2);
+        /* 标题下细分隔线：标题/内容主次分明 */
+        padding-bottom: var(--sp-2);
+        border-bottom: 1px solid var(--gold-dim);
     }
     .hu-options {
-        display: flex; flex-direction: column; gap: 6px;
-        margin-bottom: 10px;
+        display: flex; flex-direction: column; gap: var(--sp-2);
+        margin-bottom: var(--sp-3);
     }
     .hu-opt {
         display: flex; align-items: center; justify-content: center; gap: 4px;
-        min-height: 32px;
-        padding: 6px 10px; border-radius: 6px;
+        /* 高度由字号 em 推导：字号变，按钮整体跟着变 */
+        min-height: 3.2em;
+        padding: 0.55em 0.9em; border-radius: 6px;
         border: 1px solid var(--gold-dim);
         background: transparent;
-        color: var(--text-muted); font-size: 12px; cursor: not-allowed;
+        color: var(--text-muted); font-size: var(--fs-b1); cursor: not-allowed;
         transition: background 0.15s, border-color 0.15s, transform 0.12s;
     }
     .hu-opt.enabled {
@@ -106,16 +122,40 @@
         cursor: inherit;
     }
     .hu-opt .tile-marker { height: 0; font-size: 0; }
-    .hu-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .hu-actions { display: flex; gap: var(--sp-2); justify-content: center; flex-wrap: wrap; margin-top: var(--sp-3); }
     .hu-actions button {
-        margin: 0; padding: 6px 14px; min-height: 44px; border-radius: 5px; cursor: pointer;
+        /* 保留旧版 44px 触控高度（新版此处无 min-height） */
+        margin: 0; padding: 0.65em 1.7em; min-width: 5.5em; min-height: 44px; border-radius: 6px; cursor: pointer;
         border: 1px solid var(--gold);
         background: transparent;
-        color: var(--text); font-size: 12px; font-family: inherit;
+        color: var(--text); font-size: var(--fs-b1); font-family: inherit;
         transition: background 0.15s, box-shadow 0.15s;
     }
+    .hu-actions.stack { flex-direction: column; align-items: stretch; }
+    .hu-actions.stack button { width: 100%; }
     .hu-actions button:active {
         background: rgba(212, 175, 55, 0.12);
         box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
     }
     .hu-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* 按钮三级：主操作（实心金）/ 次要（金描边默认）/ 取消（无框淡字） */
+    .hu-actions button.btn-primary {
+        background: #b8912f;
+        border-color: #b8912f;
+        color: #191307;
+        font-weight: 700;
+    }
+    .hu-actions button.btn-primary:active {
+        background: #d4af37;
+        box-shadow: 0 0 12px rgba(212, 175, 55, 0.45);
+    }
+    .hu-actions button.btn-ghost {
+        background: none;
+        border-color: transparent;
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+    .hu-actions button.btn-ghost:active {
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: none;
+    }
