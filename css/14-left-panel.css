@@ -106,17 +106,20 @@ body:not(.portrait-layout) #qj-tb-ls {
     --tb-pv: calc(3px * var(--ui-k, 1));        /* 每个按钮上下内边距 */
     --tb-top: calc(6px * var(--ui-k, 1));       /* 与上面 ＋/－ 的间距 */
     --tb-row: calc(4px * var(--ui-k, 1));       /* 「音效/危险」行与「初始筹码」行的行距 */
-    --tb-col: calc(16px * var(--ui-k, 1));      /* 「音效开」与「危险开」的左右间距 */
+    --tb-col: calc(6px * var(--ui-k, 1));       /* 「音效开」与「危险开」的左右间距（比原版略大，仍在同一行） */
     margin-top: var(--tb-top);
     /* 新增高度 = 两行各上下 padding(4×pv) + 行距 + 顶部间距；用负 margin 全额抵消，头像不下移 */
     margin-bottom: calc(-1 * (4 * var(--tb-pv) + var(--tb-row) + var(--tb-top)));
 }
 body:not(.portrait-layout) #qj-tb-ls .qj-tb {
     gap: 0 var(--tb-col);
+    flex-wrap: wrap;
 }
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="sfx"],
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="danger"] { flex: 0 0 auto; }
 body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
     margin: 0;
-    padding: var(--tb-pv) calc(6px * var(--ui-k, 1));
+    padding: var(--tb-pv) calc(4px * var(--ui-k, 1));
     order: 1;
 }
 body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn::after { display: none; }   /* 去掉互相重叠的隐形热区 */
