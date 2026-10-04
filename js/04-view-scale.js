@@ -10,6 +10,7 @@ const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
 const VIEW_SCALE_STEP = 0.05;
 const AUTO_FIT_DEFAULT_BONUS = 0.05; /* 横屏默认大小 = 「刚好放满」+ 这么多（相当于默认就按过一次「＋」），位置再按内容范围微调，保证牌桌内容完整可见 */
+const AUTO_FIT_DOWN_SHIFT = 0.35; /* 横屏自动适配后整个牌桌再下移「一张废牌高度」的这个比例（转横屏时牌桌上沿容易被切掉）；0 = 不移 */
 const VIEW_SCALE_OVER_STEPS = 2; /* 自动适配的「刚好放满」之后，「＋」还可以再多按几次（每次 VIEW_SCALE_STEP）；会略微超出可视区域边缘，由用户自己决定 */
 const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX + VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
@@ -180,6 +181,7 @@ function autoFitLandscapeView() {
         // 比「刚好放满」大一档后，牌桌外框的上下边会略微超出可视区域；这时不能只按外框居中，
         // 而要保证里面的内容（顶部头像/查询牌池按钮/左栏 到 底部手牌）完整落在可视区域内：
         // 先按外框居中，再把位置夹进「内容上沿不出顶、手牌下沿不出底」的范围（范围为空则按内容居中）。
+        let hardHi = Infinity; // 手牌下沿刚好贴到可视区域底边时的 pan，下移不能超过它
         try {
             const tops = ['p-top', 'discard-query-btn', 'wall-count-header'];
             const bots = ['hand-bottom', 'p-bottom'];
@@ -191,8 +193,17 @@ function autoFitLandscapeView() {
                 const lo = (availT + CM) - (cy + (cTop - cy) * s);
                 const hi = (availB - CM) - (cy + (cBot - cy) * s);
                 pan = (lo <= hi) ? Math.max(lo, Math.min(hi, pan)) : (lo + hi) / 2;
+                hardHi = availB - (cy + (cBot - cy) * s);
             }
         } catch (e) { /* 量不到内容范围就保持按外框居中 */ }
+        // 整个牌桌再下移 = 废牌高度(--side-tile-h × --ui-k) × 35% × 当前缩放；但手牌下沿不得出可视区域
+        try {
+            const gcs = window.getComputedStyle(document.getElementById('game-table') || body);
+            const sideH = parseFloat(gcs.getPropertyValue('--side-tile-h')) || 25.74;
+            const uk = parseFloat(gcs.getPropertyValue('--ui-k')) || 1;
+            const shift = AUTO_FIT_DOWN_SHIFT * sideH * uk * s;
+            if (isFinite(shift) && shift > 0) pan = Math.max(pan, Math.min(pan + shift, hardHi));
+        } catch (e) { /* ignore */ }
         pan = Math.max(-240, Math.min(240, pan));
         if (Math.abs(pan) < 0.5) pan = 0;
 
