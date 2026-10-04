@@ -10,7 +10,7 @@ const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
 const VIEW_SCALE_STEP = 0.05;
 const AUTO_FIT_DEFAULT_BONUS = 0.05; /* 横屏默认大小 = 「刚好放满」+ 这么多（相当于默认就按过一次「＋」），位置再按内容范围微调，保证牌桌内容完整可见 */
-const AUTO_FIT_DOWN_SHIFT = 0.35; /* 横屏自动适配后整个牌桌再下移「一张废牌高度」的这个比例（转横屏时牌桌上沿容易被切掉）；0 = 不移 */
+const AUTO_FIT_DOWN_SHIFT = 1; /* 横屏自动适配后整个牌桌再下移「一张废牌高度」的这个比例（现 100%）（转横屏时牌桌上沿容易被切掉）；0 = 不移 */
 const VIEW_SCALE_OVER_STEPS = 2; /* 自动适配的「刚好放满」之后，「＋」还可以再多按几次（每次 VIEW_SCALE_STEP）；会略微超出可视区域边缘，由用户自己决定 */
 const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX + VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
@@ -196,7 +196,7 @@ function autoFitLandscapeView() {
                 hardHi = availB - (cy + (cBot - cy) * s);
             }
         } catch (e) { /* 量不到内容范围就保持按外框居中 */ }
-        // 整个牌桌再下移 = 废牌高度(--side-tile-h × --ui-k) × 35% × 当前缩放；但手牌下沿不得出可视区域
+        // 整个牌桌再下移 = 废牌高度(--side-tile-h × --ui-k) × 100% × 当前缩放；但手牌下沿不得出可视区域
         try {
             const gcs = window.getComputedStyle(document.getElementById('game-table') || body);
             const sideH = parseFloat(gcs.getPropertyValue('--side-tile-h')) || 25.74;
