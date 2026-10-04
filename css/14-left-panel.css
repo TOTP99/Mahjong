@@ -132,3 +132,15 @@ body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
     order: 3;
     margin-top: var(--tb-row);
 }
+
+/* ---------- ⑨ 横屏：去掉「TP制作 时间」那一行，牌墙→初始筹码整体上移到它的位置（2026-10-03） ----------
+ * 不删 DOM（js/14-credit-clock.js 仍往里写字，竖屏署名也不受影响），只隐藏；
+ * 整个 #wall-count-header 用 transform 上移一行高度（不占布局），所以下面「南西北东」四个头像位置完全不动，
+ * 上移后「初始筹码」与「南」之间自然多出一行的空隙。 */
+body:not(.portrait-layout) #img-display-badge {
+    visibility: hidden !important;
+    pointer-events: none;
+}
+body:not(.portrait-layout) #wall-count-header {
+    transform: translateY(calc(-1 * (var(--panel-fs) * 1.2 + 3px)));   /* 一行字高(line-height 1.2) + 行间距 3px */
+}
