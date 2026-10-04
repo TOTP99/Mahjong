@@ -8,8 +8,9 @@ const AUTO_FIT_USE_SAFE_AREA = true; /* true：让开刘海/Home 条等安全区
 
 const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
-const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
 const VIEW_SCALE_STEP = 0.05;
+const VIEW_SCALE_OVER_STEPS = 2; /* 自动适配的「刚好放满」之后，「＋」还可以再多按几次（每次 VIEW_SCALE_STEP）；会略微超出可视区域边缘，由用户自己决定 */
+const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX + VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
 const VIEW_ORIGINAL_STORAGE_KEY = 'qionghu_mahjong_view_original_v1';
 
@@ -83,7 +84,7 @@ function adjustViewScale(delta) {
     // 已达原始最大尺寸时，扩大无效
     if (delta > 0 && viewScale >= viewScaleUpper() - 1e-9) {
         logFlow(_autoFitMax != null && AUTO_FIT_LANDSCAPE
-            ? '已是自动适配的最大尺寸（刚好放满可视区域），无法再扩大'
+            ? '已放大到上限（比默认大小再大 ' + Math.round(VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP * 100) + '%），无法再扩大'
             : (viewScale > ORIGINAL_VIEW_SCALE + 1e-9 ? '已放大到上限，无法再扩大' : '已是原始正常大小，无法再扩大'));
         applyViewScale();
         return;
@@ -94,7 +95,7 @@ function adjustViewScale(delta) {
         return;
     }
     viewScale = viewScale + delta;
-    if (delta > 0) viewScale = Math.min(viewScale, viewScaleUpper()); // 不超过自动适配的最大值
+    if (delta > 0) viewScale = Math.min(viewScale, viewScaleUpper()); // 不超过「默认大小 + 额外 2 次」
     applyViewScale();
     const pct = Math.round(viewScale * 100);
     if (Math.abs(viewScale - ORIGINAL_VIEW_SCALE) < 1e-9) {
@@ -121,7 +122,7 @@ let _autoFitTimers = [];
 let _autoFitMax = null;     // 最近一次自动适配算出的缩放比例 = 刚好放满可视区域的最大值；手动「扩大」不允许超过它（超过就会被裁掉）
 /** 「扩大」按钮/操作的上限：自动适配生效时是 _autoFitMax，否则是 VIEW_SCALE_MAX */
 function viewScaleUpper() {
-    return (AUTO_FIT_LANDSCAPE && _autoFitMax != null) ? Math.min(VIEW_SCALE_MAX, _autoFitMax) : VIEW_SCALE_MAX;
+    return (AUTO_FIT_LANDSCAPE && _autoFitMax != null) ? Math.min(VIEW_SCALE_MAX, _autoFitMax + VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP) : VIEW_SCALE_MAX;
 }
 
 function syncViewScaleButtons() {
