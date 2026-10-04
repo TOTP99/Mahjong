@@ -94,7 +94,7 @@
         padding: 3px 10px;
         font-size: 12px;
     }
-    body.portrait-layout .bottom #hand-bottom { order: unset; margin-bottom: 0; }
+    body.portrait-layout .bottom #hand-bottom { order: unset; margin-bottom: calc(-1 * var(--meld-ext)); }
     /* 原版竖屏手牌：固定 29×39，横向滑动，不缩放 */
     body.portrait-layout .bottom .hand {
         --tile-w: 29px;
@@ -111,7 +111,7 @@
         max-width: 100%;
         gap: 1px;
         margin-top: 5px;
-        padding-bottom: 0;
+        padding-bottom: var(--meld-ext);
     }
     body.portrait-layout .bottom .hand .tile {
         width: 29px !important;
