@@ -1,8 +1,8 @@
 /* 14-left-panel.css — 横屏左侧信息栏微调（须在其它 CSS 之后加载；只影响横屏，竖屏不变）
  * ① 左栏文字统一字号：TP制作+时间 / 牌墙 / 横屏最大 / 音效·危险·初始筹码 全部用同一个 --panel-fs
  *    （= 原来牌墙那行的字号 10px × --ui-k，窄宽度 9px；安卓矮屏 9px）
- * ② 「缩小/扩大」两个按钮换成一条金色细线滑杆，左右拖动改整体大小（逻辑在 js/04-view-scale.js 的 initViewScaleSlider）
- * ③ 三击桌面出来的「清零重启 / 继续加油」两个框收窄收矮，并取消 30vh 的滚动裁切，横屏下不再被切掉底部
+ * ② 三击桌面出来的「清零重启 / 继续加油」两个框收窄收矮、下移半张手牌，横屏下不再被切掉底部
+ * ③ 左栏布局：隐藏「TP制作 时间」行，牌墙→初始筹码整体上移到它的位置；音效/危险/初始筹码三个开关拉开间距防误触
  */
 
 /* ---------- ① 统一字号 ---------- */
@@ -27,9 +27,7 @@ body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
     line-height: 1.2;
 }
 
-/* ---------- ②（已删除 2026-09-30：#view-scale-btns 容器已随《》按钮移除，加/减按钮直接进 #wall-count-row 第3行） ---------- */
-
-/* ---------- ③ 清零菜单（横屏）收窄收矮 ---------- */
+/* ---------- ② 清零菜单（横屏）收窄收矮 ---------- */
 body:not(.portrait-layout) #claim-indicator.show:has(.reset-menu) {
     max-height: none;
     overflow: visible;
@@ -44,12 +42,7 @@ body:not(.portrait-layout) #claim-indicator .reset-btn {
     box-shadow: 0 0 5px rgba(212, 175, 55, 0.2);
 }
 
-/* ---------- ④（已删除 2026-09-30）----------
- * 原先这里有一段竖屏 #claim-indicator 下移到废牌池的规则，与用户要求相悖
- *（人类提示条/三击清零菜单应回右上角无底；只有 AI 的 .feel-banner 才下移+深色底），
- * 且靠后加载覆盖了 07-portrait-layout.css 的右上角定位，已整段删除。 */
-
-/* ---------- ⑤ 横屏：「清零重启 / 继续加油」两个按钮整体下移半张手牌 ----------
+/* 清零菜单：「清零重启 / 继续加油」两个按钮整体下移半张手牌
  * 半张手牌 = 09-ui-scale.css 里 --hand-tile-h（41px×--ui-k，矮屏 34px）的一半。
  * 移动的是两个按钮的容器，所以两个按钮同步下移、间距不变。 */
 body:not(.portrait-layout) { --reset-shift: calc(41px * var(--ui-k, 1) * 0.5); }
@@ -60,14 +53,15 @@ body:not(.portrait-layout) #claim-indicator .reset-menu {
     transform: translateY(var(--reset-shift));
 }
 
-/* ---------- ⑥ 横屏左栏 5 行布局 ---------- */
-/* 第1行 TP制作+时分秒 / 第2行 牌墙张数 / 第3行 Max+加+减 / 第4行 音效开+危险开 / 第5行 初始筹码 */
+/* ---------- ③ 横屏左栏布局 ----------
+ * 行：（TP制作+时间，已隐藏但仍占一行高度，用来算上移量）/ 牌墙张数 / ＋ － / 音效开 危险开 / 初始筹码 */
 body:not(.portrait-layout) #img-display-badge,
 body:not(.portrait-layout) #wall-count-text {
     flex: 0 0 100%;
     text-align: center;
 }
-/* 加/减：字号并入左栏统一体系，视觉收紧为纯文字（2026-10-01 去外框） */
+
+/* ＋/－：纯文字（无外框），字号并入左栏统一体系；点按不变形，只发微光；两者之间留间距，保持同一行 */
 body:not(.portrait-layout) #btn-view-zoom-in,
 body:not(.portrait-layout) #btn-view-zoom-out {
     font-size: var(--panel-fs) !important;
@@ -75,72 +69,51 @@ body:not(.portrait-layout) #btn-view-zoom-out {
     min-width: 0 !important;
     min-height: 0 !important;
     padding: 2px 8px !important;
-}
-/* 第4/5行：音效开+危险开一行，初始筹码单独一行 */
-body:not(.portrait-layout) #qj-tb-ls .qj-tb {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
-    flex: 0 0 100%;
-    text-align: center;
-}
-
-/* ---------- ⑦ ＋/－：点按反馈（Max 按钮已移除，2026-09-30；2026-10-01 去外框纯文字） ---------- */
-/* 无外框就是加减两个字，点按不变形（不放大），只发微光；两者之间留间距方便点按；保持同一行 */
-body:not(.portrait-layout) #btn-view-zoom-in,
-body:not(.portrait-layout) #btn-view-zoom-out {
     transform: none !important;
     margin-left: 5px;
     margin-right: 5px;
 }
 
-/* ---------- ⑧ 横屏左栏：音效/危险/初始筹码 三个开关拉开间距，防误触（2026-10-03） ----------
- * 误触根因：13-toolbar.css 给每个按钮补了 ±14px 的隐形热区（::after），而三个开关本身只有一行字高(≈12px)，
- *   上下两行、左右两个、以及上面的 ＋/－ 按钮的热区互相叠在一起，点到边缘就落进邻居的热区。
- * 做法：横屏下去掉隐形热区，改用真实 padding 撑出点按区；按钮之间、两行之间、与 ＋/－ 之间都留出空隙。
- * 四个头像(南西北东)位置不动：增加的高度由 #qj-tb-ls 的负 margin-bottom 抵消，头像所在的 #player-stats 仍在原处。
- */
-body:not(.portrait-layout) #qj-tb-ls {
-    --tb-pv: calc(3px * var(--ui-k, 1));        /* 每个按钮上下内边距 */
-    --tb-top: calc(6px * var(--ui-k, 1));       /* 与上面 ＋/－ 的间距 */
-    --tb-row: calc(4px * var(--ui-k, 1));       /* 「音效/危险」行与「初始筹码」行的行距 */
-    --tb-col: calc(6px * var(--ui-k, 1));       /* 「音效开」与「危险开」的左右间距（比原版略大，仍在同一行） */
-    margin-top: var(--tb-top);
-    /* 新增高度 = 两行各上下 padding(4×pv) + 行距 + 顶部间距；用负 margin 全额抵消，头像不下移 */
-    margin-bottom: calc(-1 * (4 * var(--tb-pv) + var(--tb-row) + var(--tb-top)));
-}
-body:not(.portrait-layout) #qj-tb-ls .qj-tb {
-    gap: 0 var(--tb-col);
-    flex-wrap: wrap;
-}
-body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="sfx"],
-body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="danger"] { flex: 0 0 auto; }
-body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
-    margin: 0;
-    padding: var(--tb-pv) calc(4px * var(--ui-k, 1));
-    order: 1;
-}
-body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn::after { display: none; }   /* 去掉互相重叠的隐形热区 */
-/* 「初始筹码」独占一行：不再 100% 宽（整行空白都能点到），改用 0 高度的换行占位 */
-body:not(.portrait-layout) #qj-tb-ls .qj-tb::after {
-    content: ''; flex: 0 0 100%; height: 0; order: 2;
-}
-body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
-    flex: 0 0 auto;
-    order: 3;
-    margin-top: var(--tb-row);
-}
-
-/* ---------- ⑨ 横屏：去掉「TP制作 时间」那一行，牌墙→初始筹码整体上移到它的位置（2026-10-03） ----------
- * 不删 DOM（js/14-credit-clock.js 仍往里写字，竖屏署名也不受影响），只隐藏；
- * 整个 #wall-count-header 用 transform 上移一行高度（不占布局），所以下面「南西北东」四个头像位置完全不动，
- * 上移后「初始筹码」与「南」之间自然多出一行的空隙。 */
+/* 去掉「TP制作 时间」：不删 DOM（js/14-credit-clock.js 仍往里写字，竖屏署名不受影响），只隐藏；
+ * 整个 #wall-count-header 用 transform 上移一行高度（一行字高 line-height 1.2 + 行间距 3px，不占布局），
+ * 所以下面「南西北东」四个头像位置完全不动，「初始筹码」与「南」之间自然多出一行空隙。 */
 body:not(.portrait-layout) #img-display-badge {
     visibility: hidden !important;
     pointer-events: none;
 }
 body:not(.portrait-layout) #wall-count-header {
-    transform: translateY(calc(-1 * (var(--panel-fs) * 1.2 + 3px)));   /* 一行字高(line-height 1.2) + 行间距 3px */
+    transform: translateY(calc(-1 * (var(--panel-fs) * 1.2 + 3px)));
+}
+
+/* 三个开关防误触：13-toolbar.css 给每个按钮补了 ±14px 的隐形热区，互相叠在一起，点到边缘就落进邻居的热区。
+ * 这里去掉热区，改用真实 padding 撑出点按区，按钮之间、两行之间、与 ＋/－ 之间都留出空隙；
+ * 增加的高度由 #qj-tb-ls 的负 margin-bottom 全额抵消，头像所在的 #player-stats 仍在原处。 */
+body:not(.portrait-layout) #qj-tb-ls {
+    --tb-pv: calc(3px * var(--ui-k, 1));        /* 每个按钮上下内边距 */
+    --tb-top: calc(6px * var(--ui-k, 1));       /* 与上面 ＋/－ 的间距 */
+    --tb-row: calc(4px * var(--ui-k, 1));       /* 「音效/危险」行与「初始筹码」行的行距 */
+    --tb-col: calc(6px * var(--ui-k, 1));       /* 「音效开」与「危险开」的左右间距 */
+    margin-top: var(--tb-top);
+    margin-bottom: calc(-1 * (4 * var(--tb-pv) + var(--tb-row) + var(--tb-top)));
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 var(--tb-col);
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: var(--tb-pv) calc(4px * var(--ui-k, 1));
+    order: 1;
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn::after { display: none; }
+/* 「初始筹码」独占一行：用 0 高度的换行占位（::after，order 2）把它挤到第二行（order 3），不整行可点 */
+body:not(.portrait-layout) #qj-tb-ls .qj-tb::after {
+    content: ''; flex: 0 0 100%; height: 0; order: 2;
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
+    order: 3;
+    margin-top: var(--tb-row);
 }
