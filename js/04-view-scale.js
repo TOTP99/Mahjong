@@ -8,41 +8,13 @@ const AUTO_FIT_USE_SAFE_AREA = true; /* true：让开刘海/Home 条等安全区
 
 const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
-const VIEW_SCALE_STEP = 0.05;
-const AUTO_FIT_DEFAULT_BONUS = 0.05; /* 横屏默认大小 = 「刚好放满」+ 这么多（相当于默认就按过一次「＋」），位置再按内容范围微调，保证牌桌内容完整可见 */
-const AUTO_FIT_DOWN_SHIFT = 1; /* 横屏自动适配后整个牌桌再下移「一张废牌高度」的这个比例（现 100%）（转横屏时牌桌上沿容易被切掉）；0 = 不移 */
-const VIEW_SCALE_OVER_STEPS = 2; /* 自动适配的「刚好放满」之后，「＋」还可以再多按几次（每次 VIEW_SCALE_STEP）；会略微超出可视区域边缘，由用户自己决定 */
-const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX + VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP : ORIGINAL_VIEW_SCALE; /* 手动扩大的上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
+const AUTO_FIT_DEFAULT_BONUS = 0.03; /* 横屏默认大小 = 「刚好放满」+ 这么多；位置再按内容范围微调，保证牌桌内容完整可见 */
+const AUTO_FIT_DOWN_SHIFT = 1; /* 横屏自动适配后整个牌桌再下移「一张废牌高度」的这个比例（转横屏时牌桌上沿容易被切掉）；0 = 不移 */
+const VIEW_SCALE_PLUS_MULT = 1.03; /* 「＋」只能在默认大小上再放大一次，放大到默认大小的这个倍数（1.03 = 再大 3%） */
+const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX * VIEW_SCALE_PLUS_MULT : ORIGINAL_VIEW_SCALE; /* 缩放绝对上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
 const VIEW_SCALE_STORAGE_KEY = 'qionghu_mahjong_view_scale_v1';
-const VIEW_ORIGINAL_STORAGE_KEY = 'qionghu_mahjong_view_original_v1';
 
 let viewScale = ORIGINAL_VIEW_SCALE;
-/** 启动时记录的桌面原始像素尺寸（供对照/恢复） */
-let originalViewRecord = null;
-
-function captureOriginalViewSize() {
-    if (originalViewRecord) return originalViewRecord;
-    const frame = document.getElementById('table-frame');
-    const wrap = document.getElementById('table-wrap');
-    let w = 0, h = 0;
-    if (frame) {
-        const r = frame.getBoundingClientRect();
-        // 若当前已缩放，反推未缩放尺寸
-        const s = viewScale || 1;
-        w = r.width / s;
-        h = r.height / s;
-    }
-    originalViewRecord = {
-        scale: ORIGINAL_VIEW_SCALE,
-        width: Math.round(w * 10) / 10,
-        height: Math.round(h * 10) / 10,
-        capturedAt: Date.now()
-    };
-    try {
-        localStorage.setItem(VIEW_ORIGINAL_STORAGE_KEY, JSON.stringify(originalViewRecord));
-    } catch (e) { /* ignore */ }
-    return originalViewRecord;
-}
 
 function loadSavedViewScale() {
     try {
@@ -82,11 +54,10 @@ function applyViewScale() {
 
 /** delta: +0.05 扩大 / -0.05 缩小；相对「原始正常大小」等比缩放 */
 function adjustViewScale(delta) {
-    if (!originalViewRecord) captureOriginalViewSize();
-    // 已达原始最大尺寸时，扩大无效
+    // 已达上限时，扩大无效
     if (delta > 0 && viewScale >= viewScaleUpper() - 1e-9) {
-        logFlow(_autoFitMax != null && AUTO_FIT_LANDSCAPE
-            ? '已放大到上限，无法再扩大'
+        logFlow(_autoFitDefault != null && AUTO_FIT_LANDSCAPE
+            ? '已放大到上限（默认大小的 ' + VIEW_SCALE_PLUS_MULT + ' 倍），无法再扩大'
             : (viewScale > ORIGINAL_VIEW_SCALE + 1e-9 ? '已放大到上限，无法再扩大' : '已是原始正常大小，无法再扩大'));
         applyViewScale();
         return;
@@ -97,7 +68,7 @@ function adjustViewScale(delta) {
         return;
     }
     viewScale = viewScale + delta;
-    if (delta > 0) viewScale = Math.min(viewScale, viewScaleUpper()); // 不超过「默认大小 + 额外 2 次」
+    if (delta > 0) viewScale = Math.min(viewScale, viewScaleUpper()); // 不超过「默认大小 × 1.03」
     applyViewScale();
     const pct = Math.round(viewScale * 100);
     if (Math.abs(viewScale - ORIGINAL_VIEW_SCALE) < 1e-9) {
@@ -121,10 +92,10 @@ function adjustViewScale(delta) {
 let _autoFitApplied = false; // 已经自动适配过一次（第一次直接到位不做动画）
 let _autoFitReady = false;   // 13 启动段准备好之后才允许自动适配（避免脚本还没加载完就被 resize 事件触发）
 let _autoFitTimers = [];
-let _autoFitMax = null;     // 最近一次自动适配算出的缩放比例 = 刚好放满可视区域的最大值；手动「扩大」不允许超过它（超过就会被裁掉）
-/** 「扩大」按钮/操作的上限：自动适配生效时是 _autoFitMax，否则是 VIEW_SCALE_MAX */
+let _autoFitDefault = null; // 最近一次自动适配算出的默认大小（「＋」的上限 = 它 × VIEW_SCALE_PLUS_MULT）
+/** 「扩大」按钮/操作的上限：自动适配生效时是 默认大小 × VIEW_SCALE_PLUS_MULT，否则是 VIEW_SCALE_MAX */
 function viewScaleUpper() {
-    return (AUTO_FIT_LANDSCAPE && _autoFitMax != null) ? Math.min(VIEW_SCALE_MAX, _autoFitMax + VIEW_SCALE_OVER_STEPS * VIEW_SCALE_STEP) : VIEW_SCALE_MAX;
+    return (AUTO_FIT_LANDSCAPE && _autoFitDefault != null) ? Math.min(VIEW_SCALE_MAX, Math.floor(_autoFitDefault * VIEW_SCALE_PLUS_MULT * 1000) / 1000) : VIEW_SCALE_MAX;
 }
 
 function syncViewScaleButtons() {
@@ -170,7 +141,7 @@ function autoFitLandscapeView() {
         if (!(fit > 0)) fit = 1;
         if (!(wFit > 0)) wFit = fit;
         fit = Math.max(VIEW_SCALE_MIN, Math.floor(fit * 1000) / 1000); // 向下取整：保证不会因四舍五入多出 1px
-        // 默认大小：在「刚好放满」基础上再大一档(5%)，但不超过宽度上限（左右没有可平移的余地，不能裁掉）
+        // 默认大小：在「刚好放满」基础上再大 AUTO_FIT_DEFAULT_BONUS，但不超过宽度上限（左右没有可平移的余地，不能裁掉）
         let s = Math.min(fit + AUTO_FIT_DEFAULT_BONUS, Math.floor(wFit * 1000) / 1000, AUTO_FIT_SCALE_MAX);
         s = Math.max(fit, s);
 
@@ -178,7 +149,7 @@ function autoFitLandscapeView() {
         const cy = r.top + r.height / 2;
         let pan = (availT + availB) / 2 - cy;
         if (!isFinite(pan)) pan = 0;
-        // 比「刚好放满」大一档后，牌桌外框的上下边会略微超出可视区域；这时不能只按外框居中，
+        // 比「刚好放满」略大后，牌桌外框的上下边会略微超出可视区域；这时不能只按外框居中，
         // 而要保证里面的内容（顶部头像/查询牌池按钮/左栏 到 底部手牌）完整落在可视区域内：
         // 先按外框居中，再把位置夹进「内容上沿不出顶、手牌下沿不出底」的范围（范围为空则按内容居中）。
         let hardHi = Infinity; // 手牌下沿刚好贴到可视区域底边时的 pan，下移不能超过它
@@ -196,7 +167,7 @@ function autoFitLandscapeView() {
                 hardHi = availB - (cy + (cBot - cy) * s);
             }
         } catch (e) { /* 量不到内容范围就保持按外框居中 */ }
-        // 整个牌桌再下移 = 废牌高度(--side-tile-h × --ui-k) × 100% × 当前缩放；但手牌下沿不得出可视区域
+        // 整个牌桌再下移 = 废牌高度(--side-tile-h × --ui-k) × AUTO_FIT_DOWN_SHIFT × 当前缩放；但手牌下沿不得出可视区域
         try {
             const gcs = window.getComputedStyle(document.getElementById('game-table') || body);
             const sideH = parseFloat(gcs.getPropertyValue('--side-tile-h')) || 25.74;
@@ -208,7 +179,7 @@ function autoFitLandscapeView() {
         if (Math.abs(pan) < 0.5) pan = 0;
 
         const prevS = viewScale, prevP = viewPanY;    // 上一次生效的值（用来做平滑过渡）
-        _autoFitMax = fit;                            // 「刚好放满」的尺寸；「＋」上限 = 它 + 2 档（默认已是 +1 档）
+        _autoFitDefault = s;                          // 默认大小：「＋」只能在它之上再按一次（×1.03）
         viewScale = s;
         viewPanY = pan;
         root.setProperty('--view-scale', String(s));
