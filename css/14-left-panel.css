@@ -95,3 +95,37 @@ body:not(.portrait-layout) #btn-view-zoom-out {
     margin-left: 5px;
     margin-right: 5px;
 }
+
+/* ---------- ⑧ 横屏左栏：音效/危险/初始筹码 三个开关拉开间距，防误触（2026-10-03） ----------
+ * 误触根因：13-toolbar.css 给每个按钮补了 ±14px 的隐形热区（::after），而三个开关本身只有一行字高(≈12px)，
+ *   上下两行、左右两个、以及上面的 ＋/－ 按钮的热区互相叠在一起，点到边缘就落进邻居的热区。
+ * 做法：横屏下去掉隐形热区，改用真实 padding 撑出点按区；按钮之间、两行之间、与 ＋/－ 之间都留出空隙。
+ * 四个头像(南西北东)位置不动：增加的高度由 #qj-tb-ls 的负 margin-bottom 抵消，头像所在的 #player-stats 仍在原处。
+ */
+body:not(.portrait-layout) #qj-tb-ls {
+    --tb-pv: calc(3px * var(--ui-k, 1));        /* 每个按钮上下内边距 */
+    --tb-top: calc(6px * var(--ui-k, 1));       /* 与上面 ＋/－ 的间距 */
+    --tb-row: calc(4px * var(--ui-k, 1));       /* 「音效/危险」行与「初始筹码」行的行距 */
+    --tb-col: calc(16px * var(--ui-k, 1));      /* 「音效开」与「危险开」的左右间距 */
+    margin-top: var(--tb-top);
+    /* 新增高度 = 两行各上下 padding(4×pv) + 行距 + 顶部间距；用负 margin 全额抵消，头像不下移 */
+    margin-bottom: calc(-1 * (4 * var(--tb-pv) + var(--tb-row) + var(--tb-top)));
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb {
+    gap: 0 var(--tb-col);
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn {
+    margin: 0;
+    padding: var(--tb-pv) calc(6px * var(--ui-k, 1));
+    order: 1;
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn::after { display: none; }   /* 去掉互相重叠的隐形热区 */
+/* 「初始筹码」独占一行：不再 100% 宽（整行空白都能点到），改用 0 高度的换行占位 */
+body:not(.portrait-layout) #qj-tb-ls .qj-tb::after {
+    content: ''; flex: 0 0 100%; height: 0; order: 2;
+}
+body:not(.portrait-layout) #qj-tb-ls .qj-tb .qj-btn[data-k="chips"] {
+    flex: 0 0 auto;
+    order: 3;
+    margin-top: var(--tb-row);
+}
