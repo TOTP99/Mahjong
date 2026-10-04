@@ -8,7 +8,8 @@ const AUTO_FIT_USE_SAFE_AREA = true; /* true：让开刘海/Home 条等安全区
 
 const ORIGINAL_VIEW_SCALE = 1;
 const VIEW_SCALE_MIN = AUTO_FIT_LANDSCAPE ? 0.5 : 0.7; /* 手动最多缩到原始的 70%；自动适配时放宽到 50%，给很矮的屏幕留余地 */
-const AUTO_FIT_DEFAULT_BONUS = 0.03; /* 横屏默认大小 = 「刚好放满」+ 这么多；位置再按内容范围微调，保证牌桌内容完整可见 */
+const AUTO_FIT_DEFAULT_OFFSET = -0.02; /* 横屏默认大小 = 「刚好放满」+ 这个数（负 = 比刚好放满小一点，金边不贴屏幕边缘；实测 ≈ 先点＋再点－后的大小） */
+const AUTO_FIT_CONTENT_MARGIN = 8; /* 横屏自动适配后，牌桌内容（顶部头像/左栏/查询牌池 到 底部手牌）离可视区域上下边缘各至少留几 px */
 const AUTO_FIT_DOWN_SHIFT = 1; /* 横屏自动适配后整个牌桌再下移「一张废牌高度」的这个比例（转横屏时牌桌上沿容易被切掉）；0 = 不移 */
 const VIEW_SCALE_PLUS_MULT = 1.03; /* 「＋」只能在默认大小上再放大一次，放大到默认大小的这个倍数（1.03 = 再大 3%） */
 const VIEW_SCALE_MAX = AUTO_FIT_LANDSCAPE ? AUTO_FIT_SCALE_MAX * VIEW_SCALE_PLUS_MULT : ORIGINAL_VIEW_SCALE; /* 缩放绝对上限（自动适配时放宽，才能表示放大到 >100% 的自动结果） */
@@ -133,48 +134,40 @@ function autoFitLandscapeView() {
         const availL = pad('paddingLeft') + m, availR = vpW - pad('paddingRight') - m;
         const availT = pad('paddingTop') + m,  availB = vpH - pad('paddingBottom') - m;
 
-        let fit = 1, wFit = 1;
+        let fit = 1;
         if (r.width > 0 && r.height > 0) {
-            wFit = (availR - availL) / r.width;
-            fit = Math.min(AUTO_FIT_SCALE_MAX, wFit, (availB - availT) / r.height); // 取「刚好放得下」的最大比例，可视区域更大时也放大
+            fit = Math.min(AUTO_FIT_SCALE_MAX, (availR - availL) / r.width, (availB - availT) / r.height); // 「刚好放得下」的最大比例，可视区域更大时也放大
         }
         if (!(fit > 0)) fit = 1;
-        if (!(wFit > 0)) wFit = fit;
-        fit = Math.max(VIEW_SCALE_MIN, Math.floor(fit * 1000) / 1000); // 向下取整：保证不会因四舍五入多出 1px
-        // 默认大小：在「刚好放满」基础上再大 AUTO_FIT_DEFAULT_BONUS，但不超过宽度上限（左右没有可平移的余地，不能裁掉）
-        let s = Math.min(fit + AUTO_FIT_DEFAULT_BONUS, Math.floor(wFit * 1000) / 1000, AUTO_FIT_SCALE_MAX);
-        s = Math.max(fit, s);
+        // 默认大小 = 刚好放满 + AUTO_FIT_DEFAULT_OFFSET；向下取整到 0.001，保证不会因四舍五入多出 1px
+        const s = Math.max(VIEW_SCALE_MIN, Math.floor((fit + AUTO_FIT_DEFAULT_OFFSET) * 1000) / 1000);
 
         // 缩放以牌桌中心为原点，中心位置不变；再平移到可见区域的垂直中心
         const cy = r.top + r.height / 2;
         let pan = (availT + availB) / 2 - cy;
         if (!isFinite(pan)) pan = 0;
-        // 比「刚好放满」略大后，牌桌外框的上下边会略微超出可视区域；这时不能只按外框居中，
-        // 而要保证里面的内容（顶部头像/查询牌池按钮/左栏 到 底部手牌）完整落在可视区域内：
-        // 先按外框居中，再把位置夹进「内容上沿不出顶、手牌下沿不出底」的范围（范围为空则按内容居中）。
-        let hardHi = Infinity; // 手牌下沿刚好贴到可视区域底边时的 pan，下移不能超过它
+        // 默认大小比「刚好放满」略大，牌桌外框的上下边会略微超出可视区域；所以不能只按外框居中，
+        // 而要保证里面的内容（顶部头像/查询牌池/左栏 到 底部手牌）上下各留出 AUTO_FIT_CONTENT_MARGIN 的空隙：
+        // 位置 = 外框居中 + 整体下移（废牌高度 × AUTO_FIT_DOWN_SHIFT），再夹进「内容上沿不出顶、手牌下沿不出底」的范围；
+        // 范围为空（屏幕实在太矮）则按内容居中。
         try {
-            const tops = ['p-top', 'discard-query-btn', 'wall-count-header'];
-            const bots = ['hand-bottom', 'p-bottom'];
-            let cTop = Infinity, cBot = -Infinity;
-            tops.forEach((id) => { const e = document.getElementById(id); if (e) { const b = e.getBoundingClientRect(); if (b.height > 0) cTop = Math.min(cTop, b.top); } });
-            bots.forEach((id) => { const e = document.getElementById(id); if (e) { const b = e.getBoundingClientRect(); if (b.height > 0) cBot = Math.max(cBot, b.bottom); } });
-            if (isFinite(cTop) && isFinite(cBot) && cBot > cTop) {
-                const CM = 4; // 内容离可视区域边缘至少 4px
-                const lo = (availT + CM) - (cy + (cTop - cy) * s);
-                const hi = (availB - CM) - (cy + (cBot - cy) * s);
-                pan = (lo <= hi) ? Math.max(lo, Math.min(hi, pan)) : (lo + hi) / 2;
-                hardHi = availB - (cy + (cBot - cy) * s);
+            const bound = (ids, pick) => ids.reduce((v, id) => {
+                const e = document.getElementById(id);
+                const b = e && e.getBoundingClientRect();
+                return (b && b.height > 0) ? pick(v, b) : v;
+            }, null);
+            const cTop = bound(['p-top', 'discard-query-btn', 'wall-count-text'], (v, b) => v === null ? b.top : Math.min(v, b.top));
+            const cBot = bound(['hand-bottom'], (v, b) => v === null ? b.bottom : Math.max(v, b.bottom));
+            if (cTop !== null && cBot !== null && cBot > cTop) {
+                const gcs = window.getComputedStyle(document.getElementById('game-table') || body);
+                const sideH = parseFloat(gcs.getPropertyValue('--side-tile-h')) || 25.74; // 废牌高度（--ui-k 变化前的值，下面再乘 ui-k）
+                const uk = parseFloat(gcs.getPropertyValue('--ui-k')) || 1;
+                const lo = (availT + AUTO_FIT_CONTENT_MARGIN) - (cy + (cTop - cy) * s);
+                const hi = (availB - AUTO_FIT_CONTENT_MARGIN) - (cy + (cBot - cy) * s);
+                const want = pan + AUTO_FIT_DOWN_SHIFT * sideH * uk * s;
+                pan = (lo <= hi) ? Math.max(lo, Math.min(hi, want)) : (lo + hi) / 2;
             }
         } catch (e) { /* 量不到内容范围就保持按外框居中 */ }
-        // 整个牌桌再下移 = 废牌高度(--side-tile-h × --ui-k) × AUTO_FIT_DOWN_SHIFT × 当前缩放；但手牌下沿不得出可视区域
-        try {
-            const gcs = window.getComputedStyle(document.getElementById('game-table') || body);
-            const sideH = parseFloat(gcs.getPropertyValue('--side-tile-h')) || 25.74;
-            const uk = parseFloat(gcs.getPropertyValue('--ui-k')) || 1;
-            const shift = AUTO_FIT_DOWN_SHIFT * sideH * uk * s;
-            if (isFinite(shift) && shift > 0) pan = Math.max(pan, Math.min(pan + shift, hardHi));
-        } catch (e) { /* ignore */ }
         pan = Math.max(-240, Math.min(240, pan));
         if (Math.abs(pan) < 0.5) pan = 0;
 
