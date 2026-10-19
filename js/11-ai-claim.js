@@ -187,7 +187,10 @@ function shouldAiPeng(p, tile, overrides) {
     // 碰要付出代价：碰后向听必须严格改善才碰（中发白刻子本身带番×2是稳赚，不受此限）。
     if (openCount === 0 && !isDragon) {
         try {
-            if (winValue(hand, exposed, p) > 2500 && shanAfter >= shanBefore) return false;
+            // 强化：门清价值阈值下调，更舍不得破门清；碰后向听不改善就拒绝
+            if (winValue(hand, exposed, p) > 1800 && shanAfter >= shanBefore) return false;
+            // 向听已经很好（≤1）时，除非严格改善否则不碰
+            if (shanBefore <= 1 && shanAfter > shanBefore) return false;
         } catch (e) {}
     }
 
@@ -319,12 +322,16 @@ function shouldAiChi(player, tile, combo) {
     // 开门：要有明显收益；未开门：新规则下没开门自摸/点炮都要多罚一倍，门槛降到 1，更愿意开门
     const baseThreshold = open ? 4 : 1;
     let threshold = baseThreshold - conf * 0.6;
-    // AI 4.0 提强4 纪律2：门清贵重手不破——门清且这手牌价值高时，吃要付出代价（阈值+6，不硬拦）
+    // AI 4.0 提强4 纪律2：门清贵重手不破——门清且这手牌价值高时，吃要付出代价
     if (exposed.length === 0) {
         try {
-            if (winValue(hands[player], exposed, player) > 2500) threshold += 6;
+            const wv = winValue(hands[player], exposed, player);
+            if (wv > 1800) threshold += 8;  // 强化：更舍不得破门清
+            if (wv > 3000) threshold += 4;
         } catch (e) {}
     }
+    // 强化：已开门后吃牌门槛略提高，减少无意义的乱吃
+    if (open) threshold += 1;
     const actual = score >= threshold;
     // 轴1归因：跟"没学过(conf=0)"时会不会选得不一样比一比，选得不一样说明这条轴真的起作用了
     if (actual !== (score >= baseThreshold)) markAxisUsed(player, 'callAggr');

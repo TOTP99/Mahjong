@@ -94,32 +94,33 @@ const aiPersonality = { left: 'conservative', right: 'aggressive', top: 'shrewd'
 // 轴1(吃碰激进度)/轴2(防守让牌) 已经在 scoreChiCombo/shouldAiChi/shouldAiPeng/chooseAiDiscardTile
 // 里天然按 style 分支，不需要额外的表；这里只收 3~7 这5条目前代码里没有性格区分的开关
 const AI_TRAITS = {
+    // 2026-10-19 强化：更早转守、更重炮牌截留/不喂下家、进张保留更严 → 更少点炮、更高听牌质量
     conservative: {
         chaseSpecialSlack: 0,  // 轴3 特殊牌型追逐：碰碰胡时额外能容忍的向听损失档数
-        wallCautionAt: 16,     // 轴4 残局求稳：牌墙剩这么多张开始求稳（越大越早转守）
+        wallCautionAt: 20,     // 轴4 残局求稳：更早转守
         honorHoldBias: -1,     // 轴5 字牌保留：孤立字牌保留档加成（越低越想早丢）
-        cannonHoldTier: 2,     // 轴6 炮牌截留：为压住炮牌，愿意多容忍几档tier变差
-        blockXiajiaTier: 2,    // 轴7a 不喂下家：为不喂下家，愿意多容忍几档tier变差
-        riskDefenseAt: 0.5,    // 轴2扩展：对手"看起来要听牌"的风险分到多少就转防守，越低越神经质
-        ukeireKeepAt: 0.5      // 吃/碰后进张数至少保留几成（保守：腰斩就 veto）
+        cannonHoldTier: 3,     // 轴6 炮牌截留：更愿意压炮牌
+        blockXiajiaTier: 3,    // 轴7a 不喂下家
+        riskDefenseAt: 0.4,    // 轴2扩展：更敏感转防守
+        ukeireKeepAt: 0.55     // 吃/碰后进张至少保留
     },
     aggressive: {
         chaseSpecialSlack: 2,
-        wallCautionAt: 6,
+        wallCautionAt: 10,     // 激进也比以前更早收一收
         honorHoldBias: 1,
-        cannonHoldTier: 0,
-        blockXiajiaTier: 0,
-        riskDefenseAt: 1.15,   // 只有极端信号（比如对家已经3组副露）才会让激进型也收一收
-        ukeireKeepAt: 0.25     // 激进：几乎不看进张损失，只看向听
+        cannonHoldTier: 1,     // 不再完全无视炮牌
+        blockXiajiaTier: 1,
+        riskDefenseAt: 0.95,
+        ukeireKeepAt: 0.3
     },
     shrewd: {
         chaseSpecialSlack: 1,
-        wallCautionAt: 10,
+        wallCautionAt: 14,
         honorHoldBias: 0,
-        cannonHoldTier: 1,
-        blockXiajiaTier: 1,
-        riskDefenseAt: 0.85,
-        ukeireKeepAt: 0.45     // 精明：进张损失过大也 veto，但比保守宽容
+        cannonHoldTier: 2,
+        blockXiajiaTier: 2,
+        riskDefenseAt: 0.7,
+        ukeireKeepAt: 0.5
     }
 };
 
@@ -439,16 +440,16 @@ function findKeepTenpaiTile(hand, exposed, player) {
         });
     }
     if (!keepTenpai.length) return null;
-    // 1) 有不点炮的保听优先；2) 尽量与原听口重叠；3) 听张数更多
+    // 1) 有不点炮的保听优先；2) 听张数更多；3) 尽量与原听口重叠
+    // 强化：优先宽听口，减少单骑/窄听被堵死
     const pool = keepTenpai.some(x => x.safe) ? keepTenpai.filter(x => x.safe) : keepTenpai;
     pool.sort((a, b) => {
-        if (b.overlap !== a.overlap) return b.overlap - a.overlap;
         if (b.waitCount !== a.waitCount) return b.waitCount - a.waitCount;
+        if (b.overlap !== a.overlap) return b.overlap - a.overlap;
         return 0;
     });
     const best = pool[0];
-    // 在同档最优里随机，避免死板
-    const top = pool.filter(x => x.overlap === best.overlap && x.waitCount === best.waitCount);
+    const top = pool.filter(x => x.waitCount === best.waitCount && x.overlap === best.overlap);
     const chosen = top[Math.floor(Math.random() * top.length)];
     aiWaitTiles[player] = chosen.wins;
     return chosen.tile;
@@ -621,8 +622,8 @@ function breakTiesByTwoStep(finalPool, hand, exposed) {
     for (let i = tsN; i < finalPool.length; i++) finalPool[i].twoStep = finalPool[i].shan;
     finalPool.sort((a, b) => a.twoStep - b.twoStep);
     const bestTs = finalPool[0].twoStep;
-    if (finalPool.some(c => c.twoStep - bestTs > 0.15)) {
-        return finalPool.filter(c => c.twoStep - bestTs <= 0.15);
+    if (finalPool.some(c => c.twoStep - bestTs > 0.1)) {
+        return finalPool.filter(c => c.twoStep - bestTs <= 0.1);
     }
     return finalPool;
 }
@@ -633,13 +634,25 @@ function breakTiesByTwoStep(finalPool, hand, exposed) {
 function avoidDangerWhenAttacking(chosenTile, heldPool, bestShan, player, style) {
     try {
         const chosenDanger = dangerCount(player, chosenTile);
-        const dangerThresh = style === 'conservative' ? 0 : (style === 'aggressive' ? 2 : 1);
+        // 强化：阈值整体下调，攻击时更少往枪口撞
+        const dangerThresh = style === 'conservative' ? 0 : (style === 'aggressive' ? 1 : 0);
         if (chosenDanger > dangerThresh) {
             const safer = heldPool.filter(c => c.safe && c.shan <= bestShan + 1)
                 .sort((a, b) => a.shan - b.shan || a.tier - b.tier)[0];
             if (safer) {
                 markAxisUsed(player, 'defense');
                 return safer.tile;
+            }
+        }
+        // 次优：若完全没有 safe，至少选危险家数更少的
+        if (chosenDanger >= 2) {
+            const lessDanger = heldPool
+                .map(c => ({ ...c, d: dangerCount(player, c.tile) }))
+                .filter(c => c.d < chosenDanger && c.shan <= bestShan + 1)
+                .sort((a, b) => a.d - b.d || a.shan - b.shan || a.tier - b.tier)[0];
+            if (lessDanger) {
+                markAxisUsed(player, 'defense');
+                return lessDanger.tile;
             }
         }
     } catch (e) {}

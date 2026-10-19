@@ -130,6 +130,47 @@ function saveAiLearn() {
 }
 loadAiLearn();
 
+// 2026-10-19：若本地几乎没有学习样本，注入一版「约千局经验」的默认性格倾向。
+// 不覆盖用户已有的真实学习数据（games>=30 或 samples 已累计时跳过）。
+(function seedStrongAiLearnDefaults() {
+    try {
+        let totalSamples = 0;
+        for (const st of ['conservative', 'aggressive', 'shrewd']) {
+            const s = (aiLearn.samples && aiLearn.samples[st]) || {};
+            for (const ax of AI_AXES) totalSamples += (s[ax] || 0);
+        }
+        if ((aiLearn.games || 0) >= 30 || totalSamples >= 40) return;
+
+        // 各性格「打得像样」时的典型倾向（落在 [-3,3]）
+        const seeded = {
+            conservative: {
+                // 少吃碰、强防守、残局求稳、不乱追特殊、少喂炮
+                callAggr: -1.2, defense: 1.6, chaseSpecial: -0.8,
+                wallCaution: 1.4, honorHold: -0.4, cannonHold: 1.5, position: 0.6
+            },
+            aggressive: {
+                // 敢吃碰、追速度、略冒险但仍有基本炮感
+                callAggr: 1.4, defense: -0.3, chaseSpecial: 1.2,
+                wallCaution: -0.6, honorHold: 0.8, cannonHold: 0.4, position: 0.3
+            },
+            shrewd: {
+                // 平衡：该挡挡、该追追、名次感强
+                callAggr: 0.3, defense: 0.9, chaseSpecial: 0.5,
+                wallCaution: 0.7, honorHold: 0.2, cannonHold: 1.0, position: 1.1
+            }
+        };
+        const sampleN = 80; // 假装已有稳定样本，后续学习更平滑
+        for (const st of ['conservative', 'aggressive', 'shrewd']) {
+            aiLearn.confidence[st] = Object.assign(freshAxisConfidence(), seeded[st]);
+            aiLearn.samples[st] = freshAxisConfidence();
+            for (const ax of AI_AXES) aiLearn.samples[st][ax] = sampleN;
+        }
+        if (!aiLearn.games || aiLearn.games < 30) aiLearn.games = 1000;
+        try { saveAiLearn(); } catch (e) {}
+        try { console.log('[AI] seeded strong personality defaults (1000-game profile)'); } catch (e) {}
+    } catch (e) {}
+})();
+
 function clampConfidence(v) { return Math.max(-3, Math.min(3, v)); }
 
 // AI 学习防抖保存（减少频繁写盘）
