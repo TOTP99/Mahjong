@@ -88,15 +88,6 @@ function renderDiscardWall() {
     const discardView = discardPile.slice(-20);
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
-    // 中央大展示（仅横屏显示，竖屏由 CSS 隐藏）：最新出牌
-    try {
-        const cd = $('center-discard');
-        if (cd) {
-            const last = discardPile[discardPile.length - 1];
-            cd.innerHTML = last ? tileImg(last.tile) : '';
-            cd.classList.toggle('show', !!last);
-        }
-    } catch (e) {}
 }
 
 // 牌墙计数 + 牌总数守恒诊断（有问题直接标红）+ title 提示
