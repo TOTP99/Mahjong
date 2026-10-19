@@ -1,0 +1,367 @@
+/* 17-modal-touch.css — 弹窗点击精度 + 横竖屏尺寸约束（最后加载，覆盖旧补丁）
+ *
+ * 目标：
+ * 1) 点按热区准确：不跟牌桌 --view-scale，按钮 ≥44px，间隙足够，避免点 A 触发 B
+ * 2) 横竖屏/旋转后仍可点：transform 全关、pointer-events 明确、safe-area 内边距
+ * 3) 矮屏/窄屏：内容区独立滚动，底栏主按钮始终可见可点
+ */
+
+/* ---------- 通用：所有全屏弹层 ---------- */
+#result-modal,
+#reveal-modal,
+#chi-choice-modal,
+#pool-modal,
+#bust-modal,
+#player-intro-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 60;
+    display: none;
+    flex-direction: row;
+    justify-content: center;
+    align-items: safe center;
+    box-sizing: border-box;
+    padding: max(8px, env(safe-area-inset-top, 0px))
+             max(10px, env(safe-area-inset-right, 0px))
+             max(8px, env(safe-area-inset-bottom, 0px))
+             max(10px, env(safe-area-inset-left, 0px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: manipulation;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+}
+#result-modal.show,
+#reveal-modal.show,
+#chi-choice-modal.show,
+#pool-modal.show,
+#bust-modal.show,
+#player-intro-modal.show {
+    display: flex !important;
+}
+
+/* 内容盒：禁止继承牌桌缩放，避免旋转后点击错位 */
+#result-modal .result-box,
+#reveal-modal .hu-box,
+#chi-choice-modal .hu-box,
+#pool-modal .pool-box,
+#bust-modal .bust-box,
+#player-intro-modal .player-intro-box {
+    transform: none !important;
+    transform-origin: center center;
+    pointer-events: auto;
+    touch-action: manipulation;
+    box-sizing: border-box;
+    margin: auto;
+    max-width: 100%;
+}
+
+/* ---------- 结算弹窗 ---------- */
+#result-modal { z-index: 58; }
+#result-modal .result-box {
+    width: min(94vw, 420px);
+    max-height: min(78dvh, calc(var(--app-height, 100dvh) - 20px), 560px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+#result-modal .result-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: auto;
+}
+/* 底栏主操作：始终钉在弹窗底部，不随内容卷走 */
+#result-modal .result-box > .result-adjust-btns {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 10px 4px max(4px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(212, 175, 55, 0.28);
+    background: linear-gradient(180deg, transparent, rgba(14, 22, 34, 0.96) 28%);
+    pointer-events: auto;
+    z-index: 3;
+}
+#result-modal .result-adjust-btns button,
+#result-modal #btn-toggle-adjust {
+    min-width: 112px;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 15px;
+    line-height: 1.2;
+    touch-action: manipulation;
+    pointer-events: auto;
+    position: relative;
+    z-index: 4;
+    -webkit-user-select: none;
+    user-select: none;
+}
+/* 调分 ×2/÷2 与输入框：真 44px */
+#result-payouts-edit .payout-row .payout-btn,
+#result-payouts-edit .payout-row input {
+    min-height: 44px;
+    touch-action: manipulation;
+}
+#result-payouts-edit .payout-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+}
+
+/* 纠正旧规则：max-width:520px 时把 result 压成 200px（竖屏几乎全中招） */
+@media screen and (max-width: 520px) {
+    #result-modal .result-box {
+        width: min(96vw, 420px) !important;
+    }
+    #reveal-modal .hu-box,
+    #chi-choice-modal .hu-box {
+        width: min(92vw, 360px) !important;
+    }
+}
+
+/* ---------- 亮牌 / 吃法选择 ---------- */
+#reveal-modal,
+#chi-choice-modal { z-index: 57; }
+#reveal-modal .hu-box,
+#chi-choice-modal .hu-box {
+    width: min(90vw, 360px);
+    max-height: min(72dvh, calc(var(--app-height, 100dvh) - 24px), 420px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.hu-box .hu-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+.hu-box .hu-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+.hu-actions button,
+.hu-actions .btn-primary,
+.hu-actions .btn-ghost {
+    min-width: 108px;
+    min-height: 44px;
+    padding: 10px 18px;
+    font-size: 15px;
+    touch-action: manipulation;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+/* 吃法选项：整行可点，高度够手指 */
+.hu-options .hu-opt,
+#chi-choice-options .hu-opt,
+#chi-choice-options button {
+    min-height: 48px;
+    padding: 8px 10px;
+    touch-action: manipulation;
+    pointer-events: auto;
+}
+
+/* ---------- 牌池 ---------- */
+#pool-modal { z-index: 56; }
+#pool-modal .pool-box {
+    width: min(92vw, 520px);
+    max-height: min(75dvh, calc(var(--app-height, 100dvh) - 24px), 480px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+#pool-modal #pool-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+#pool-modal .pool-box-close {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 18px !important;
+    border-radius: 8px !important;
+    touch-action: manipulation;
+    pointer-events: auto;
+}
+#pool-modal .hu-actions button {
+    min-width: 108px;
+    min-height: 44px;
+}
+
+/* ---------- 破产 ---------- */
+#bust-modal { z-index: 62; }
+#bust-modal .bust-box {
+    width: min(88vw, 320px);
+    max-height: min(70dvh, 360px);
+}
+#bust-modal .bust-btn {
+    min-height: 44px;
+    padding: 11px 8px;
+    font-size: 15px;
+    touch-action: manipulation;
+    pointer-events: auto;
+}
+
+/* ---------- 玩家介绍 ---------- */
+#player-intro-modal { z-index: 55; }
+#player-intro-modal .player-intro-box {
+    width: min(90vw, 340px);
+    max-height: min(65dvh, 360px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
+
+/* ---------- 吃碰杠确认条（非全屏，但必须好点） ---------- */
+#claim-indicator {
+    pointer-events: auto;
+    touch-action: manipulation;
+    z-index: 30;
+}
+#claim-indicator .claim-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 18px; /* 加大间距，避免点串 */
+}
+#claim-indicator .claim-btn {
+    position: relative;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 8px;
+    font-size: 28px;
+    line-height: 1;
+    touch-action: manipulation;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+/* 热区扩到约 52px，但用较小 inset 避免两键重叠 */
+#claim-indicator .claim-btn::after {
+    content: '';
+    position: absolute;
+    inset: -10px -8px;
+    z-index: -1;
+}
+#claim-indicator .claim-label {
+    pointer-events: none; /* 标签不抢点击 */
+}
+#claim-indicator .reset-btn {
+    min-width: 100px;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 13px;
+    touch-action: manipulation;
+    pointer-events: auto;
+}
+#claim-indicator .reset-btn::after {
+    inset: -6px -8px;
+}
+
+/* 竖屏 claim 条：位置可浮动，但保证可点、不被裁切 */
+html body.portrait-layout #claim-indicator {
+    max-width: min(46vw, 200px);
+    overflow: visible;
+    pointer-events: auto;
+}
+html body.portrait-layout #claim-indicator .claim-btn {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 28px;
+}
+
+/* ---------- 横屏矮屏（手机横过来高度很紧） ---------- */
+@media screen and (orientation: landscape) and (max-height: 420px) {
+    #result-modal .result-box {
+        width: min(88vw, 400px);
+        max-height: min(92dvh, calc(var(--app-height, 100dvh) - 12px));
+        padding: 10px 12px;
+    }
+    #result-modal .result-adjust-btns button,
+    #result-modal #btn-toggle-adjust {
+        min-height: 42px;
+        min-width: 96px;
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    #reveal-modal .hu-box,
+    #chi-choice-modal .hu-box {
+        max-height: min(90dvh, calc(var(--app-height, 100dvh) - 12px));
+        padding: 10px 12px;
+    }
+    #pool-modal .pool-box {
+        max-height: min(90dvh, calc(var(--app-height, 100dvh) - 12px));
+    }
+    #bust-modal .bust-box {
+        width: min(70vw, 300px);
+        padding: 12px 14px;
+    }
+}
+
+/* 极矮横屏 */
+@media screen and (orientation: landscape) and (max-height: 360px) {
+    #result-modal .result-box {
+        max-height: calc(var(--app-height, 100dvh) - 8px);
+    }
+    #result-modal .result-title { font-size: 16px; }
+    #result-modal .result-subtitle { font-size: 12px; }
+}
+
+/* ---------- 竖屏窄屏 ---------- */
+@media screen and (orientation: portrait) and (max-width: 380px) {
+    #result-modal .result-box {
+        width: 96vw !important;
+        max-height: min(82dvh, calc(var(--app-height, 100dvh) - 16px));
+        padding: 10px 8px;
+    }
+    #result-modal .result-adjust-btns button,
+    #result-modal #btn-toggle-adjust {
+        min-width: 100px;
+        min-height: 46px;
+        flex: 1 1 auto;
+    }
+    #bust-modal .bust-box { width: min(94vw, 300px); }
+}
+
+/* ---------- 旋转瞬间：防止 body 上的 touch-action 挡弹层 ---------- */
+body.portrait-layout #result-modal,
+body.portrait-layout #reveal-modal,
+body.portrait-layout #chi-choice-modal,
+body.portrait-layout #pool-modal,
+body.portrait-layout #bust-modal,
+body:not(.portrait-layout) #result-modal,
+body:not(.portrait-layout) #reveal-modal,
+body:not(.portrait-layout) #chi-choice-modal,
+body:not(.portrait-layout) #pool-modal,
+body:not(.portrait-layout) #bust-modal {
+    pointer-events: auto;
+    touch-action: manipulation;
+}

@@ -70,8 +70,9 @@
         #img-display-badge { font-size: 9px; }
         #wall-count-text { font-size: 9px; }
         #landscape-ctrl { font-size: 9px; }
-        .result-box { width: min(88vw, 200px); }
-        .hu-box { width: min(88vw, 240px); }
+        /* 原 200px/240px 过窄导致竖屏/窄屏按钮难点，改由 17-modal-touch 统一约束 */
+        .result-box { width: min(94vw, 420px); }
+        .hu-box { width: min(92vw, 360px); }
     }
 
     /* 高分屏稍收紧阴影，更利落 */
