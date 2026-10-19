@@ -6,7 +6,6 @@
     'use strict';
 
     var LINE1 = 'TP制作➸369❖❁';
-    var WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     // 时分盒子：宽度取 4.6 个数字宽（4位数字+1个冒号的最大宽度），右侧间隙 0.6em（原空格约 0.3em 的两倍）
     var HMS_STYLE = 'display:inline-block;width:4.6ch;margin-right:0.6em;';
 
@@ -32,15 +31,14 @@
     function render() {
         var d = new Date();
         var hms = pad(d.getHours()) + ':' + pad(d.getMinutes());
-        // 时分放进固定宽度的盒子，间隙约为原来一个空格的两倍；分钟变化时后面的文字不再左右抖动
-        var clock = '<span style="' + HMS_STYLE + '">' + hms + '</span>' +
-                    WEEK[d.getDay()] + ' ' +
-                    pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getFullYear() % 100);
-        var html2 = clock;
+        // 只显示时分
+        var html2 = '<span style="' + HMS_STYLE + '">' + hms + '</span>';
         // 只维护第一个文字节点：署名后面追加的按钮（17-toolbar.js）不会被清掉
+        // 竖屏署名移到右下角（#credit-corner），顶栏只留按钮
+        var wantSig = (document.body && document.body.classList.contains('portrait-layout')) ? '' : LINE1;
         var n1 = el1.firstChild;
-        if (!n1 || n1.nodeType !== 3) el1.insertBefore(document.createTextNode(LINE1), el1.firstChild);
-        else if (n1.nodeValue !== LINE1) n1.nodeValue = LINE1;
+        if (!n1 || n1.nodeType !== 3) el1.insertBefore(document.createTextNode(wantSig), el1.firstChild);
+        else if (n1.nodeValue !== wantSig) n1.nodeValue = wantSig;
         if (html2 !== lastHtml2) { el2.innerHTML = html2; lastHtml2 = html2; }
 
         if (badge) {
