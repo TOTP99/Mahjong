@@ -126,30 +126,6 @@
         box-shadow: none;
     }
     #claim-focus-tile.show { display: flex; align-items: center; justify-content: center; }
-    /* 中央出牌大展示：仅横屏（竖屏隐藏），最新打出的牌 */
-    #center-discard {
-        display: none;
-        position: absolute;
-        left: 50%;
-        top: 42%;
-        transform: translate(-50%, -50%);
-        z-index: 11;
-        pointer-events: none;
-    }
-    body:not(.portrait-layout) #center-discard.show { display: flex; align-items: center; justify-content: center; }
-    body:not(.portrait-layout) #center-discard .tile-img {
-        width: min(56px, 15vh);
-        height: auto;
-        border-radius: 6px;
-        border: 1.5px solid rgba(232, 197, 106, 0.7);
-        box-shadow:
-            0 4px 12px rgba(0, 0, 0, 0.5),
-            0 0 16px rgba(232, 197, 106, 0.25);
-    }
-    /* 吃碰杠小牌出现时，大牌让位（避免重叠） */
-    #game-table:has(#claim-focus-tile.show) #center-discard {
-        display: none !important;
-    }
     #claim-focus-tile .tile {
         width: 29px;
         height: 39px;
