@@ -2,10 +2,10 @@
  * 只改视觉，不碰功能逻辑。所有尺寸用智能值，小屏自动缩。
  */
 
-/* ===== 庄家光环：紫色呼吸光（黄色在金色界面上看不清） ===== */
+/* ===== 庄家光环：青色呼吸光（暖金/深绿的对比色，最醒目） ===== */
 @keyframes dealer-glow {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(178,102,255,.95), 0 0 12px rgba(178,102,255,.5); }
-    50% { box-shadow: 0 0 0 2px rgba(178,102,255,.95), 0 0 24px rgba(178,102,255,.85); }
+    0%, 100% { box-shadow: 0 0 0 2px rgba(0,229,255,.95), 0 0 12px rgba(0,229,255,.5); }
+    50% { box-shadow: 0 0 0 2px rgba(0,229,255,.95), 0 0 24px rgba(0,229,255,.85); }
 }
 .player.is-dealer .avatar img {
     animation: dealer-glow 2.4s ease-in-out infinite;
