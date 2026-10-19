@@ -374,7 +374,12 @@ function markDealer() {
     for (const p of PLAYERS) {
         const s = scores[p];
         const el = $('score-' + p);
-        if (el) el.innerText = (s >= 0 ? '+' : '') + s;
+        if (el) el.innerText = s;
+        // 庄家光环：头像加呼吸金光
+        try {
+            const pd = $('p-' + p);
+            if (pd) pd.classList.toggle('is-dealer', p === dealer);
+        } catch (e) {}
     }
     scheduleSaveProgress();
 }

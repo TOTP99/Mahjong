@@ -170,6 +170,7 @@ function checkPortraitGuard() {
     if (wasPortrait !== !!isPortrait) {
         try { hideExposedInfo(); } catch (e) {}
         try { markDealer(); } catch (e) {}
+        try { if (typeof window.syncToolbarButtons === 'function') window.syncToolbarButtons(); } catch (e) {}
         try { render(); } catch (e) {}
     }
     setTimeout(() => { try { fitBottomHand(); } catch (e) {} }, 60);

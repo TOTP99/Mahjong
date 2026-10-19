@@ -69,16 +69,27 @@
 
     /* ---------- 按钮 ---------- */
     var LABEL = {
-        sfx: function () { return sfxOn ? '音效开' : '音效关'; },
-        danger: function () { return dangerOn ? '危险开' : '危险关'; },
-        chips: function () { return '初始筹码'; }
+        sfx: function () { return '音效开关'; },
+        danger: function () { return '炮牌提醒'; },
+        chips: function () { return '筹码重置'; }
+    };
+    // 横屏简略版（防拥挤）
+    var LABEL_LS = {
+        sfx: function () { return '音效'; },
+        danger: function () { return '炮牌'; },
+        chips: function () { return '筹码'; }
     };
 
     function syncButtons() {
+        var isPortrait = document.body && document.body.classList.contains('portrait-layout');
+        var L = isPortrait ? LABEL : LABEL_LS;
         var btns = document.querySelectorAll('.qj-btn');
         for (var i = 0; i < btns.length; i++) {
             var k = btns[i].getAttribute('data-k');
-            btns[i].textContent = LABEL[k]();
+            btns[i].textContent = L[k]();
+            // 开/关用样式区分：开=金色亮，关=灰色暗
+            var on = (k === 'sfx' && sfxOn) || (k === 'danger' && dangerOn) || k === 'chips';
+            btns[i].classList.toggle('off', !on);
         }
     }
 
@@ -157,4 +168,6 @@
     }
 
     init();
+    // 暴露给横竖屏切换时重刷文字
+    window.syncToolbarButtons = syncButtons;
 })();
