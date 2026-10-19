@@ -126,7 +126,7 @@
         box-shadow: none;
     }
     #claim-focus-tile.show { display: flex; align-items: center; justify-content: center; }
-    /* 中央出牌大展示：最新打出的牌，智能尺寸（竖屏64px/横屏56px封顶，小屏自动缩） */
+    /* 中央出牌大展示：仅横屏（竖屏隐藏），最新打出的牌 */
     #center-discard {
         display: none;
         position: absolute;
@@ -136,9 +136,9 @@
         z-index: 11;
         pointer-events: none;
     }
-    #center-discard.show { display: flex; align-items: center; justify-content: center; }
-    #center-discard .tile-img {
-        width: min(64px, 18vw);
+    body:not(.portrait-layout) #center-discard.show { display: flex; align-items: center; justify-content: center; }
+    body:not(.portrait-layout) #center-discard .tile-img {
+        width: min(56px, 15vh);
         height: auto;
         border-radius: 6px;
         border: 1.5px solid rgba(232, 197, 106, 0.7);
@@ -146,8 +146,9 @@
             0 4px 12px rgba(0, 0, 0, 0.5),
             0 0 16px rgba(232, 197, 106, 0.25);
     }
-    body:not(.portrait-layout) #center-discard .tile-img {
-        width: min(56px, 15vh);
+    /* 吃碰杠小牌出现时，大牌让位（避免重叠） */
+    #game-table:has(#claim-focus-tile.show) #center-discard {
+        display: none !important;
     }
     #claim-focus-tile .tile {
         width: 29px;

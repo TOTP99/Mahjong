@@ -2,19 +2,19 @@
  * 只改视觉，不碰功能逻辑。所有尺寸用智能值，小屏自动缩。
  */
 
-/* ===== 庄家光环：呼吸金光 ===== */
+/* ===== 庄家光环：紫色呼吸光（黄色在金色界面上看不清） ===== */
 @keyframes dealer-glow {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(232,197,106,.9), 0 0 12px rgba(232,197,106,.45); }
-    50% { box-shadow: 0 0 0 2px rgba(232,197,106,.9), 0 0 22px rgba(232,197,106,.75); }
+    0%, 100% { box-shadow: 0 0 0 2px rgba(178,102,255,.95), 0 0 12px rgba(178,102,255,.5); }
+    50% { box-shadow: 0 0 0 2px rgba(178,102,255,.95), 0 0 24px rgba(178,102,255,.85); }
 }
 .player.is-dealer .avatar img {
     animation: dealer-glow 2.4s ease-in-out infinite;
 }
 
-/* ===== 头像统一尺寸 ===== */
+/* ===== 头像统一尺寸（竖屏 50px = 56px 缩 10%，横屏 48px） ===== */
 body.portrait-layout .avatar img {
-    width: 56px !important;
-    height: 56px !important;
+    width: 50px !important;
+    height: 50px !important;
 }
 body:not(.portrait-layout) .avatar img {
     width: 48px !important;
