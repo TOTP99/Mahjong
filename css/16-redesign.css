@@ -1,0 +1,43 @@
+/* 16-redesign.css — UI 重设计视觉层（v3 方案）
+ * 只改视觉，不碰功能逻辑。所有尺寸用智能值，小屏自动缩。
+ */
+
+/* ===== 庄家光环：呼吸金光 ===== */
+@keyframes dealer-glow {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(232,197,106,.9), 0 0 12px rgba(232,197,106,.45); }
+    50% { box-shadow: 0 0 0 2px rgba(232,197,106,.9), 0 0 22px rgba(232,197,106,.75); }
+}
+.player.is-dealer .avatar img {
+    animation: dealer-glow 2.4s ease-in-out infinite;
+}
+
+/* ===== 头像统一尺寸 ===== */
+body.portrait-layout .avatar img {
+    width: 56px !important;
+    height: 56px !important;
+}
+body:not(.portrait-layout) .avatar img {
+    width: 48px !important;
+    height: 48px !important;
+}
+
+/* ===== 分数：纯数字，灰金色，小两号 ===== */
+.player-score {
+    color: #b8a67a !important;
+    font-size: .82em !important;
+    font-weight: 600;
+    letter-spacing: .03em;
+}
+
+/* ===== 按钮统一：8px 圆角 + 1px 金边 + 深底 ===== */
+#discard-query-btn,
+#btn-view-zoom-in,
+#btn-view-zoom-out,
+.btn-primary,
+.btn-ghost,
+.bust-btn {
+    border-radius: 8px !important;
+    border: 1px solid #8a6d3b !important;
+    background: #1a1410 !important;
+    color: #e8c56a !important;
+}

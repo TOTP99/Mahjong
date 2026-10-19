@@ -1,35 +1,43 @@
-/* 13-toolbar.css — 署名后的三个小按钮：音效 / 危险提示 / 初始筹码
- * 外观与新版署名行按钮一致：无边框、透明底、金色(var(--gold))、字重 600，按下 opacity 变淡；
- * 点击只切换文字（音效开↔音效关、危险开↔危险关）。纯新增，不改任何原有样式。
- * 字号：竖屏跟随署名行（#credit-label 11px），横屏与「横屏最大」按钮一致（10px，窄屏 9px）。
+/* 13-toolbar.css — 顶栏三个开关：音效开关 / 炮牌提醒 / 筹码重置
+ * 统一样式：8px 圆角、1px 金边、深底；开=金字亮边，关=灰字暗边。
+ * 纯视觉层，不改任何功能逻辑。
  */
 .qj-tb { display: inline; }
 .qj-tb .qj-btn {
     position: relative;
     pointer-events: auto;           /* #credit-label 是 pointer-events:none，按钮需单独可点 */
-    background: transparent; border: none; border-radius: 0;
-    color: var(--gold);
-    font-size: inherit; font-weight: 600;
-    letter-spacing: 0.04em; font-family: inherit; line-height: inherit;
-    margin: 0 0 0 12px; padding: 2px;
-    cursor: pointer; white-space: nowrap; vertical-align: baseline;
+    background: #1a1410;
+    border: 1px solid #8a6d3b;
+    border-radius: 8px;
+    color: #e8c56a;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.04em; font-family: inherit; line-height: 1;
+    margin: 0 0 0 8px; padding: 6px 10px;
+    cursor: pointer; white-space: nowrap; vertical-align: middle;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     -webkit-user-select: none; user-select: none;
+    transition: color .2s, border-color .2s, opacity .2s;
 }
+/* 关状态：灰字暗边 */
+.qj-tb .qj-btn.off {
+    color: #8a8a8a;
+    border-color: #4a4a4a;
+    opacity: .75;
+}
+.qj-tb .qj-btn:active { transform: scale(.96); }
 /* 视觉保持小字，隐形热区补到约 44px 高 */
 .qj-tb .qj-btn::after {
-    content: ''; position: absolute; inset: -14px -8px;
+    content: ''; position: absolute; inset: -10px -6px;
 }
-.qj-tb .qj-btn:active { text-shadow: 0 0 8px rgba(212, 175, 55, 0.9); }
 
-/* 横屏：署名两行被隐藏，按钮放在左侧栏「TP制作 牌墙 横屏最大」那一行的下面，居中，放不下自动换行 */
+/* 横屏：左侧栏横向一排 */
 #qj-tb-ls { display: none; text-align: center; line-height: 1.2; }
 body:not(.portrait-layout) #qj-tb-ls { display: block; }
 #qj-tb-ls .qj-tb .qj-btn {
-    font-size: 10px; letter-spacing: 0.08em; line-height: 1.2;
-    margin: 0 3px; padding: 0 2px;
+    font-size: 11px; letter-spacing: 0.04em; line-height: 1;
+    margin: 2px 4px; padding: 5px 8px;
 }
 @media screen and (max-width: 520px) {
-    #qj-tb-ls .qj-tb .qj-btn { font-size: 9px; }
+    #qj-tb-ls .qj-tb .qj-btn { font-size: 10px; padding: 4px 6px; }
 }
