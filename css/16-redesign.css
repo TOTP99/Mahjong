@@ -41,3 +41,45 @@ body:not(.portrait-layout) .avatar img {
     background: #1a1410 !important;
     color: #e8c56a !important;
 }
+
+/* ===== 竖屏顶栏单行：时钟框 + 三按键；署名移右下角 ===== */
+/* 右下角署名小字：仅竖屏 */
+#credit-corner {
+    display: none;
+}
+body.portrait-layout #credit-corner {
+    display: block;
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
+    font-size: 10px;
+    color: var(--gold);
+    opacity: .5;
+    pointer-events: none;
+    user-select: none;
+    z-index: 5;
+}
+/* 竖屏顶栏单行：时钟和按钮同一行 */
+body.portrait-layout #credit-label-2 {
+    /* 时钟做成按键同款框 */
+    background: #1a1410;
+    border: 1px solid #8a6d3b;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    text-align: center;
+    /* 和按钮同一行：左时钟，右按钮 */
+    left: max(6px, var(--sal)) !important;
+    right: auto !important;
+    bottom: calc(100% + 8px) !important;
+}
+body.portrait-layout #credit-label {
+    /* 只剩按钮：右对齐，和时钟同一行 */
+    text-align: right !important;
+    bottom: calc(100% + 8px) !important;
+    left: auto !important;
+    right: 6px !important;
+    /* 给时钟留位置 */
+    max-width: 70%;
+}
