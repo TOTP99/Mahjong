@@ -88,7 +88,7 @@ function renderDiscardWall() {
     const discardView = discardPile.slice(-20);
     wall.innerHTML = discardView.map((d, i, arr) =>
         `<div class="discardTile${i === arr.length - 1 ? ' latest' : ''}">${tileImg(d.tile)}</div>`).join('');
-    // 中央大展示：最新出牌（纯显示，不改逻辑）
+    // 中央大展示（仅横屏显示，竖屏由 CSS 隐藏）：最新出牌
     try {
         const cd = $('center-discard');
         if (cd) {
