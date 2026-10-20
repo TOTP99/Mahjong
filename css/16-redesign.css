@@ -11,7 +11,8 @@
     animation: dealer-glow 2.4s ease-in-out infinite;
 }
 
-/* ===== 头像统一尺寸（竖屏横屏统一 48px） ===== */
+/* ===== 头像统一尺寸（竖屏横屏统一 48px） =====
+   2026-10-20 起头像尺寸只由此处决定。旧响应式分档已删：竖屏 AI 44/自家 48、矮屏 40/44、极矮 34/36；横屏基准 48、矮屏 36、极矮 30（原在 02/06/07/08/09，均被本文件 !important 覆盖从未生效）。如需恢复分档，照此数值重写即可。 */
 body.portrait-layout .avatar img {
     width: 48px !important;
     height: 48px !important;

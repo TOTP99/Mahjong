@@ -34,11 +34,7 @@ body:not(.portrait-layout) {
     body:not(.portrait-layout) { --wallcount-fs-base: 9px; }
 }
 
-/* 头像 + 分数 */
-body:not(.portrait-layout) .avatar img {
-    width: calc(var(--avatar-base) * var(--ui-k, 1));
-    height: calc(var(--avatar-base) * var(--ui-k, 1));
-}
+/* 分数（头像尺寸统一在 16-redesign.css；此处 --avatar-base 仅供左右家位置偏移计算） */
 body:not(.portrait-layout) .player-score {
     font-size: calc(var(--score-base) * var(--ui-k, 1));
 }

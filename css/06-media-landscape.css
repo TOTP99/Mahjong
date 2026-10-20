@@ -6,7 +6,6 @@
             height: min(96vh, 56vw);
             border-radius: 12px;
         }
-        .avatar img { width: 36px; height: 36px; }
         .player-score { font-size: 10px; }
         #wall-count { font-size: 10px; top: 5%; height: 88%; }
         /* 查牌池按钮与废牌池同步下移到 5%，与左栏同一水平线 */
@@ -23,7 +22,6 @@
             height: 100vh;
             border-radius: 0;
         }
-        .avatar img { width: 30px; height: 30px; }
         /* 偏移随头像基准联动（原 40px=48×0.833，36px=48×0.75），不再手算像素 */
         .left { left: calc(18% + var(--avatar-base) * 0.833); top: calc(50% - var(--avatar-base) * 0.75); }
         .right { right: calc(18% + var(--avatar-base) * 0.833); top: calc(50% - var(--avatar-base) * 0.75); }
@@ -42,7 +40,6 @@
             height: min(90vh, 48vw);
             border-radius: 20px;
         }
-        .avatar img { width: 48px; height: 48px; }
         #wall-count { font-size: 12px; }
         .stat-line { font-size: 12px; }
     }

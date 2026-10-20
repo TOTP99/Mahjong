@@ -302,12 +302,7 @@
     }
     /* 弹层内容与桌面同一缩放比例（相对原始正常大小） */
 
-    /* ===== 竖屏专用：头像 / 分数 / 说明文字 放大 =====
-       头像体系（单调）：AI 44 → 矮屏 40 → 极矮 34；自家 48 → 44 → 36（自家略大，主次分明） */
-    body.portrait-layout .avatar img {
-        width: 44px;
-        height: 44px;
-    }
+    /* ===== 竖屏专用：分数 / 说明文字 放大（头像尺寸统一在 16-redesign.css，横竖屏均 48px） ===== */
     body.portrait-layout #wall-count {
         font-size: 13px;
     }
