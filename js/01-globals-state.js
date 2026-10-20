@@ -330,26 +330,6 @@ function trackAiCall(player) {
     const style = (typeof aiPersonality !== 'undefined' && aiPersonality[player]) || null;
     if (style && aiStyleStats[style]) aiStyleStats[style].calls += 1;
 }
-// 三个性格在关键指标上的分化度：每项返回 { conservative, aggressive, shrewd, std }
-// （std 越大说明三个 AI 性格分化越明显，std→0 说明学成了同一个模子）
-function aiDivergence() {
-    const std = arr => {
-        const m = arr.reduce((a, b) => a + b, 0) / arr.length;
-        return Math.sqrt(arr.reduce((a, b) => a + (b - m) * (b - m), 0) / arr.length);
-    };
-    const per = fn => {
-        const o = {};
-        for (const s of ['conservative', 'aggressive', 'shrewd']) o[s] = fn(aiStyleStats[s]);
-        o.std = std([o.conservative, o.aggressive, o.shrewd]);
-        return o;
-    };
-    const rate = x => x.games ? x.calls / x.games : 0;      // 场均吃碰
-    const dealRate = x => x.games ? x.dealIns / x.games : 0; // 场均点炮
-    const winRate = x => x.games ? x.wins / x.games : 0;     // 胜率
-    const avgTurns = x => x.wins ? x.winTurns / x.wins : 0;   // 平均胡牌轮数
-    const avgFan = x => x.wins ? x.winFan / x.wins : 0;       // 平均番数
-    return { callRate: per(rate), dealInRate: per(dealRate), winRate: per(winRate), avgWinTurns: per(avgTurns), avgWinFan: per(avgFan) };
-}
 
 const FULL_DECK_SIZE = suits.length * 9 * 4 + honors.length * 4; // 136
 let _lastTileWarnKey = '';
