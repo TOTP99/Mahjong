@@ -11,10 +11,10 @@
     animation: dealer-glow 2.4s ease-in-out infinite;
 }
 
-/* ===== 头像统一尺寸（竖屏 50px = 56px 缩 10%，横屏 48px） ===== */
+/* ===== 头像统一尺寸（竖屏横屏统一 48px） ===== */
 body.portrait-layout .avatar img {
-    width: 50px !important;
-    height: 50px !important;
+    width: 48px !important;
+    height: 48px !important;
 }
 body:not(.portrait-layout) .avatar img {
     width: 48px !important;
