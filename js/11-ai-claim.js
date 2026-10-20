@@ -2,8 +2,8 @@
 // 吃/碰的"要不要"（shouldAiChi/shouldAiPeng/scoreChiCombo/findAiChi/findAiPeng/findRonPriority），
 // AI 回合动作（aiDiscard/aiPengClaim/aiChiClaim/aiDrawReplacement），
 // 流程推进（resolveAiPengOrAdvance/checkClaimOrAdvance/advanceTurn/takeTilesFromHand）。
-// "打出哪张"的决策在 11-ai-discard-3.js（chooseAiDiscardTile）。
-// 2026-09-30 骨架重组：自 11-ai-discard-claim-3.js 拆分，零行为变化。
+// "打出哪张"的决策在 11-ai-discard.js（chooseAiDiscardTile）。
+// 2026-09-30 骨架重组：自旧文件 11-ai-discard-claim.js（已拆分） 拆分，零行为变化。
 function aiDiscard(player) {
     if (gameOver) return;
     const hand = hands[player];
@@ -253,7 +253,7 @@ function nextPlayerOf(p) {
     return turnOrder[(idx + 1) % turnOrder.length];
 }
 
-// ---------- 吃法评估与"吃不吃"（自 11-ai-discard-3.js 移入：吃碰决策归 11-ai-claim） ----------
+// ---------- 吃法评估与"吃不吃"（自 11-ai-discard.js 移入：吃碰决策归 11-ai-claim） ----------
 /** 评估一种吃法：向听下降优先，其次三门齐，再次不拆对子 */
 function scoreChiCombo(hand, tile, combo, exposed, player) {
     const style = aiPersonality[player] || 'shrewd';
@@ -454,6 +454,11 @@ function checkClaimOrAdvance(player, tile) {
     const canP = canClaimMore && canPeng(hands.bottom, tile);
     const canG = canClaimMore && canGang(hands.bottom, tile);
     const chiCombos = (canClaimMore && player === 'left') ? findChiCombos(hands.bottom, tile) : []; // 只能吃上家的牌
+    // 优先级：碰/杠 > 吃。你只能吃、而某个 AI 能碰/杠这张牌时，AI 先碰/杠，不再给你吃
+    if (!canP && !canG && chiCombos.length && findAiPeng(player, tile)) {
+        resolveAiPengOrAdvance(player, tile);
+        return;
+    }
     if (canP || canG || chiCombos.length) {
         pendingClaim = { tile, fromPlayer: player, canPeng: canP, canGang: canG, chiCombos, mode: 'claim' };
         const options = [canG ? '杠' : null, canP ? '碰' : null, chiCombos.length ? '吃' : null].filter(Boolean).join('/');

@@ -1,7 +1,7 @@
 // ========== 11-ai-discard：AI 弃牌决策 ==========
 // 三家 AI "打出哪张"：保听 → 候选排序 → 求稳过滤 → 炮牌截留/不喂下家 → tier 收窄 → 打平（进张数/2步期望）→ 攻击危险规避。
-// 吃/碰的"要不要"（shouldAiChi/shouldAiPeng）与叫牌执行、回合推进在 11-ai-claim-3.js。
-// 2026-09-30 骨架重组：自 11-ai-discard-claim-3.js 拆分，零行为变化。
+// 吃/碰的"要不要"（shouldAiChi/shouldAiPeng）与叫牌执行、回合推进在 11-ai-claim.js。
+// 2026-09-30 骨架重组：自旧文件 11-ai-discard-claim.js（已拆分） 拆分，零行为变化。
 /** 缓存 estimateShanten：键=排序后暗牌+副露数，一次 AI 决策内避免重复跑 DFS */
 const _shantenCache = new Map();
 function estimateShantenCached(concealed, exposed) {

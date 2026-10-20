@@ -454,6 +454,11 @@ function saveGameProgress() {
             lastDrawWasFinal: cloneState(lastDrawWasFinal),
             aiWaitTiles: cloneState(aiWaitTiles),
             // 仅持久化「下一局」；进行中吃碰杠刷新后由玩家重选，避免半自动卡死
+            // 本局进度类变量：刷新后保持 AI 听牌估计/学习记账连续
+            handTurnCount,
+            lastCallTurn: cloneState(lastCallTurn),
+            rankAtDeal: rankAtDeal ? cloneState(rankAtDeal) : null,
+            aiAxisUsed: { top: [...aiAxisUsed.top], left: [...aiAxisUsed.left], right: [...aiAxisUsed.right] },
             pendingClaimMode: pendingClaim && pendingClaim.mode === 'nextGame' ? 'nextGame' : null,
             // 等你选「亮牌/不亮」时刷新：记下类型，读档后重新弹窗
             pendingRevealKind: (typeof pendingReveal !== 'undefined') ? pendingReveal : null
@@ -529,6 +534,12 @@ function loadGameProgress() {
         lastDrawnIndex = saved.lastDrawnIndex ?? null;
         pendingClaim = saved.pendingClaimMode === 'nextGame' ? { mode: 'nextGame' } : null;
         savedPendingReveal = saved.pendingRevealKind || null;
+        handTurnCount = Number.isInteger(saved.handTurnCount) ? saved.handTurnCount : 0;
+        if (saved.lastCallTurn) lastCallTurn = Object.assign({ top: -1, left: -1, right: -1 }, saved.lastCallTurn);
+        rankAtDeal = saved.rankAtDeal || null;
+        if (saved.aiAxisUsed) {
+            for (const p of ['top', 'left', 'right']) aiAxisUsed[p] = new Set(Array.isArray(saved.aiAxisUsed[p]) ? saved.aiAxisUsed[p] : []);
+        }
         restoringGame = false;
         return true;
     } catch (e) {
