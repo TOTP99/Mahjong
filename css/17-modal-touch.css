@@ -250,25 +250,21 @@
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
-    gap: 18px; /* 加大间距，避免点串 */
+    /* 对勾/叉的间距沿用 03（横屏 10px）与 07/08（竖屏 14px），这里不再覆盖 */
 }
+/* 按钮本体保持图标大小（尺寸/间距由 03、07、08 决定，恢复旧版的紧凑距离）；
+   触摸热区只靠 ::after 向外扩：高约 44px，左右各扩 5px（小于间距的一半，两键热区不重叠） */
 #claim-indicator .claim-btn {
     position: relative;
-    min-width: 48px;
-    min-height: 48px;
-    padding: 8px;
-    font-size: 28px;
-    line-height: 1;
     touch-action: manipulation;
     pointer-events: auto;
     -webkit-user-select: none;
     user-select: none;
 }
-/* 热区扩到约 52px，但用较小 inset 避免两键重叠 */
 #claim-indicator .claim-btn::after {
     content: '';
     position: absolute;
-    inset: -10px -8px;
+    inset: -8px -5px;
     z-index: -1;
 }
 #claim-indicator .claim-label {
@@ -291,11 +287,6 @@ html body.portrait-layout #claim-indicator {
     max-width: min(46vw, 200px);
     overflow: visible;
     pointer-events: auto;
-}
-html body.portrait-layout #claim-indicator .claim-btn {
-    min-width: 48px;
-    min-height: 48px;
-    font-size: 28px;
 }
 
 /* ---------- 横屏矮屏（手机横过来高度很紧） ---------- */
