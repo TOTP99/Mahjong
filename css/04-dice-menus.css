@@ -75,16 +75,7 @@
         -webkit-backdrop-filter: blur(12px);
         box-sizing: border-box;
     }
-    .hu-box .hu-scroll {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-        touch-action: pan-y;
-    }
-    .hu-box .hu-title { flex: 0 0 auto; }
+        .hu-box .hu-title { flex: 0 0 auto; }
     .hu-box .hu-actions { flex: 0 0 auto; }
     .hu-title {
         font-size: var(--fs-t1); font-weight: 700; letter-spacing: 0.1em;
