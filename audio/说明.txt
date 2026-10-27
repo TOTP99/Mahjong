@@ -1,0 +1,55 @@
+报牌音频（离线合成普通话女声）。游戏实际使用的是 js/19-voice-data.js 里内嵌的同一批数据，
+本目录的 mp3 仅供试听/替换。文件名=内容：
+
+m1.mp3  一万
+m2.mp3  二万
+m3.mp3  三万
+m4.mp3  四万
+m5.mp3  五万
+m6.mp3  六万
+m7.mp3  七万
+m8.mp3  八万
+m9.mp3  九万
+t1.mp3  一条
+t2.mp3  二条
+t3.mp3  三条
+t4.mp3  四条
+t5.mp3  五条
+t6.mp3  六条
+t7.mp3  七条
+t8.mp3  八条
+t9.mp3  九条
+p1.mp3  一筒
+p2.mp3  二筒
+p3.mp3  三筒
+p4.mp3  四筒
+p5.mp3  五筒
+p6.mp3  六筒
+p7.mp3  七筒
+p8.mp3  八筒
+p9.mp3  九筒
+z1.mp3  东风
+z2.mp3  南风
+z3.mp3  西风
+z4.mp3  北风
+z5.mp3  红中
+z6.mp3  发财
+z7.mp3  白板
+chi.mp3  吃
+peng.mp3  碰
+gang.mp3  杠
+hu.mp3  胡了
+zimo.mp3  自摸
+liuju.mp3  流局
+liangpai.mp3  亮牌
+zhuang_e.mp3  东庄
+dp_e.mp3  东家点炮
+zhuang_s.mp3  南庄
+dp_s.mp3  南家点炮
+zhuang_w.mp3  西庄
+dp_w.mp3  西家点炮
+zhuang_n.mp3  北庄
+dp_n.mp3  北家点炮
+dp_you.mp3  你点炮
+
+(m=万 t=条 p=筒；换声音：改完 mp3 后需重新生成 js/19-voice-data.js，可让我代做)
