@@ -5,10 +5,18 @@
 //   3) runSelfPlay(200, {fast:true, logEvery:50})
 //
 // 说明：
-// - 会把 bottom（原人类）也当成 AI（默认 shrewd），自动出牌/吃碰/胡
-// - 尽量跳过渲染与音效，用短延时推进
-// - 训练结束后可 localStorage 查看 qionghu_mahjong_ai_learn_v1
-// - 不影响已有真实对局存档键；建议训练前可手动备份 aiLearn
+// - 会把 bottom（原人类）也当成 AI，自动出牌/胡；对别家打出的牌一律「过」（不吃不碰不杠明牌，
+//   自己回合仍可能暗杠/加杠，由 aiDiscard 决定）。bottom 因此几乎不开门、胜率会明显偏低，
+//   训练样本主要来自 top / left / right 三家
+// - 尽量跳过渲染与音效，用 0ms 延时推进（仍尊重 gameEpoch 与骰子仪式）
+// - 筹码输光弹出的破产窗自动选「继续当前场」
+// - 训练会改动当前对局与 localStorage 里的 AI 学习数据（qionghu_mahjong_ai_learn_v1），
+//   建议在单独的浏览器配置/无痕窗口里跑，或训练前先备份该键
+//
+// 2026-10-19 修复：
+// - 旧版调用了不存在的 confirmHu / confirmNextHand，且每个 tick 都重复调用 aiDiscard('bottom')，
+//   会把手牌连续打光（手牌张数异常）并卡死；现在每个回合只出一次牌，并避开杠后补牌自带的出牌排程
+// - 下一局改走 startGame()（含破产窗拦截），局数用自己的计数器，不再靠 aiLearn.games 差值
 
 (function () {
     'use strict';
@@ -18,14 +26,13 @@
     const SelfPlay = {
         running: false,
         targetGames: 0,
-        startGames: 0,
         done: 0,
         wins: { top: 0, left: 0, right: 0, bottom: 0, draw: 0 },
         opts: {},
-        _origGameTimeout: null,
-        _origRender: null,
-        _origSpeak: null,
-        _origSfx: {},
+        bottomPending: false,   // 杠后补牌流程已自行排了 bottom 的出牌，harness 不要再插手
+        _lastKey: '',
+        _handEndArmed: false,
+        _orig: {},              // 被替换的全局函数
         _timer: null
     };
 
@@ -33,157 +40,144 @@
         try { console.log.apply(console, ['[SelfPlay]'].concat([].slice.call(arguments))); } catch (e) {}
     }
 
-    function patchFast() {
-        // 把 gameTimeout 改成几乎立即执行，仍尊重 gameEpoch
-        if (!SelfPlay._origGameTimeout && typeof gameTimeout === 'function') {
-            SelfPlay._origGameTimeout = gameTimeout;
-            window.gameTimeout = function (fn, ms) {
-                const epoch = gameEpoch;
-                const delay = SelfPlay.opts.fast ? 0 : Math.min(ms || 0, 8);
-                return setTimeout(function () {
-                    if (epoch !== gameEpoch) return;
-                    try { fn(); } catch (e) { console.warn('[SelfPlay] timer error', e); }
-                }, delay);
-            };
+    function patch(name, fn) {
+        if (typeof window[name] === 'function' && !(name in SelfPlay._orig)) {
+            SelfPlay._orig[name] = window[name];
+            window[name] = fn(SelfPlay._orig[name]);
         }
-        if (!SelfPlay._origRender && typeof render === 'function') {
-            SelfPlay._origRender = render;
-            window.render = function () {
-                // 训练时跳过重渲染，只在必要时刷新墙数等轻量信息
+    }
+
+    function patchFast() {
+        // gameTimeout 改成几乎立即执行；仍尊重 gameEpoch，骰子仪式期间继续顺延
+        patch('gameTimeout', function () {
+            return function (fn) {
+                const epoch = gameEpoch;
+                const run = function () {
+                    if (epoch !== gameEpoch) return;
+                    if (typeof diceBusy !== 'undefined' && diceBusy) { setTimeout(run, 20); return; }
+                    try { fn(); } catch (e) { console.warn('[SelfPlay] timer error', e); }
+                };
+                return setTimeout(run, SelfPlay.opts.fast ? 0 : 8);
+            };
+        });
+        // 训练时跳过重渲染，只刷新墙数文字
+        patch('render', function () {
+            return function () {
                 try {
-                    if ($('wall-count-text') && typeof deck !== 'undefined') {
-                        $('wall-count-text').innerText = '训练中 ' + SelfPlay.done + '/' + SelfPlay.targetGames
-                            + ' | 墙' + deck.length;
+                    const el = document.getElementById('wall-count-text');
+                    if (el && typeof deck !== 'undefined') {
+                        el.innerText = '训练中 ' + SelfPlay.done + '/' + SelfPlay.targetGames + ' | 墙' + deck.length;
                     }
                 } catch (e) {}
             };
-        }
-        if (!SelfPlay._origSpeak && typeof speak === 'function') {
-            SelfPlay._origSpeak = speak;
-            window.speak = function () {};
-        }
+        });
+        patch('speak', function () { return function () {}; });
         ['sfxDraw', 'sfxDiscard', 'sfxChi', 'sfxPeng', 'sfxGang', 'sfxWin'].forEach(function (n) {
-            if (typeof window[n] === 'function' && !SelfPlay._origSfx[n]) {
-                SelfPlay._origSfx[n] = window[n];
-                window[n] = function () {};
-            }
+            patch(n, function () { return function () {}; });
+        });
+        // 记录「流程已替 bottom 排了出牌」：杠后补牌会自己 gameTimeout(aiDiscard)
+        patch('aiDrawReplacement', function (orig) {
+            return function (p) {
+                if (p === 'bottom') SelfPlay.bottomPending = true;
+                return orig.apply(this, arguments);
+            };
+        });
+        patch('aiDiscard', function (orig) {
+            return function (p) {
+                if (p === 'bottom') SelfPlay.bottomPending = false;
+                return orig.apply(this, arguments);
+            };
         });
     }
 
     function unpatch() {
-        if (SelfPlay._origGameTimeout) {
-            window.gameTimeout = SelfPlay._origGameTimeout;
-            SelfPlay._origGameTimeout = null;
-        }
-        if (SelfPlay._origRender) {
-            window.render = SelfPlay._origRender;
-            SelfPlay._origRender = null;
-        }
-        if (SelfPlay._origSpeak) {
-            window.speak = SelfPlay._origSpeak;
-            SelfPlay._origSpeak = null;
-        }
-        Object.keys(SelfPlay._origSfx).forEach(function (n) {
-            window[n] = SelfPlay._origSfx[n];
-        });
-        SelfPlay._origSfx = {};
+        Object.keys(SelfPlay._orig).forEach(function (n) { window[n] = SelfPlay._orig[n]; });
+        SelfPlay._orig = {};
+        SelfPlay.bottomPending = false;
     }
 
     function ensureBottomIsAi() {
-        if (typeof aiPersonality === 'object') {
-            if (!aiPersonality.bottom) aiPersonality.bottom = 'shrewd';
+        if (typeof aiPersonality === 'object' && aiPersonality && !aiPersonality.bottom) {
+            aiPersonality.bottom = 'shrewd';
         }
     }
 
-    // 自动处理人类侧弹窗：亮牌 / 胡 / 吃选择等
+    function isShown(id) {
+        const m = document.getElementById(id);
+        return !!(m && m.classList.contains('show'));
+    }
+
+    // 处理 bottom 侧所有需要「人」点的东西；返回 true 表示本 tick 已处理，不再往下走
     function autoResolveUi() {
-        try {
-            // 亮牌：默认不亮，避免打乱牌型（穷胡亮牌是可选）
-            if (typeof pendingReveal !== 'undefined' && pendingReveal && typeof confirmReveal === 'function') {
-                confirmReveal(false);
-                return true;
-            }
-            // 胡牌确认
-            if (typeof pendingHu !== 'undefined' && pendingHu && typeof confirmHu === 'function') {
-                confirmHu(true);
-                return true;
-            }
-            // 吃碰杠确认条：优先胡 > 杠 > 碰 > 吃
-            const claim = document.getElementById('claim-indicator');
-            if (claim && claim.children && claim.children.length) {
-                const btns = claim.querySelectorAll('button, .claim-btn');
-                let pick = null;
-                btns.forEach(function (b) {
-                    const t = (b.textContent || '') + (b.getAttribute('aria-label') || '');
-                    if (/胡/.test(t)) pick = b;
-                    else if (!pick && /杠/.test(t)) pick = b;
-                    else if (!pick && /碰/.test(t)) pick = b;
-                    else if (!pick && /吃/.test(t)) pick = b;
-                });
-                if (pick) { pick.click(); return true; }
-            }
-            // 吃法选择：点第一组
-            const chiOpt = document.querySelector('#chi-choice-options button, #chi-choice-options .tile-wrap, #chi-choice-options [data-combo]');
-            if (chiOpt) { chiOpt.click(); return true; }
-            // 结算确认
-            const result = document.getElementById('result-modal');
-            if (result && result.style && result.style.display !== 'none' && result.offsetParent !== null) {
-                const ok = result.querySelector('.btn-primary, button');
-                if (ok) { ok.click(); return true; }
-            }
-            // 破产窗：继续当前场
-            const bust = document.getElementById('bust-modal');
-            if (bust && bust.offsetParent !== null) {
-                const cont = bust.querySelector('button');
-                if (cont) { cont.click(); return true; }
-            }
-        } catch (e) {}
+        // 破产窗：继续当前场
+        if (isShown('bust-modal') && typeof cancelBustRestart === 'function') {
+            cancelBustRestart();
+            return true;
+        }
+        if (typeof diceBusy !== 'undefined' && diceBusy) return true; // 骰子仪式中，等它结束
+        if (gameOver) return false;
+        // 亮牌：不亮
+        if (typeof pendingReveal !== 'undefined' && pendingReveal && typeof confirmReveal === 'function') {
+            confirmReveal(false);
+            return true;
+        }
+        // 吃法选择窗残留：关闭 = 过
+        if (isShown('chi-choice-modal') && typeof closeChiChoice === 'function') {
+            closeChiChoice();
+            return true;
+        }
+        // 别家打牌的吃碰杠 / 自己的可选杠提示：一律点过（暗杠/加杠由 aiDiscard 自己判断）
+        if (pendingClaim && pendingClaim.mode !== 'diceMenu') {
+            declineClaim();
+            return true;
+        }
         return false;
     }
 
     function autoPlayBottomIfNeeded() {
+        if (gameOver || pendingClaim || SelfPlay.bottomPending) return;
+        if (turnOrder[currentIndex] !== 'bottom') return;
+        if (!hands.bottom || hands.bottom.length % 3 !== 2) return; // 必须是「待出牌」张数
+        // 同一状态只出一次牌；状态变了（摸牌/弃牌数变了）才算新回合
+        const key = [handTurnCount, deck.length, discardPile.length, hands.bottom.length,
+            exposedMelds.bottom.length].join('|');
+        if (key === SelfPlay._lastKey) return;
+        SelfPlay._lastKey = key;
+        try { aiDiscard('bottom'); } catch (e) { console.warn('[SelfPlay] bottom auto error', e); }
+    }
+
+    function startNextHand() {
+        SelfPlay._lastKey = '';
+        SelfPlay.bottomPending = false;
         try {
-            if (gameOver) return false;
-            const player = turnOrder[currentIndex];
-            if (player !== 'bottom') return false;
-            // 若轮到 bottom 且无待确认，直接走 AI 弃牌逻辑
-            if (pendingClaim) return false;
-            if (typeof aiDiscard === 'function') {
-                aiDiscard('bottom');
-                return true;
-            }
-        } catch (e) {
-            console.warn('[SelfPlay] bottom auto error', e);
+            const r = document.getElementById('result-modal');
+            if (r) r.classList.remove('show');
+        } catch (e) {}
+        // startGame：换庄 + initGame + 立即落盘；若有人筹码<0，会被 bust 窗拦下，由 autoResolveUi 处理
+        if (typeof startGame === 'function') startGame();
+        else if (typeof initGame === 'function') {
+            if (typeof rotateDealer === 'function') rotateDealer();
+            initGame();
         }
-        return false;
     }
 
     function onHandFinished() {
-        SelfPlay.done = (aiLearn && aiLearn.games ? aiLearn.games : 0) - SelfPlay.startGames;
+        SelfPlay.done++;
         if (winner) SelfPlay.wins[winner] = (SelfPlay.wins[winner] || 0) + 1;
-        else SelfPlay.wins.draw = (SelfPlay.wins.draw || 0) + 1;
+        else SelfPlay.wins.draw++;
 
         if (SelfPlay.opts.logEvery && SelfPlay.done % SelfPlay.opts.logEvery === 0) {
             log('progress', SelfPlay.done + '/' + SelfPlay.targetGames, 'wins', JSON.parse(JSON.stringify(SelfPlay.wins)));
         }
 
         if (SelfPlay.done >= SelfPlay.targetGames) {
+            const w = JSON.parse(JSON.stringify(SelfPlay.wins));
             stopSelfPlay();
-            log('完成', SelfPlay.targetGames, '局。wins=', SelfPlay.wins);
+            log('完成', SelfPlay.targetGames, '局。wins=', w);
             log('aiLearn.games=', aiLearn && aiLearn.games, 'confidence=', aiLearn && aiLearn.confidence);
-            try { if (typeof saveAiLearn === 'function') saveAiLearn(); } catch (e) {}
-            try { if (SelfPlay._origRender) SelfPlay._origRender(); } catch (e) {}
             return;
         }
-
-        // 开下一局
-        try {
-            if (typeof confirmNextHand === 'function') confirmNextHand();
-            else if (typeof initGame === 'function') {
-                if (typeof rotateDealer === 'function') rotateDealer();
-                initGame();
-            }
-        } catch (e) {
+        try { startNextHand(); } catch (e) {
             console.warn('[SelfPlay] next hand error', e);
             stopSelfPlay();
         }
@@ -192,19 +186,18 @@
     function tick() {
         if (!SelfPlay.running) return;
         try {
-            autoResolveUi();
-            autoPlayBottomIfNeeded();
-
-            // 检测一局结束：gameOver 且已结算
-            if (gameOver) {
-                // 给结算/学习一点时间
-                if (!SelfPlay._endArmed) {
-                    SelfPlay._endArmed = true;
-                    setTimeout(function () {
-                        SelfPlay._endArmed = false;
-                        if (!SelfPlay.running) return;
-                        onHandFinished();
-                    }, SelfPlay.opts.fast ? 20 : 80);
+            if (!autoResolveUi()) {
+                if (gameOver) {
+                    // 一局结束：稍等结算/学习写完，再记一局并开下一局（每局只触发一次）
+                    if (!SelfPlay._handEndArmed) {
+                        SelfPlay._handEndArmed = true;
+                        setTimeout(function () {
+                            SelfPlay._handEndArmed = false;
+                            if (SelfPlay.running) onHandFinished();
+                        }, SelfPlay.opts.fast ? 20 : 80);
+                    }
+                } else {
+                    autoPlayBottomIfNeeded();
                 }
             }
         } catch (e) {
@@ -227,23 +220,18 @@
         }
         SelfPlay.opts = Object.assign({ fast: true, logEvery: 100 }, opt || {});
         SelfPlay.targetGames = Math.max(1, n || 1000);
-        SelfPlay.startGames = (aiLearn && aiLearn.games) || 0;
         SelfPlay.done = 0;
         SelfPlay.wins = { top: 0, left: 0, right: 0, bottom: 0, draw: 0 };
+        SelfPlay._lastKey = '';
+        SelfPlay._handEndArmed = false;
         SelfPlay.running = true;
         ensureBottomIsAi();
         patchFast();
-        log('开始自对弈', SelfPlay.targetGames, '局；当前 aiLearn.games=', SelfPlay.startGames);
+        log('开始自对弈', SelfPlay.targetGames, '局；当前 aiLearn.games=', aiLearn && aiLearn.games);
 
-        // 若当前无局，直接开一局
+        // 当前没有进行中的局就开一局；已结束的局由 tick 记一局后再开下一局
         try {
-            if (typeof initGame === 'function' && (!hands || !hands.bottom || hands.bottom.length === 0)) {
-                initGame();
-            } else if (gameOver && typeof confirmNextHand === 'function') {
-                confirmNextHand();
-            } else if (gameOver && typeof initGame === 'function') {
-                initGame();
-            }
+            if (!hands || !hands.bottom || (hands.bottom.length === 0 && !gameOver)) startNextHand();
         } catch (e) {}
 
         tick();
@@ -254,7 +242,7 @@
         if (SelfPlay._timer) clearTimeout(SelfPlay._timer);
         SelfPlay._timer = null;
         unpatch();
-        log('已停止。本轮完成约', SelfPlay.done, '局；wins=', SelfPlay.wins);
+        log('已停止。本轮完成', SelfPlay.done, '局；wins=', SelfPlay.wins);
         try { if (typeof saveAiLearn === 'function') saveAiLearn(); } catch (e) {}
         try { if (typeof render === 'function') render(); } catch (e) {}
     }

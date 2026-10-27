@@ -22,44 +22,18 @@
                 _master.gain.value = 0.45;
                 _master.connect(_ctx.destination);
             }
-            // iOS 切后台后再回来经常变成 suspended，每次播前都尝试 resume
-            if (_ctx.state === 'suspended') {
-                try { _ctx.resume(); } catch (e) {}
-            }
+            if (_ctx.state === 'suspended') _ctx.resume();
             return _ctx;
         } catch (e) {
             return null;
         }
     }
 
-    /* iOS/Safari：手势解锁音频（不能只 once，否则切后台后再回来就彻底没声） */
-    function unlockAudio() {
-        try {
-            var c = ac();
-            if (!c) return;
-            // 再造一个极短静音 buffer，确保在用户手势内真正启动
-            if (c.state === 'suspended') {
-                try { c.resume(); } catch (e) {}
-            }
-        } catch (e) {}
-    }
+    /* iOS/Safari：首次手势解锁音频 */
     if (typeof window !== 'undefined' && window.addEventListener) {
-        ['pointerdown', 'touchend', 'click'].forEach(function (ev) {
-            try {
-                window.addEventListener(ev, unlockAudio, { capture: true, passive: true });
-            } catch (e) {}
-        });
-        try {
-            document.addEventListener('visibilitychange', function () {
-                if (document.visibilityState === 'visible') {
-                    // 回到前台后等下一次用户触摸再真正 resume（手势要求）
-                    // 这里只确保下次 ac() 会再尝试
-                    if (_ctx && _ctx.state === 'suspended') {
-                        /* 等手势 */
-                    }
-                }
-            });
-        } catch (e) {}
+        window.addEventListener('pointerdown', function unlock() {
+            ac();
+        }, { once: true });
     }
 
     /** 滤波噪声敲击（牌声主体） */

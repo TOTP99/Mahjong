@@ -89,26 +89,22 @@ function declareDraw() {
 // 语音串行队列：播报不能互相打断，一句说完再说下一句
 let speechQueue = [];
 let speechSpeaking = false;
-const SPEECH_QUEUE_MAX = 4; // 等待中最多囤几句，避免快节奏时全丢
+const SPEECH_QUEUE_MAX = 2; // 等待中最多囤2句
 
 function speak(text) {
     try {
         if (!window.speechSynthesis) return;
-        // 若上次卡死太久，强制清一次，防止 speechSpeaking 永远 true 后全部静音
-        if (speechSpeaking && (Date.now() - (speechLastStartAt || 0) > 6000)) {
-            resetSpeechQueue();
-        }
-        speechQueue.push(String(text || '').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim());
-        if (!speechQueue[speechQueue.length - 1]) { speechQueue.pop(); return; }
+        speechQueue.push(text);
+        // 队列积压太多时丢弃最旧的等待项，只保留最近的，让语音尽量追上当前局面
         while (speechQueue.length > SPEECH_QUEUE_MAX) speechQueue.shift();
         processSpeechQueue();
     } catch (e) { /* 语音不可用则静默 */ }
 }
 
-// ---------- 语音播报：稳健版（重点照顾 iOS / Safari） ----------
+// ---------- 语音播报：稳健版 ----------
 // 已知坑：①Chrome 会回收局部 utterance → onend 不来；②iOS/Safari 首次必须在用户手势里 speak 一次才解锁；
 // ③不指定中文 voice 时，部分浏览器用英文默认声读汉字 = 无声；④cancel() 紧接着 speak() 会被吞；
-// ⑤onstart 都没来 = 这句被静默丢了，要重试；⑥切后台再回来后 speechSynthesis 常失效，需重置+重新解锁。
+// ⑤onstart 都没来 = 这句被静默丢了，要重试。
 let speechCurrent = null;
 let speechToken = 0;
 let speechWatchdog = null;
@@ -116,15 +112,13 @@ let speechStartTimer = null;
 let speechVoice = null;
 let speechUnlocked = false;
 let speechCancelAt = 0;
-let speechLastStartAt = 0;
-let speechLastUnlockAt = 0;
 
 function pickSpeechVoice() {
     try {
         const vs = speechSynthesis.getVoices() || [];
         if (!vs.length) return;
-        const zh = vs.filter(v => /^(zh|cmn|yue)/i.test(v.lang || '') || /中文|普通话|國語|国语|Chinese|Mandarin|Ting|Sin-ji|Mei-Jia/i.test(v.name || ''));
-        speechVoice = zh.find(v => /zh[-_]CN|cmn-Hans|zh-Hans/i.test(v.lang)) || zh[0] || null;
+        const zh = vs.filter(v => /^(zh|cmn|yue)/i.test(v.lang || '') || /中文|普通话|國語|国语|Chinese|Mandarin/i.test(v.name || ''));
+        speechVoice = zh.find(v => /zh[-_]CN|cmn-Hans/i.test(v.lang)) || zh[0] || null;
     } catch (e) {}
 }
 try {
@@ -135,39 +129,21 @@ try {
     }
 } catch (e) {}
 
-// 在用户手势里静音 speak 一次，解锁 iOS / Safari / 部分 WebView。
-// 不再 once：切后台回来或长时间无声后会再次需要解锁。
-function unlockSpeech(force) {
+// 首次触摸/点击时在手势内静音 speak 一次，解锁 iOS / Safari / 部分 WebView
+function unlockSpeech() {
+    if (speechUnlocked) return;
+    speechUnlocked = true;
     try {
         if (!window.speechSynthesis) return;
-        const now = Date.now();
-        if (!force && speechUnlocked && (now - speechLastUnlockAt < 8000)) return;
-        speechUnlocked = true;
-        speechLastUnlockAt = now;
-        // 若系统仍标记为 speaking，先取消，避免解锁句被吞
-        try { if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel(); } catch (e) {}
         const u = new SpeechSynthesisUtterance('好');
         u.volume = 0;
-        u.rate = 2;
         u.lang = 'zh-CN';
-        if (speechVoice) { u.voice = speechVoice; u.lang = speechVoice.lang; }
         speechSynthesis.speak(u);
     } catch (e) {}
 }
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => {
-    try { window.addEventListener(ev, function () { unlockSpeech(false); }, { capture: true, passive: true }); } catch (e) {}
+    try { window.addEventListener(ev, unlockSpeech, { once: true, capture: true, passive: true }); } catch (e) {}
 });
-
-// 切回前台时重置并重新解锁，解决「忽然没声音」最常见原因
-try {
-    document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') {
-            resetSpeechQueue();
-            // 等用户下一次触摸再真正 unlock（手势要求），这里只清状态
-            speechUnlocked = false;
-        }
-    });
-} catch (e) {}
 
 function speechDone(token) {
     if (token !== speechToken) return;
@@ -181,32 +157,19 @@ function speechDone(token) {
 function processSpeechQueue(isRetry) {
     if (speechSpeaking || speechQueue.length === 0) return;
     speechSpeaking = true;
-    speechLastStartAt = Date.now();
     const clean = speechQueue.shift();
     const token = ++speechToken;
     const go = () => {
         if (token !== speechToken) return;
         try {
             if (!speechVoice) pickSpeechVoice();
-            try { if (speechSynthesis.paused) speechSynthesis.resume(); } catch (e) {}
-            // 若系统仍在讲，先 cancel，再等一小会
-            try {
-                if (speechSynthesis.speaking || speechSynthesis.pending) {
-                    speechSynthesis.cancel();
-                    speechCancelAt = Date.now();
-                }
-            } catch (e) {}
+            if (speechSynthesis.paused) speechSynthesis.resume();
             const utter = new SpeechSynthesisUtterance(clean);
             if (speechVoice) { utter.voice = speechVoice; utter.lang = speechVoice.lang; }
             else utter.lang = 'zh-CN';
-            utter.rate = 1.05;
-            utter.volume = 1;
+            utter.rate = 1.1;
             let started = false;
-            utter.onstart = () => {
-                started = true;
-                speechLastStartAt = Date.now();
-                clearTimeout(speechStartTimer);
-            };
+            utter.onstart = () => { started = true; clearTimeout(speechStartTimer); };
             utter.onend = utter.onerror = () => speechDone(token);
             speechCurrent = utter;
             clearTimeout(speechWatchdog);
@@ -214,37 +177,26 @@ function processSpeechQueue(isRetry) {
                 if (token !== speechToken) return;
                 try { speechSynthesis.cancel(); } catch (e) {}
                 speechDone(token);
-            }, Math.max(2800, clean.length * 450));
-            // 1.0 秒内没开口：被静默吞了 → 重试一次；重试仍失败则放弃这句并继续队列
+            }, Math.max(2500, clean.length * 500));
+            // 1.2 秒内没开口：这句被静默吞了，取消后重来一次（只重试一次）
             clearTimeout(speechStartTimer);
             speechStartTimer = setTimeout(() => {
                 if (token !== speechToken || started) return;
-                speechToken++; // 作废当前回调
-                try { speechSynthesis.cancel(); } catch (e) {}
-                speechCancelAt = Date.now();
-                speechSpeaking = false;
                 if (!isRetry) {
+                    speechToken++;                       // 作废这句的回调
+                    try { speechSynthesis.cancel(); } catch (e) {}
+                    speechCancelAt = Date.now();
+                    speechSpeaking = false;
                     speechQueue.unshift(clean);
-                    setTimeout(() => processSpeechQueue(true), 180);
-                } else {
-                    // 重试也没开成，丢弃这句，继续后面的，避免整条队列卡死
-                    processSpeechQueue();
+                    setTimeout(() => processSpeechQueue(true), 120);
                 }
-            }, 1000);
-            // cancel 后稍等再 speak，否则 Safari/Chrome 会把新句一起吞掉
-            const since = Date.now() - speechCancelAt;
-            if (since < 180) {
-                setTimeout(() => {
-                    if (token !== speechToken) return;
-                    try { speechSynthesis.speak(utter); } catch (e) { speechDone(token); }
-                }, 180 - since);
-            } else {
-                speechSynthesis.speak(utter);
-            }
+            }, 1200);
+            speechSynthesis.speak(utter);
         } catch (e) {
             speechDone(token);
         }
     };
+    // cancel() 刚发生过就稍等一下再 speak，否则 Chrome/Safari 会把新句子一起吞掉
     const since = Date.now() - speechCancelAt;
     if (since < 150) setTimeout(go, 150 - since); else go();
 }
@@ -257,13 +209,7 @@ function resetSpeechQueue() {
     clearTimeout(speechWatchdog);
     clearTimeout(speechStartTimer);
     speechCurrent = null;
-    speechLastStartAt = 0;
-    try {
-        if (window.speechSynthesis) {
-            speechSynthesis.cancel();
-            speechCancelAt = Date.now();
-        }
-    } catch (e) {}
+    try { if (window.speechSynthesis) { speechSynthesis.cancel(); speechCancelAt = Date.now(); } } catch (e) {}
 }
 
 // 语音播报里指称某家：自己念“你”，其余念座位名（speak 会自动去掉表情符号）
