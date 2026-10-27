@@ -101,54 +101,115 @@ function speak(text) {
     } catch (e) { /* 语音不可用则静默 */ }
 }
 
-// 当前播报的 utterance 必须被全局引用：Chrome 会把局部变量里的 utterance 当垃圾回收，
-// 导致 onend 永远不触发 → speechSpeaking 卡死为 true → 之后所有牌名都不再播报。
+// ---------- 语音播报：稳健版 ----------
+// 已知坑：①Chrome 会回收局部 utterance → onend 不来；②iOS/Safari 首次必须在用户手势里 speak 一次才解锁；
+// ③不指定中文 voice 时，部分浏览器用英文默认声读汉字 = 无声；④cancel() 紧接着 speak() 会被吞；
+// ⑤onstart 都没来 = 这句被静默丢了，要重试。
 let speechCurrent = null;
-let speechToken = 0;       // 每句一个编号，过期（被 cancel/超时）的回调不再推进队列
+let speechToken = 0;
 let speechWatchdog = null;
+let speechStartTimer = null;
+let speechVoice = null;
+let speechUnlocked = false;
+let speechCancelAt = 0;
+
+function pickSpeechVoice() {
+    try {
+        const vs = speechSynthesis.getVoices() || [];
+        if (!vs.length) return;
+        const zh = vs.filter(v => /^(zh|cmn|yue)/i.test(v.lang || '') || /中文|普通话|國語|国语|Chinese|Mandarin/i.test(v.name || ''));
+        speechVoice = zh.find(v => /zh[-_]CN|cmn-Hans/i.test(v.lang)) || zh[0] || null;
+    } catch (e) {}
+}
+try {
+    if (window.speechSynthesis) {
+        pickSpeechVoice();
+        if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', pickSpeechVoice);
+        else speechSynthesis.onvoiceschanged = pickSpeechVoice;
+    }
+} catch (e) {}
+
+// 首次触摸/点击时在手势内静音 speak 一次，解锁 iOS / Safari / 部分 WebView
+function unlockSpeech() {
+    if (speechUnlocked) return;
+    speechUnlocked = true;
+    try {
+        if (!window.speechSynthesis) return;
+        const u = new SpeechSynthesisUtterance('好');
+        u.volume = 0;
+        u.lang = 'zh-CN';
+        speechSynthesis.speak(u);
+    } catch (e) {}
+}
+['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => {
+    try { window.addEventListener(ev, unlockSpeech, { once: true, capture: true, passive: true }); } catch (e) {}
+});
 
 function speechDone(token) {
-    if (token !== speechToken) return;      // 已被超时/重置接管，忽略迟到的回调
+    if (token !== speechToken) return;
     clearTimeout(speechWatchdog);
+    clearTimeout(speechStartTimer);
     speechCurrent = null;
     speechSpeaking = false;
     processSpeechQueue();
 }
 
-function processSpeechQueue() {
+function processSpeechQueue(isRetry) {
     if (speechSpeaking || speechQueue.length === 0) return;
     speechSpeaking = true;
     const clean = speechQueue.shift();
     const token = ++speechToken;
-    try {
-        // 浏览器偶尔会停在 paused 状态，先恢复
-        if (speechSynthesis.paused) speechSynthesis.resume();
-        const utter = new SpeechSynthesisUtterance(clean);
-        utter.lang = 'zh-CN';
-        utter.rate = 1.1;
-        utter.onend = utter.onerror = () => speechDone(token);
-        speechCurrent = utter;
-        // 看门狗：onend 不来也要放行下一句（按字数估时，最少 2.5 秒）
-        clearTimeout(speechWatchdog);
-        speechWatchdog = setTimeout(() => {
-            if (token !== speechToken) return;
-            try { speechSynthesis.cancel(); } catch (e) {}
+    const go = () => {
+        if (token !== speechToken) return;
+        try {
+            if (!speechVoice) pickSpeechVoice();
+            if (speechSynthesis.paused) speechSynthesis.resume();
+            const utter = new SpeechSynthesisUtterance(clean);
+            if (speechVoice) { utter.voice = speechVoice; utter.lang = speechVoice.lang; }
+            else utter.lang = 'zh-CN';
+            utter.rate = 1.1;
+            let started = false;
+            utter.onstart = () => { started = true; clearTimeout(speechStartTimer); };
+            utter.onend = utter.onerror = () => speechDone(token);
+            speechCurrent = utter;
+            clearTimeout(speechWatchdog);
+            speechWatchdog = setTimeout(() => {
+                if (token !== speechToken) return;
+                try { speechSynthesis.cancel(); } catch (e) {}
+                speechDone(token);
+            }, Math.max(2500, clean.length * 500));
+            // 1.2 秒内没开口：这句被静默吞了，取消后重来一次（只重试一次）
+            clearTimeout(speechStartTimer);
+            speechStartTimer = setTimeout(() => {
+                if (token !== speechToken || started) return;
+                if (!isRetry) {
+                    speechToken++;                       // 作废这句的回调
+                    try { speechSynthesis.cancel(); } catch (e) {}
+                    speechCancelAt = Date.now();
+                    speechSpeaking = false;
+                    speechQueue.unshift(clean);
+                    setTimeout(() => processSpeechQueue(true), 120);
+                }
+            }, 1200);
+            speechSynthesis.speak(utter);
+        } catch (e) {
             speechDone(token);
-        }, Math.max(2500, clean.length * 500));
-        speechSynthesis.speak(utter);
-    } catch (e) {
-        speechDone(token);
-    }
+        }
+    };
+    // cancel() 刚发生过就稍等一下再 speak，否则 Chrome/Safari 会把新句子一起吞掉
+    const since = Date.now() - speechCancelAt;
+    if (since < 150) setTimeout(go, 150 - since); else go();
 }
 
 // 新开一局时清空上一局可能积压的播报，避免旧播报堆到新局里
 function resetSpeechQueue() {
     speechQueue = [];
     speechSpeaking = false;
-    speechToken++;                          // 让被 cancel 的旧句子的 onerror 失效，不会误伤新句子
+    speechToken++;
     clearTimeout(speechWatchdog);
+    clearTimeout(speechStartTimer);
     speechCurrent = null;
-    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+    try { if (window.speechSynthesis) { speechSynthesis.cancel(); speechCancelAt = Date.now(); } } catch (e) {}
 }
 
 // 语音播报里指称某家：自己念“你”，其余念座位名（speak 会自动去掉表情符号）
