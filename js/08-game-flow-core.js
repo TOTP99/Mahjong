@@ -101,24 +101,53 @@ function speak(text) {
     } catch (e) { /* 语音不可用则静默 */ }
 }
 
+// 当前播报的 utterance 必须被全局引用：Chrome 会把局部变量里的 utterance 当垃圾回收，
+// 导致 onend 永远不触发 → speechSpeaking 卡死为 true → 之后所有牌名都不再播报。
+let speechCurrent = null;
+let speechToken = 0;       // 每句一个编号，过期（被 cancel/超时）的回调不再推进队列
+let speechWatchdog = null;
+
+function speechDone(token) {
+    if (token !== speechToken) return;      // 已被超时/重置接管，忽略迟到的回调
+    clearTimeout(speechWatchdog);
+    speechCurrent = null;
+    speechSpeaking = false;
+    processSpeechQueue();
+}
+
 function processSpeechQueue() {
     if (speechSpeaking || speechQueue.length === 0) return;
     speechSpeaking = true;
     const clean = speechQueue.shift();
-    const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = 'zh-CN';
-    utter.rate = 1.1;
-    utter.onend = utter.onerror = () => {
-        speechSpeaking = false;
-        processSpeechQueue();
-    };
-    speechSynthesis.speak(utter);
+    const token = ++speechToken;
+    try {
+        // 浏览器偶尔会停在 paused 状态，先恢复
+        if (speechSynthesis.paused) speechSynthesis.resume();
+        const utter = new SpeechSynthesisUtterance(clean);
+        utter.lang = 'zh-CN';
+        utter.rate = 1.1;
+        utter.onend = utter.onerror = () => speechDone(token);
+        speechCurrent = utter;
+        // 看门狗：onend 不来也要放行下一句（按字数估时，最少 2.5 秒）
+        clearTimeout(speechWatchdog);
+        speechWatchdog = setTimeout(() => {
+            if (token !== speechToken) return;
+            try { speechSynthesis.cancel(); } catch (e) {}
+            speechDone(token);
+        }, Math.max(2500, clean.length * 500));
+        speechSynthesis.speak(utter);
+    } catch (e) {
+        speechDone(token);
+    }
 }
 
 // 新开一局时清空上一局可能积压的播报，避免旧播报堆到新局里
 function resetSpeechQueue() {
     speechQueue = [];
     speechSpeaking = false;
+    speechToken++;                          // 让被 cancel 的旧句子的 onerror 失效，不会误伤新句子
+    clearTimeout(speechWatchdog);
+    speechCurrent = null;
     try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
 }
 
