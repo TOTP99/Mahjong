@@ -1,25 +1,33 @@
 /* ============================================================
  * js/19-voice.js — 预录中文报牌（牌名 / 吃碰杠胡 / 自摸 / 点炮 / 庄 / 流局 / 亮牌）
- * 为什么：iOS Safari 对"非用户手势直接触发"的 speechSynthesis 会静默拦截，
- *         表现为第一声能响、之后全没声。这里改用 WebAudio 播放内置 mp3：
- *         与出牌音效同一类通道，首次触摸解锁后任何时候都能响。
- * 约定：覆盖全局 speak(text) / resetSpeechQueue()。文本里认不出的内容 → 回退原来的浏览器语音。
- * 数据：js/19-voice-data.js（window.VOICE_CLIPS，base64 mp3，无需网络请求，file:// 也能用）。
+ * 用 audio/ 目录下的 mp3，通过 WebAudio 播放。
+ * 覆盖全局 speak(text) / resetSpeechQueue()。
+ * 认不出的文本 → 回退原来的浏览器语音。
  * ============================================================ */
 (function () {
     'use strict';
-    var CLIPS = window.VOICE_CLIPS || null;
     var origSpeak = window.speak;
     var origReset = window.resetSpeechQueue;
-    if (!CLIPS || typeof origSpeak !== 'function') return;
+    if (typeof origSpeak !== 'function') return;
+
+    var AUDIO_BASE = 'audio/';
+    var KEYS = [
+        'chi', 'peng', 'gang', 'hu', 'zimo', 'liuju', 'liangpai',
+        'dp_e', 'dp_s', 'dp_w', 'dp_n', 'dp_you',
+        'zhuang_e', 'zhuang_s', 'zhuang_w', 'zhuang_n',
+        'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9',
+        't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9',
+        'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9',
+        'z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7'
+    ];
 
     var ctx = null, master = null;
     var buffers = {};          // key -> AudioBuffer
-    var decoding = {};         // key -> true
-    var active = [];           // 正在播/排队的 source
+    var loading = {};          // key -> Promise
+    var active = [];           // 正在播的 source
     var nextStart = 0;
-    var GAP = 0.03;            // 片段之间的间隔（秒）
-    var MAX_LAG = 1.6;         // 积压超过这个时长就丢弃新的，保持与牌局同步
+    var GAP = 0.03;            // 片段间隔（秒）
+    var MAX_LAG = 2.6;         // 积压超此时长则丢弃，保持同步
 
     function getCtx() {
         if (ctx) return ctx;
@@ -34,30 +42,43 @@
         return ctx;
     }
 
-    function b64ToBuf(b64) {
-        var bin = atob(b64), n = bin.length, u = new Uint8Array(n);
-        for (var i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
-        return u.buffer;
+    function load(key) {
+        if (buffers[key]) return Promise.resolve(buffers[key]);
+        if (loading[key]) return loading[key];
+        var c = getCtx();
+        if (!c) return Promise.reject();
+        loading[key] = fetch(AUDIO_BASE + key + '.mp3')
+            .then(function (r) {
+                if (!r.ok) throw new Error(r.status);
+                return r.arrayBuffer();
+            })
+            .then(function (ab) {
+                return new Promise(function (resolve, reject) {
+                    c.decodeAudioData(ab, function (buf) {
+                        buffers[key] = buf;
+                        delete loading[key];
+                        resolve(buf);
+                    }, function (err) {
+                        delete loading[key];
+                        reject(err);
+                    });
+                });
+            })
+            .catch(function (e) {
+                delete loading[key];
+                return Promise.reject(e);
+            });
+        return loading[key];
     }
 
-    function decode(key) {
-        if (buffers[key] || decoding[key] || !CLIPS[key]) return;
-        var c = getCtx(); if (!c) return;
-        decoding[key] = true;
-        var ab = b64ToBuf(CLIPS[key]);
-        var ok = function (buf) { buffers[key] = buf; };
-        var fail = function () { decoding[key] = false; };
-        try {
-            var p = c.decodeAudioData(ab, ok, fail);   // 回调形式兼容旧 Safari；新浏览器同时返回 Promise
-            if (p && p.catch) p.catch(fail);
-        } catch (e) { fail(); }
+    function preloadAll() {
+        KEYS.forEach(function (k) { load(k).catch(function () {}); });
     }
 
-    function preloadAll() { Object.keys(CLIPS).forEach(decode); }
-
-    // 首次手势：创建/恢复 AudioContext，并播一个静音缓冲彻底解锁 iOS，然后预解码全部音频
+    // 首次手势解锁 iOS AudioContext，并预加载
     function unlock() {
-        var c = getCtx(); if (!c) return;
+        var c = getCtx();
+        if (!c) return;
         try { if (c.state === 'suspended') c.resume(); } catch (e) {}
         try {
             var b = c.createBuffer(1, 1, 22050), s = c.createBufferSource();
@@ -68,7 +89,6 @@
     ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach(function (ev) {
         try { window.addEventListener(ev, unlock, { capture: true, passive: true }); } catch (e) {}
     });
-    // 页面一加载就先尝试预解码（不需要手势；ctx 可能处于 suspended，没关系）
     try { preloadAll(); } catch (e) {}
 
     // ---------- 文本 → 片段序列 ----------
@@ -109,15 +129,23 @@
             var keys = parse(text);
             var c = getCtx();
             if (!keys || !c) return origSpeak(text);
-            for (var k = 0; k < keys.length; k++) if (!CLIPS[keys[k]]) return origSpeak(text);
+
+            // 确保全部已加载；未完成则跳过本句（不回退到不稳定 TTS）
+            var missing = false;
+            for (var k = 0; k < keys.length; k++) {
+                if (!buffers[keys[k]]) {
+                    load(keys[k]).catch(function () {});
+                    missing = true;
+                }
+            }
+            if (missing) return;
+
             if (c.state === 'suspended') { try { c.resume(); } catch (e) {} }
-            for (k = 0; k < keys.length; k++) decode(keys[k]);
-            // 解码尚未完成（刚进页面）：这一句跳过，不回退到不稳定的浏览器语音
-            for (k = 0; k < keys.length; k++) if (!buffers[keys[k]]) return;
 
             var now = c.currentTime;
             if (nextStart < now) nextStart = now + 0.01;
-            if (nextStart - now > MAX_LAG) return;        // 积压太多：丢弃，追上当前局面
+            if (nextStart - now > MAX_LAG) return;        // 积压太多：丢弃
+
             for (k = 0; k < keys.length; k++) {
                 var src = c.createBufferSource();
                 src.buffer = buffers[keys[k]];
@@ -125,7 +153,10 @@
                 src.start(nextStart);
                 active.push(src);
                 src.onended = (function (s) {
-                    return function () { var j = active.indexOf(s); if (j >= 0) active.splice(j, 1); };
+                    return function () {
+                        var j = active.indexOf(s);
+                        if (j >= 0) active.splice(j, 1);
+                    };
                 })(src);
                 nextStart += src.buffer.duration + GAP;
             }
@@ -135,8 +166,10 @@
     }
 
     function reset() {
-        try { origReset && origReset(); } catch (e) {}
-        try { active.forEach(function (s) { try { s.stop(); } catch (e) {} }); } catch (e) {}
+        try { if (origReset) origReset(); } catch (e) {}
+        try {
+            active.forEach(function (s) { try { s.stop(); } catch (e) {} });
+        } catch (e) {}
         active = [];
         nextStart = 0;
     }
