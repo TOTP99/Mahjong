@@ -11,8 +11,10 @@ function rotateDealer() {
 
 function initGame() {
     gameEpoch++; // 新的一局：让上一局遗留的延时回调全部作废
-    resetSpeechQueue();
+    // 19-voice.js 在 13 之后加载；首次启动时 resetSpeechQueue 可能尚未定义
+    try { if (typeof resetSpeechQueue === 'function') resetSpeechQueue(); } catch (e) {}
     buildDeck();
+
     hands = { top: [], left: [], right: [], bottom: [] };
     exposedMelds = { top: [], left: [], right: [], bottom: [] };
     discardPile = [];
@@ -131,10 +133,13 @@ let pendingReveal = null; // 'winds' | 'dragons'，等待你在弹窗里选择
 
 function offerReveal(kind) {
     pendingReveal = kind;
-    $('reveal-title').innerText =
-        (kind === 'winds' ? '手里凑齐了东南西北' : '手里凑齐了中发白') + '，要亮牌吗？（算幺九+刻子，但不算开门；亮牌后补一张牌）';
+    const tip = kind === 'winds'
+        ? '手里凑齐了东南西北，要亮牌吗？（算幺九+刻子，但不算开门；亮出后补摸一张）'
+        : '手里凑齐了中发白，要亮牌吗？（算幺九+刻子，但不算开门；3张不用补牌）';
+    $('reveal-title').innerText = tip;
     $('reveal-modal').classList.add('show');
 }
+
 
 function confirmReveal(reveal) {
     const kind = pendingReveal;

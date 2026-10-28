@@ -423,3 +423,33 @@ if (loadGameProgress()) {
     }
     initGame();
 }
+
+// 兜底：防止极端时序/脚本异常导致桌面空白（deck 空且手牌全空）
+// 等全部脚本加载完再检查一次；若仍是空桌则强制重新发牌
+(function ensureGameStarted() {
+    function isBlankTable() {
+        try {
+            return (!deck || deck.length === 0) &&
+                   PLAYERS.every(p => !hands[p] || hands[p].length === 0) &&
+                   !gameOver;
+        } catch (e) { return false; }
+    }
+    function tryRescue() {
+        if (!isBlankTable()) return;
+        try {
+            console.warn('[startup] 检测到空白桌面，强制 initGame()');
+            if (typeof initGame === 'function') initGame();
+        } catch (e) {
+            try { console.error('[startup] 兜底 initGame 失败', e); } catch (e2) {}
+        }
+    }
+    // 本文件之后还有 14–19，给一点时间让后续脚本执行完
+    setTimeout(tryRescue, 0);
+    setTimeout(tryRescue, 300);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(tryRescue, 50); });
+    } else {
+        setTimeout(tryRescue, 50);
+    }
+})();
+

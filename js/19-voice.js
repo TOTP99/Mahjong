@@ -173,3 +173,25 @@
     window.resetSpeechQueue = reset;
     window.voiceClips = { parse: parse, preload: preloadAll };
 })();
+
+// 最终兜底：全部脚本已加载。若桌面仍空白则强制发牌（防止 13 启动时序异常）
+(function () {
+    function isBlank() {
+        try {
+            return (!deck || deck.length === 0) &&
+                PLAYERS.every(function (p) { return !hands[p] || hands[p].length === 0; }) &&
+                !gameOver;
+        } catch (e) { return false; }
+    }
+    function rescue() {
+        if (!isBlank()) return;
+        try {
+            console.warn('[startup/19] 空白桌面兜底，强制 initGame()');
+            if (typeof initGame === 'function') initGame();
+        } catch (e) {
+            try { console.error('[startup/19] 兜底失败', e); } catch (e2) {}
+        }
+    }
+    setTimeout(rescue, 0);
+    setTimeout(rescue, 400);
+})();
