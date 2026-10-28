@@ -1,14 +1,11 @@
 /* ============================================================
  * js/19-voice.js — 预录中文报牌（牌名 / 吃碰杠胡 / 自摸 / 点炮 / 庄 / 流局 / 亮牌）
- * 用 audio/ 目录下的 mp3，通过 WebAudio 播放。
- * 覆盖全局 speak(text) / resetSpeechQueue()。
- * 认不出的文本 → 回退原来的浏览器语音。
+ * 唯一语音实现：只用 audio/ 目录下的 mp3，通过 WebAudio 播放。
+ * 定义全局 speak(text) / resetSpeechQueue()；认不出的文本直接跳过，不回退浏览器语音。
+ * 需经 HTTP(S) 打开；file:// 下 fetch 被拦则语音不响，游戏本身可玩。
  * ============================================================ */
 (function () {
     'use strict';
-    var origSpeak = window.speak;
-    var origReset = window.resetSpeechQueue;
-    if (typeof origSpeak !== 'function') return;
 
     var AUDIO_BASE = 'audio/';
     var KEYS = [
@@ -117,7 +114,7 @@
             else if (ch === '碰') out.push('peng');
             else if (ch === '杠') out.push('gang');
             else if (HONOR[ch]) out.push(HONOR[ch]);
-            else return null;                       // 认不出 → 交还给浏览器语音
+            else return null;                       // 认不出 → 跳过，不回退浏览器语音
             i += 1;
         }
         return out.length ? out : null;
@@ -128,9 +125,9 @@
         try {
             var keys = parse(text);
             var c = getCtx();
-            if (!keys || !c) return origSpeak(text);
+            if (!keys || !c) return;                // 无音频环境或认不出：静默跳过
 
-            // 确保全部已加载；未完成则跳过本句（不回退到不稳定 TTS）
+            // 确保全部已加载；未完成则跳过本句并触发加载
             var missing = false;
             for (var k = 0; k < keys.length; k++) {
                 if (!buffers[keys[k]]) {
@@ -160,13 +157,11 @@
                 })(src);
                 nextStart += src.buffer.duration + GAP;
             }
-        } catch (e) {
-            try { origSpeak(text); } catch (e2) {}
-        }
+        } catch (e) { /* 语音不可用则静默 */ }
     }
 
+    // 新开一局时停掉排队语音（08 initGame 调用）
     function reset() {
-        try { if (origReset) origReset(); } catch (e) {}
         try {
             active.forEach(function (s) { try { s.stop(); } catch (e) {} });
         } catch (e) {}
