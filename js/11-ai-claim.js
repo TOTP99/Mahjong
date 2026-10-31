@@ -37,6 +37,7 @@ function aiDiscard(player) {
                     });
                     return;
                 }
+                if (deck.length <= DEAD_WALL) break; // 无补牌位：不加杠，直接出牌
                 const ix = hands[player].indexOf(gTile);
                 if (ix > -1) hands[player].splice(ix, 1);
                 meld.type = 'gang';
@@ -58,7 +59,7 @@ try { if (typeof feelBanner === 'function') feelBanner('杠', player); } catch (
             for (const t of Object.keys(counts)) {
                 if (counts[t] >= 4) { gangTile = t; break; }
             }
-            if (gangTile) {
+            if (gangTile && deck.length > DEAD_WALL) { // 无补牌位：不暗杠，直接出牌
                 for (let i = 0; i < 4; i++) {
                     const ix = hands[player].indexOf(gangTile);
                     if (ix > -1) hands[player].splice(ix, 1);
@@ -365,7 +366,7 @@ function aiPengClaim(p, tile) {
     lastCallTurn[p] = handTurnCount; // 归因细化：记这次碰/杠发生在第几巡
     if (typeof trackAiCall === 'function') trackAiCall(p); // AI 3.0 分化度：记一次吃碰
     const cnt = hands[p].filter(x => x === tile).length;
-    const useGang = cnt >= 3; // 凑齐3张暗的+这张，直接杠比碰更优
+    const useGang = cnt >= 3 && deck.length > DEAD_WALL; // 凑齐3张暗的+这张，直接杠比碰更优；无补牌位时降为碰
     const takeCount = useGang ? 3 : 2;
     takeTilesFromHand(p, tile, takeCount);
     currentIndex = turnOrder.indexOf(p);
@@ -452,7 +453,7 @@ function checkClaimOrAdvance(player, tile) {
     // 检查你是否可以碰/杠/吃这张牌（穷胡规则：不能手把一，最多3组面子在外，第4组必须留在手里）
     const canClaimMore = exposedMelds.bottom.length < 3;
     const canP = canClaimMore && canPeng(hands.bottom, tile);
-    const canG = canClaimMore && canGang(hands.bottom, tile);
+    const canG = canClaimMore && canGang(hands.bottom, tile) && deck.length > DEAD_WALL; // 无补牌位：杠降为不提示（碰仍可）
     const chiCombos = (canClaimMore && player === 'left') ? findChiCombos(hands.bottom, tile) : []; // 只能吃上家的牌
     // 优先级：碰/杠 > 吃。你只能吃、而某个 AI 能碰/杠这张牌时，AI 先碰/杠，不再给你吃
     if (!canP && !canG && chiCombos.length && findAiPeng(player, tile)) {

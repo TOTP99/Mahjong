@@ -1,4 +1,7 @@
 // ---------- 基础常量与全局状态 ----------
+// 旧版单机版本号（v19 起标号：部署后刷新，标题后缀与此处一致即已更新；旧版此前无版本号标记）
+var Game = {};
+Game.VERSION = '19';
 const suits = ['万', '条', '筒'];
 const honors = ['东', '南', '西', '北', '中', '发', '白'];
 const PLAYERS = ['top', 'left', 'right', 'bottom'];
@@ -565,8 +568,12 @@ function resumeFromSave() {
         const kind = savedPendingReveal;
         savedPendingReveal = null;
         if (hands.bottom.length % 3 === 2 && checkWindDragonPattern(hands.bottom) === kind) {
-            offerReveal(kind);
-            return;
+            if (kind === 'winds' && !hasReplacementSlot()) {
+                // 无补牌位：跳过亮牌提示，走下面的正常续行逻辑（不 return）
+            } else {
+                offerReveal(kind);
+                return;
+            }
         }
     }
     // 情形二：AI 刚出完牌、等你吃碰杠时刷新——重走吃碰杠/换人流程，不可再摸（防连摸两次）

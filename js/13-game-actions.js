@@ -453,3 +453,13 @@ if (loadGameProgress()) {
     }
 })();
 
+
+// Esc 关闭非强制弹窗（v19）：亮牌（=不亮）、吃法选择、牌池、玩家介绍可 Esc 关闭；
+// 输光确认与结算弹窗必须点按钮，不响应 Esc（避免误触丢状态）。
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if ($('pool-modal') && $('pool-modal').classList.contains('show')) { closePoolModal(); return; }
+    if ($('player-intro-modal') && $('player-intro-modal').classList.contains('show')) { closePlayerIntro(); return; }
+    if ($('chi-choice-modal') && $('chi-choice-modal').classList.contains('show')) { closeChiChoice(); return; }
+    if ($('reveal-modal') && $('reveal-modal').classList.contains('show')) { confirmReveal(false); return; }
+});

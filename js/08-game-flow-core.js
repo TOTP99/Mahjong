@@ -1,5 +1,9 @@
 // ---------- 游戏流程 ----------
 const DEAD_WALL = 16; // 荒牌墙：摸到只剩这些时流局
+// 补牌位检查（统一收口）：杠（明/暗/加）与东南西北亮牌都需要补一张牌，
+// 只有牌墙剩余超过荒牌墙（16 张）时才有补牌位置。牌墙剩 17 张时补牌允许——
+// 补走最后一张可摸牌，剩 16 张荒牌，补牌者正常出牌；剩 16 张时不提示、不执行、不流局。
+function hasReplacementSlot() { return deck.length > DEAD_WALL; }
 
 /** 轮换庄家（从 12-render.js 移入：这是流程逻辑，不是渲染） */
 function rotateDealer() {
@@ -109,8 +113,10 @@ function checkWindDragonPattern(hand) {
 
 // 亮牌：把东南西北(4张)或中发白(3张)从暗牌里移出，变成一组“亮牌”明组，占一个面子位
 // 中发白正好3张，跟碰/吃一样不用补牌；东南西北4张，跟杠一样需要补一张牌才能凑够面子位的牌数
-// 算幺九+刻子，但不算开门。返回false代表补牌时牌墙已尽、流局已处理，调用方不要再继续往下走
+// 算幺九+刻子，但不算开门。先判后动：无补牌位时东南西北不动牌、不流局，返回 false，
+// 调用方继续正常流程（出牌/续行）；只有牌墙已尽的流局仍由摸牌路径 declareDraw 处理。
 function applyReveal(player, kind) {
+    if (kind === 'winds' && !hasReplacementSlot()) return false; // 无补牌位：不动牌、不流局
     windDragonBonus[player] = true;
     const tiles = kind === 'winds' ? ['1字', '2字', '3字', '4字'] : ['5字', '6字', '7字'];
     tiles.forEach(t => { hands[player].splice(hands[player].indexOf(t), 1); });
@@ -118,7 +124,6 @@ function applyReveal(player, kind) {
     logFlow(nameOf(player) + (kind === 'winds' ? ' 亮出东南西北' : ' 亮出中发白') + '（算幺九+刻子，不算开门）');
     speak('亮牌');
     if (kind === 'dragons') { render(); return true; } // 3张，不用补牌
-    if (deck.length <= DEAD_WALL) { declareDraw(); return false; }
     const drawn = deck.pop();
     hands[player].push(drawn);
     hands[player].sort(tileCompare);
@@ -146,7 +151,8 @@ function confirmReveal(reveal) {
     pendingReveal = null;
     $('reveal-modal').classList.remove('show');
     if (reveal) {
-        if (!applyReveal('bottom', kind)) return; // 补牌时牌墙已尽，流局已处理
+        applyReveal('bottom', kind); // 无补牌位时被拒（不动牌、不流局），直接继续正常流程
+        if (gameOver) return;
     }
     continueAfterFirstTurnCheck('bottom');
 }
@@ -187,6 +193,7 @@ function continueAfterFirstTurnCheck(player) {
 // 检查自己回合是否可暗杠或加杠，弹出「杠」提示与确认/过按钮（可选，点过或不理会都能继续出牌）
 function offerSelfGangIfAny() {
     if (gameOver || pendingClaim) return;
+    if (!hasReplacementSlot()) return; // 无补牌位：不提示杠，玩家正常出牌
     // 加杠：已碰过的牌，手里又有第4张
     for (const meld of exposedMelds.bottom) {
         if (meld.type === 'peng' && hands.bottom.includes(meld.tiles[0])) {
@@ -238,6 +245,8 @@ function executeSelfGang() {
             });
             return;
         }
+        // 抢杠已判完：无补牌位时不执行加杠，回到等出牌（不流局）
+        if (!hasReplacementSlot()) { logFlow('牌墙已无补牌位置，不能杠，请出牌'); render(); return; }
         const idx = hands.bottom.indexOf(tile);
         if (idx > -1) hands.bottom.splice(idx, 1);
         for (const meld of exposedMelds.bottom) {
@@ -257,6 +266,8 @@ try { if (typeof feelBanner === 'function') feelBanner('杠'); } catch (e) {}
     }
     // 暗杠
     if (exposedMelds.bottom.length >= 3) { logFlow('穷胡规则：不能手把一，最后一组必须留在手里'); return; }
+    // 无补牌位时不执行暗杠，回到等出牌（不流局）
+    if (!hasReplacementSlot()) { logFlow('牌墙已无补牌位置，不能杠，请出牌'); render(); return; }
     takeTilesFromHand('bottom', tile, 4);
     exposedMelds.bottom.push({ type: 'gang', tiles: [tile, tile, tile, tile], concealed: true });
     logFlow('你暗杠了 ' + tileGlyph(tile) + '，补牌中...');
@@ -289,11 +300,17 @@ function nextTurn() {
         const kind = checkWindDragonPattern(hands[player]);
         if (kind) {
             if (player === 'bottom') {
-                offerReveal(kind); // 等你在弹窗里选，选完会调用continueAfterFirstTurnCheck接着走
-                return;
+                if (kind === 'winds' && !hasReplacementSlot()) {
+                    // 无补牌位：不提示风牌，直接继续正常流程（中发白不用补牌，仍提示）
+                } else {
+                    offerReveal(kind); // 等你在弹窗里选，选完会调用continueAfterFirstTurnCheck接着走
+                    return;
+                }
+            } else {
+                // AI自动亮牌：无补牌位时风牌被拒（不动牌、不流局），继续正常流程
+                applyReveal(player, kind);
+                if (gameOver) return;
             }
-            // AI优先自动选择亮牌
-            if (!applyReveal(player, kind)) return; // 补牌时牌墙已尽，流局已处理
         }
     }
 
