@@ -30,17 +30,31 @@ body:not(.portrait-layout) .avatar img {
     letter-spacing: .03em;
 }
 
-/* ===== 按钮统一：8px 圆角 + 1px 金边 + 深底 ===== */
+/* ===== 按钮三级（v19 商业标准，替代旧扁平深底）===== */
+/* 工具小按钮：保持扁平深底（查询/缩放不是主操作） */
 #discard-query-btn,
 #btn-view-zoom-in,
-#btn-view-zoom-out,
-.btn-primary,
-.btn-ghost,
-.bust-btn {
+#btn-view-zoom-out {
     border-radius: 8px !important;
     border: 1px solid #8a6d3b !important;
     background: #1a1410 !important;
     color: #e8c56a !important;
+}
+/* 主操作：金渐变 + 深字 + 阴影 */
+.btn-primary {
+    border-radius: 8px !important;
+    border: 1px solid #b8912f !important;
+    background: linear-gradient(180deg, #e8c56a 0%, #b8912f 100%) !important;
+    color: #191307 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 10px rgba(212, 175, 55, 0.35) !important;
+}
+/* 取消/次要：幽灵灰 */
+.btn-ghost {
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.28) !important;
+    background: transparent !important;
+    color: #c9d2e3 !important;
 }
 
 /* ===== 竖屏顶栏单行：时钟框 + 三按键；署名移右下角 ===== */
@@ -83,4 +97,23 @@ body.portrait-layout #credit-label {
     right: 6px !important;
     /* 给时钟留位置 */
     max-width: 70%;
+}
+
+/* ===== v19 商业标准统一（纯视觉层，不碰逻辑）===== */
+/* 弹窗标题统一冰蓝（原先输光标题是金色单 outlier，结算标题已是冰蓝） */
+#reveal-modal .hu-title,
+#chi-choice-modal .hu-title,
+#bust-modal .bust-title,
+#pool-modal .pool-box-title {
+    color: var(--ice);
+}
+/* 弹窗遮罩统一（原先结算弹窗是 rgba(6,12,20,0.68)，其余弹窗均为 0.72） */
+#result-modal {
+    background: rgba(8, 14, 24, 0.72);
+}
+/* 输光主按钮：金渐变（与主操作统一，原先是扁平金底） */
+#bust-modal .bust-btn.primary {
+    background: linear-gradient(180deg, #e8c56a 0%, #b8912f 100%);
+    border-color: #b8912f;
+    box-shadow: 0 2px 10px rgba(212, 175, 55, 0.35);
 }
