@@ -1,0 +1,1 @@
+{"description":"极简麻将 · 穷胡 v19 — 旧版单机（补牌位边界修复 + 商业标准 UI + 测试与 CI）","name":"mahjong-old","private":true,"scripts":{"test":"node tests/replacement-slot.test.cjs && node tests/engine-smoke.test.cjs","test:unit":"node tests/replacement-slot.test.cjs && node tests/engine-smoke.test.cjs"},"version":"19"}
